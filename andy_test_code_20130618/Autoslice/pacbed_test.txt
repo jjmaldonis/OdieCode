@@ -1,0 +1,33 @@
+C
+C   output of autostem version 8-mar-2010 (pmv)
+C
+C   nslice= 104
+deltaz= 1.92, file in= si110_32x30x200A.xyz
+V0= 200, Apert= 0 mrad to 25 mrad
+Aberrations:
+C1 = 0 nm
+A1 = 0 nm, 0 deg
+A2 = 0 nm, 0 deg
+B2 = 0 nm, 0 deg
+C3 = 0 um
+A3 = 0 um, 0 deg
+S3 = 0 um, 0 deg
+A4 = 0 um, 0 deg
+D4 = 0 um, 0 deg
+B4 = 0 um, 0 deg
+C5 = 0 mm
+A5 = 0 mm, 0 deg
+Crystal tilt x,y= 0, 0
+Detector 0, Almin= 50 mrad, Almax= 250 mrad
+ax= 32.58 A, by= 30.7167 A, cz= 199.659 A
+Number of symmetrical anti-aliasing beams in probe wave function= 86269
+with a resolution (in Angstroms) = 0.190898
+Number of thermal configurations = 3
+Source size = 0 Ang. (FWHM) 
+Cc = 0 mm.  dE = 0 eV (FWHM).  Defocus standard dev. = 0 Ang. 
+
+file: pacbed_test000000.tif, detector= 50 to 250 mrad, thicknes= 30 A, range= 0.000270916 to 0.00193424
+file: pacbed_test000001.tif, detector= 50 to 250 mrad, thicknes= 50 A, range= 0.000542591 to 0.00404073
+file: pacbed_test000002.tif, detector= 50 to 250 mrad, thicknes= 90 A, range= 0.00196634 to 0.00825543
+file: pacbed_test000003.tif, detector= 50 to 250 mrad, thicknes= 150 A, range= 0.00540832 to 0.0127344
+file: pacbed_test000004.tif, detector= 50 to 250 mrad, thicknes= 199.659 A, range= 0.00808294 to 0.0164004

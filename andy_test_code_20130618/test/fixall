@@ -1,0 +1,6 @@
+#!/bin/bash
+for i in {0..89}
+do
+	sed -i -e '5d' Si110_im$i.sh
+	sed -i 's/\/home\/ayankovich\/bin\/autostem/\/home\/jjmaldonis\/OdieCode\/andy_test_code_20130618\/Autoslice\/autostem/g' Si110_im$i.sh
+done

@@ -1,0 +1,28 @@
+C
+C   output of autostem version 5-nov-2008 (ejk)
+C
+C   nslice= 104
+deltaz= 1.92, file in= si110_32x30x200A.xyz
+V0= 200, Apert= 0 mrad to 25.4 mrad
+Aberrations:
+C1 = 0 nm
+A1 = 0 nm, 0 deg
+A2 = 0 nm, 0 deg
+B2 = 0 nm, 0 deg
+C3 = 0 um
+A3 = 0 um, 0 deg
+S3 = 0 um, 0 deg
+A4 = 0 um, 0 deg
+D4 = 0 um, 0 deg
+B4 = 0 um, 0 deg
+C5 = 0 mm
+A5 = 0 mm, 0 deg
+Crystal tilt x,y= 0, 0
+Detector 0, Almin= 0 mrad, Almax= 1.5 mrad
+Detector 1, Almin= 50 mrad, Almax= 250 mrad
+ax= 32.58 A, by= 30.7167 A, cz= 199.659 A
+Number of symmetrical anti-aliasing beams in probe wave function= 86269
+with a resolution (in Angstroms) = 0.190898
+
+file: autostem_test000000.tif, detector= 0 to 1.5 mrad, thicknes= 199.659 A, range= 0.00192965 to 0.00193183
+file: autostem_test001000.tif, detector= 50 to 250 mrad, thicknes= 199.659 A, range= 0.00251476 to 0.00251675
