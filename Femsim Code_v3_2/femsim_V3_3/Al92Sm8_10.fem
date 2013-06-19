@@ -1,0 +1,7 @@
+#This is for AlSm 12791 Atoms system
+0.120000   0.02   37	#Starting k, k step, number of ks
+0.038100	#objective aperture, 0.61/Q
+8     0     264	#Number of rotations, N^3/2
+5   5	#Number of pixels
+2	#Intensity algorithm
+1.000000E-003

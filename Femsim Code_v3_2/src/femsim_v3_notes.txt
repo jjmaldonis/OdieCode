@@ -1,0 +1,110 @@
+1/28/05
+
+So, what would I like an updated version of femsum to do that it
+doesn't do now?  How should I change it to make it more useful?
+
+1.  Remove the requirement to recompile the program for every change
+in parameters or sample.  
+
+This requires:
+   - making almost all the constants in FemDefinitions.h into
+variables.
+   - dynamically instead of statically allocating a bunch of
+arrays
+   - new sample file format and read routines
+   - new parameters file format and input routine
+
+Changing the sample stuff would be easiest, I think.
+
+1-29-05: Changed things over to read Kirkland-format .xyz files,
+mostly.  The only thing that's not done is dynamic allocation of the
+G2Multi array, which depends on the number of elements in the sample,
+which is now determined dynamically instead of being complied in.
+Current total hack solution is to dimension G2Multi using MAX_NUM_ELEM
+instead of the real number of elements.  That's horribly wasteful, but
+makes the code work until I can write the dynamic allocation routine.
+
+8-22-05: Realized a potential bug in reading Kirkland files: femsum
+expects models centered on (0, 0, 0) and autoslice wants models
+centered on (1/2, 1/2, 1/2).  Added code to femsum to check and fix
+the centering of the model after it's read in.  If I ever implement
+the multislice version of this, I'll need to _un_recenter each model
+before feeding it to autoslice.
+
+8-19-05: Dynamic memory allocation implemented.  There are now no
+statically allocated arrays the size of which depends on a user
+input.  The statically allocated arrays are all associated with the
+maximum possible number of elements in the sample, which is 104, set
+by the available electron scattering factor data.
+
+8-21-05: Plan for reading simulation parameters: I like the femsim.sh
+system of specifying on the command line a simulations parameter file,
+an input structure file, and an output basename.  That way, I can run
+the same parameters on many structures without editing the parameters
+file, and I can run the same structure with different parameters under
+different output names.  
+
+It's more work to program, but a keyword: value and # for comments
+format would be most flexible and human-readable for the input file.
+
+8-22-05: The keyword-value scheme is hopeless for me.  Used
+fixed-format input files, but with everything after a # in the line
+not read.  That at least allows some explanatory commenting.
+
+This task is basically done: femsum can now run different parameters
+without recompiling.  What's left to do is transfer the improvements
+I've made in the meantime to the "recompile" version of femsum back
+into this version, then check to see that they both generate the same
+results for a sample calculation.  Then the recompile version can be
+retired.  It would also be a good idea to clean-up and rationalize the
+this new version a bit to make it easier to work with later on.
+
+Note in versioning: Sanjay's original is v1.  My "recompile" version
+is v2.x.  The non-recompile versions will be v3.x.
+
+2.  Add some flexibility and rationality to the pixel spacing and
+positions.
+
+I need to think about the user interface stuff for this - maybe the
+way to do is options to calculate evenly-spaced square or hexagonal
+arrays filling the model, arrays with a pre-determined spacing, or
+simply input a list of positions from a file.
+
+This requires:
+   - routines for determining the pixel centers.
+   - changing the intensity calculation routines to use pre-determined
+centers instead of calculating them on the fly.
+
+1-28-05: This is at least partially done.  for now, we can only
+calculate a square grid, but the apparatus is in place to do other
+grids or arbitrary positions.
+
+08-24-05: Implemented arbitrary positions by reading a file.  Specify
+a file name in place of the x & y grid sizes, and the program simply
+loads the file.  The file must be two columns, x and y in angstroms,
+no other text, and there is no error checking to see that the pixels
+are inside the bounds of of the supercell.
+
+3.  Speed up the intensity calculation with a linked-cell data
+structure instead of unrestricted sum.
+
+This requires rewriting those routines entirely, which will be a lot
+of work.
+
+
+4.  Support more elements.
+
+This requires:
+   - Add scattering factor constants for them to ScatFacs.h
+
+
+5.  Not abuse global variables quite so badly.
+
+This requires:
+   - Rewriting basically everything so what's needed gets passed as
+parameters, not assumed as globals.
+
+Probably more trouble than its really worth.
+
+
+6. Rename all the functions something reasonable to make the code readable.

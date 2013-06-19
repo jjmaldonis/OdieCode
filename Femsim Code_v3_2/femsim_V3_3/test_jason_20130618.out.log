@@ -1,0 +1,354 @@
+Log of Femsim v3.2 6-4-06 pmv
+Begin running at time: Tue Jun 18 13:41:23 2013
+
+
+1. Reading simulation parameters from file Al92Sm8_10.fem.
+
+2. Reading sample atoms with description:
+The atom position after MC movement!!!                                                              
+
+Shifting center of the model from (13.9391, 13.9365, 13.9363) to (0, 0, 0) for rotations.
+Sample read finished.
+
+3. Initializing intensity pixel positions.
+
+	Pixel spacing of 2.96738 A in x is closer than the recommended
+	minimum of the one-third the resolution, 5.33683 A.
+
+	Pixel spacing of 2.96738 A in y is closer than the recommended
+	minimum of the one-third the resolution, 5.33683 A.
+
+	Pixel positions on the model are:
+	-5.93475, -5.93475
+	-5.93475, -2.96738
+	-5.93475, 0
+	-5.93475, 2.96738
+	-5.93475, 5.93475
+	-2.96738, -5.93475
+	-2.96738, -2.96738
+	-2.96738, 0
+	-2.96738, 2.96738
+	-2.96738, 5.93475
+	0, -5.93475
+	0, -2.96738
+	0, 0
+	0, 2.96738
+	0, 5.93475
+	2.96738, -5.93475
+	2.96738, -2.96738
+	2.96738, 0
+	2.96738, 2.96738
+	2.96738, 5.93475
+	5.93475, -5.93475
+	5.93475, -2.96738
+	5.93475, 0
+	5.93475, 2.96738
+	5.93475, 5.93475
+
+	Pixel positions calculated on a square array.
+
+4. Simulation setup and parameters:
+Sample data:
+	The sample size is:
+	x(-13.940000, 13.940000), y(-13.940000, 13.940000), z(-13.940000, 13.940000)
+	The sample contains 1000 atoms of 2 different elements.
+	There are 920 atoms with Z = 13.
+	There are 80 atoms with Z = 62.
+
+Image data:
+	Q_aperture=0.038100
+	Rotations: 8 in phi, 4 in theta, and 8 in psi.  Total rotations: 264
+	|k|=0.120000->0.860000,has 37 steps
+	Size of image is:
+	x(-13.940000, 13.940000), y(-13.940000, 13.940000)
+	Number of pixels per image: 25
+
+
+Total number of intensity samples: 6600
+
+5. Allocating memory for computations.
+	Memory allocated.
+
+6. Calculating the intensity and average over rotations of sample.
+	Using the g2(r, r') algorithm.
+	Delta r' is 0.001 Angstroms, so
+	r' is divided into 16011 steps in the cylinder.
+	Rotation: phi=0.000000 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=0.785398 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=1.570795 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=2.356193 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=3.141590 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=3.926988 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=4.712385 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=5.497783 	 theta=0.000000 	 psi=0.000000
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=0.000000 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=0.000000 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=0.000000 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=0.000000 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=0.785398 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=0.785398 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=0.785398 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=0.785398 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=1.570795 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=1.570795 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=1.570795 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=1.570795 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=2.356193 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=2.356193 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=2.356193 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=2.356193 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=3.141590 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=3.141590 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=3.141590 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=3.141590 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=3.926988 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=3.926988 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=3.926988 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=3.926988 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=4.712385 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=4.712385 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=4.712385 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=4.712385 	 theta=2.513272 	 psi=5.497783
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=0.000000
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=0.785398
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=1.570795
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=2.356193
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=3.141590
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=3.926988
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=4.712385
+	Rotation: phi=5.497783 	 theta=0.628318 	 psi=5.497783
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=0.000000
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=0.785398
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=1.570795
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=2.356193
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=3.141590
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=3.926988
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=4.712385
+	Rotation: phi=5.497783 	 theta=1.256636 	 psi=5.497783
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=0.000000
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=0.785398
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=1.570795
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=2.356193
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=3.141590
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=3.926988
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=4.712385
+	Rotation: phi=5.497783 	 theta=1.884954 	 psi=5.497783
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=0.000000
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=0.785398
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=1.570795
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=2.356193
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=3.141590
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=3.926988
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=4.712385
+	Rotation: phi=5.497783 	 theta=2.513272 	 psi=5.497783
+
+7. Calculating the variance.
+
+8. Writing output files.
+	Wrote *.out
+	Wrote *rota_stat.txt.
+	Wrote *scatfunc.txt.
+	Wrote *inte03.txt and *inte06.txt.
+	Wrote *int.txt.
+
+
+End running at time: Tue Jun 18 14:34:23 2013
+
+Total time spent: 3180 seconds.
+
