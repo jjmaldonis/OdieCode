@@ -1,0 +1,46 @@
+#
+# default makefile for ifort compiler with more or less
+# appropriate options for debugging and high performance
+#
+
+# application name
+APP = rmc_test
+
+# list of source files
+SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem1.f90 gr.f90 eam.f90 rmc_v_1_0.f90 
+
+# list of object files
+OBJ = ran2.o globals.o read_inputs.o model.o rmc_functions.o scattering_factors.o fem1.o gr.o eam.o rmc_v_1_0.o 
+
+# define libraries needed by the linker
+#LIBS = -L/export/apps/openmpi_intel_20130618/lib -lmpi
+LIBS=
+#LIBS = -L/export/apps/openmpi_intel_20130618/lib
+# -rpath /state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/
+
+# compiler options for debugging
+#FC_DEBUG = ifort -g -debug all -check all -implicitnone -warn all
+FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all
+
+# compiler options for optmized running
+#FC_OPT = ifort -O3 -xO -ipo -no-prec-div -static
+#FC_OPT = mpif90 -O3 -ipo -static
+FC_OPT = mpif90 -O3
+
+#CFLAGS=-I/export/apps/openmpi_intel_20130618/include/
+
+# build rules
+
+.SUFFIXES: .f90 .o
+.f90.o:
+	${FC_DEBUG} -c $<
+
+debug: ${OBJ}
+	${FC_DEBUG} -o ${APP} ${OBJ} ${LIBS}
+
+opt: ${SRC}
+	${FC_OPT} -o ${APP} ${SRC} ${LIBS}
+
+clean:
+	rm -f *.mod *.o ${APP}
+	ln -s /export/apps/openmpi_intel_20130618/lib/mpi.mod ./mpi.mod
