@@ -750,12 +750,14 @@ contains
 				rot_dist_sq = (temp1)**2 + (temp2)**2
 	
 				IF(pixel_square) THEN
+					sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
 					IF((rr_x_new .LE. sqrt1_2_res) .AND. (rr_y_new .LE. sqrt1_2_res)) THEN
 						CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
 						int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
 						no_int_recal = .false.
 					ENDIF
 				ELSE
+					sqrt1_2_res = res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
 					if (rot_dist_sq <= res2) then
 						call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
 						int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
