@@ -1,16 +1,16 @@
-#!/bin/bash
+!/bin/bash
 
 # declare a name for this job (replace <jobname> with something more descriptive)
-#$ -N test
+#$ -N <jobname>
 
 # request the queue for this job
 # replace <queue_name> with queue_name e.g all.q
-#$ -q testqueue.q
+#$ -q <queue_name>
 
 # request computational resources for this job as follows
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It’s suggested use 12*integer processors here. 
-#$ -pe orte 8
+#$ -pe openmpi <num>
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=48:00:00
@@ -31,6 +31,6 @@ echo "Got $NSLOTS processors."
 #If you are not using the general purpose mpiexec, make sure your mpi environment is properly set up such
 #that the correct mpirun is found (you should use the mpirun provided with the compiler
 #used to compile the program you are running).
-MPI_HOME=/share/apps/openmpi_intel_20130618/bin/
+MPI_HOME=/share/apps/openmpi_intel/bin
 
-free
+$MPI_HOME/mpiexec -n $NSLOTS <command_name> <command_args>

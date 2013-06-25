@@ -1,2 +1,4 @@
+*.mod
+*.o
 *.tif
 spec/andy_test_code_20130618/test/Si110_im*
