@@ -75,6 +75,9 @@ logical :: square_pixel, use_femsim
 doubleprecision :: t0, t1
 
 
+write(*,*)
+write(*,*) "This is the dev version!"
+write(*,*)
 
 call mpi_init(mpierr)
 call mpi_comm_rank(mpi_comm_world, myid, mpierr)
