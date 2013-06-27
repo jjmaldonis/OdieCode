@@ -39,7 +39,7 @@
 !    ends up in comment, and status is nonzero if the file won't open or the memory can't be allocated.
 !
 ! reduce_znum(model, status)
-!    Reduce the z numbers of each atom to integers beginning with 1 for simple loops.	
+!    Reduce the z numbers of each atom to integers beginning with 1 for simple loops.   
 
 ! write_model(output_filename, comment, model, status)
 !    Dumps the model in model to the file output_filename, with first comment line comment. 
@@ -67,7 +67,7 @@
 ! rotate_model(phi, psi, theta, model_in, model_out, istat)
 !    Takes the input model, expands it by 3x3x3, rotates it through the Euler angles (phi, 
 !    psi, theta), then cuts it back down to size and puts the results in model_out.  The output model
-!    no longer obeys periodic  boundary conditions.  istat is nonzero for memory allocation failure
+!    no longer obeys periodic  boundary conditions.  istat is nonzero for memory allocation failure.
 !    
 ! copy_model(model_in, model_out, status)
 !    Copies the input model to the output model.  Returns nonzero in istat if memory can't be
@@ -77,7 +77,7 @@
 !    deallocates all the dynamically allocated / pointer etc bits of a model
 !
 ! add_index(index_list, index)
-!    adds the integer index to the end of the ind array in index_list and updates the # of 
+!    Adds the integer index to the end of the ind array in index_list and updates the # of 
 !    indices.
 ! THIS FUNCTIONS IS STUPID - IT DUPLICATE HUTCH_ADD_ATOM BELOW.
 !
@@ -156,13 +156,8 @@
 ! even without the phi rotation which makes no difference in the z projection. Because of this, 
 ! the phi angle is ignored in the matrices now. Do not change the matrix to 'x first and z'. 
 ! That resutls in same image rotating around the global z aixs. - JWH 09/04/09 
-
-
-
-
-
-
-
+!
+!
 ! type hutch_2D_array stores relative position in x and y dimension
 ! hutch_size as the unit for counting
 ! list_2D is a 2-D array of hutch_2D_list type
@@ -193,25 +188,27 @@
 !size_ratio = ratio dimension size
 !
 !subroutine pre_calc_2D_hutch pre-calculates a 2D array
-!each element stores the relative position of each hutch (only in x and y dimension)
+!   each element stores the relative position of each hutch (only in x and y dimension)
 !
-!subroutine destroy_hutch_2D_array destroy the 2D array created by pre_calc_2D_hutch
+!subroutine destroy_hutch_2D_array
+!   destroy the 2D array created by pre_calc_2D_hutch
 !
 !subroutine pre_calc_3D_hutch pre-calculates a 2D array
-!each element stores the relative position of each hutch (x, y and z dimension
+!   each element stores the relative position of each hutch (x, y and z dimension
 !
-!subroutine destroy_hutch_3D_array destroy the 2D array created by pre_calc_3D_hutch
+!subroutine destroy_hutch_3D_array
+!   destroy the 2D array created by pre_calc_3D_hutch
 !
 !subroutine hutch_position_eff(m, xx, yy, zz, hx, hy, hz,p_relative_3D, p_relative_2D)
-!is added, it gives the relative position of point (xx, yy,zz) in hutch (hx,hy,hz)
-!in both 2D and 3D dimension
+!   is added, it gives the relative position of point (xx, yy,zz) in hutch (hx,hy,hz)
+!   in both 2D and 3D dimension
 ! 
 !
-!SUBROUTINE hutch_list_3D_eff does similar thing as hutch_list_3D, but should list fewer
-!atoms in atom list
+!SUBROUTINE hutch_list_3D_eff
+!   does similar thing as hutch_list_3D, but should list fewer atoms in atom list
 !
-!SUBROUTINE hutch_list_pixel_eff does similar thing as hutch_list_pixel, but should list fewer
-!atoms in atom list
+!SUBROUTINE hutch_list_pixel_eff
+!   does similar thing as hutch_list_pixel, but should list fewer atoms in atom list
 !
 !
 ! model module:
@@ -224,59 +221,59 @@
 !   fixed pointer assignment bug in hutch_list_pixel and hutch_list_3D /1/6/09 pmv
 !   minor change in data types to make it compatible with visual fortran. 1/7/09 Jinwoo Hwang
 !   add subroutine Calc_Type_Order by Feng Yi on 01/16/2009 and a varialbe Type_Order
-!	subroutine reduce_znum moved here from gr_mod. 1/26/09 Jinwoo Hwang
+!   subroutine reduce_znum moved here from gr_mod. 1/26/09 Jinwoo Hwang
 !   two private variables hlist_2D_calc and hlist_3D_calc are added to determine whether the
 !   subroutine pre_calc_2D_hutch and pre_calc_3D_hutch is being called or not on 01/29/2009
 !   subroutine pre_calc_2D_hutch and pre_calc_3D_hutch are revised and only take one argument
 !   done on 01/29/2009 by Feng Yi
 !   The hutch_list_pixel and hutch_list_3D are revised correspondingly by Feng Yi on 01/29/2009
-!	Add new private variable list_1_3D of type hutch_2D_array
-!	Add new private variable list_1_2D of type hutch_3D_array by Feng Yi on 01/23/2009
-!	Original subroutine name change from hutch_list_3D to hutch_list_3D_old
-!	hutch_list_pixel to hutch_list_pixel_old
-!	hutch_list_pixel_eff to hutch_list_pixel
-!	hutch_list_3D_eff to hutch_list_3D!
-!	change the size of temp_list in subroutine pre_calc_2D_hutch by Feng Yi on 02/18/2009
-!	Temporarily assumes radius=resolution in hutch_list_pixel - Jinwoo Hwang 02/21/2009
+!   Add new private variable list_1_3D of type hutch_2D_array
+!   Add new private variable list_1_2D of type hutch_3D_array by Feng Yi on 01/23/2009
+!   Original subroutine name change from hutch_list_3D to hutch_list_3D_old
+!   hutch_list_pixel to hutch_list_pixel_old
+!   hutch_list_pixel_eff to hutch_list_pixel
+!   hutch_list_3D_eff to hutch_list_3D!
+!   change the size of temp_list in subroutine pre_calc_2D_hutch by Feng Yi on 02/18/2009
+!   Temporarily assumes radius=resolution in hutch_list_pixel - Jinwoo Hwang 02/21/2009
 !
 !
-!	Debug by Jinwoo Hwang - 030409
-!	In rotate_model, the loop orig_indices had an error. Now it's fixed to return right values.
-!	In periodic_continue, the recenter_model should not be called when natoms=1.
+!   Debug by Jinwoo Hwang - 030409
+!   In rotate_model, the loop orig_indices had an error. Now it's fixed to return right values.
+!   In periodic_continue, the recenter_model should not be called when natoms=1.
 !
 !
-!	subroutine hutch_list_3D and hutch_list_pixel is corrected by Feng Yi on 03/05/2009
+!   subroutine hutch_list_3D and hutch_list_pixel is corrected by Feng Yi on 03/05/2009
 !
-!	subroutine create_model(num_elements, atom_type, num_each_type, lx, ly, lz, file_name, comment)
-!	create a randomly located atom with number of each type corresponding to num_each_type
-!	box size of lx lx and lz
-!	store the atom position in the file with name file_name
+!   subroutine create_model(num_elements, atom_type, num_each_type, lx, ly, lz, file_name, comment)
+!   create a randomly located atom with number of each type corresponding to num_each_type
+!   box size of lx lx and lz
+!   store the atom position in the file with name file_name
 !
-!	nullify ha pointer in both hutch_list_3D and hutch_list_pixel by Feng Yi on 03/19/2009
-!	add if condition in destroy_hutch subroutine if IF (ha%h(i,j,k)%nat .GT. 0) on 03/19/2009 by Feng
-!	add IF(ri(i)%nat .GT. 0) to destroy_rot_indices by Feng Yi on 03/19/2009
-!	add  allocation and assignement of znum_r in both periodic_continue_model and copy_model subroutine
-!	add deallocate m%znum_r in destroy_model subroutine by Feng Yi on 03/19/2009
+!   nullify ha pointer in both hutch_list_3D and hutch_list_pixel by Feng Yi on 03/19/2009
+!   add if condition in destroy_hutch subroutine if IF (ha%h(i,j,k)%nat .GT. 0) on 03/19/2009 by Feng
+!   add IF(ri(i)%nat .GT. 0) to destroy_rot_indices by Feng Yi on 03/19/2009
+!   add  allocation and assignement of znum_r in both periodic_continue_model and copy_model subroutine
+!   add deallocate m%znum_r in destroy_model subroutine by Feng Yi on 03/19/2009
 !
-!	change size_ratio in pre_calc_3D_hutch and pre_calc_2D_hutch by Feng Yi on 03/25/2009
+!   change size_ratio in pre_calc_3D_hutch and pre_calc_2D_hutch by Feng Yi on 03/25/2009
 !
-!	In rotate_model, if statement was added before calling the composition_model. JWH 03/26/2009
+!   In rotate_model, if statement was added before calling the composition_model. JWH 03/26/2009
 !
-!	In hutch_position subroutine, the atoms at the box surfaces are considered. By Feng Yi on 03/26/2009
+!   In hutch_position subroutine, the atoms at the box surfaces are considered. By Feng Yi on 03/26/2009
 !
-!	Declare integer type in hutch_2D_list and hutch_3D_list to be in the range -10^3 to 10^3 to save space
-!	Same thing was done for the varialbe nx, ny, nz and nh in both pre_calc_3D and pre_calc_2D subroutine
-!	by FY on 03/27/2009
+!   Declare integer type in hutch_2D_list and hutch_3D_list to be in the range -10^3 to 10^3 to save space
+!   Same thing was done for the varialbe nx, ny, nz and nh in both pre_calc_3D and pre_calc_2D subroutine
+!   by FY on 03/27/2009
 !
-!	Debug - in perioidc continue model, the loop i=0, xp  was changed to -(xp-1)/2, (xp-1)/2 JWH FYI 040809
+!   Debug - in perioidc continue model, the loop i=0, xp  was changed to -(xp-1)/2, (xp-1)/2 JWH FYI 040809
 
 !       changed deallocate memory to destroy_model in rotate_model(), 4/17/09 pmv
-!	Hutch_list_3D_old: added deallocate(temp_atoms), 4/17/09 pmv
-!	Hutch_list_pixel_old: added deallocate(temp_atoms), 4/17/09 pmv
-!	Add if condition in destroy_hutch to determine whether hutch is allocated or not by fy on 04/17/2009
-!	Add if condition in destroy_rot_indices to see whether hutch is associated by JWH on 04/21/2009
-!	in the subroutine "rotate_model", the deallocation of the "mt" should not be done with the "destroy_model". JWH - 05/08/2009
-!	hutch_list_pixel_sq added. basically a copy of hutch_list_pixel_old, but returns different size of pixel sqare - JWH 062609
+!   Hutch_list_3D_old: added deallocate(temp_atoms), 4/17/09 pmv
+!   Hutch_list_pixel_old: added deallocate(temp_atoms), 4/17/09 pmv
+!   Add if condition in destroy_hutch to determine whether hutch is allocated or not by fy on 04/17/2009
+!   Add if condition in destroy_rot_indices to see whether hutch is associated by JWH on 04/21/2009
+!   in the subroutine "rotate_model", the deallocation of the "mt" should not be done with the "destroy_model". JWH - 05/08/2009
+!   hutch_list_pixel_sq added. basically a copy of hutch_list_pixel_old, but returns different size of pixel sqare - JWH 062609
 
 !*****************************************************************************
 module model_mod
@@ -308,7 +305,7 @@ module model_mod
   end type index_list
 
   
-  ! list for a rotated model that is the original model's natoms long.  each atom in the list
+  ! list for a rotated model that is the original models natoms long.  each atom in the list
   ! list is itself a list of the indices in the new, rotated model of the atoms corresponding
   ! to the the original atom in the unrotated model.
   ! for a rotated model, a list of the indices in the rotated model corresponding to each atom
@@ -347,14 +344,14 @@ module model_mod
    ! depending on calculation needed
    TYPE hutch_2D_array
         TYPE(hutch_2D_list), DIMENSION(:,:), POINTER :: list_2D
-		!first index refers to relative position of a point in a square
-		!second index refers to ratio of radius to square size
-		!position=relative position of a point in a square 
-		!position=j*(number_x-1) + i, where j refers to which y position the point is in
-		!i refers to which x position the point is in
-		INTEGER size_position
-		REAL, DIMENSION(:), POINTER :: ratio_radius_square
-		INTEGER size_ratio
+        !first index refers to relative position of a point in a square
+        !second index refers to ratio of radius to square size
+        !position=relative position of a point in a square 
+        !position=j*(number_x-1) + i, where j refers to which y position the point is in
+        !i refers to which x position the point is in
+        INTEGER size_position
+        REAL, DIMENSION(:), POINTER :: ratio_radius_square
+        INTEGER size_ratio
    END TYPE hutch_2D_array
 
 
@@ -363,9 +360,9 @@ module model_mod
    ! with certain ratio of radius to the hutch size
    TYPE hutch_3D_list
         INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_x
-	INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_y
-	INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_z
-		INTEGER size_d !number of elements in x, y and z dimension
+    INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_y
+    INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_z
+        INTEGER size_d !number of elements in x, y and z dimension
    END TYPE hutch_3D_list
 
    ! list the relative x, and y position of hutch to the center square
@@ -374,16 +371,16 @@ module model_mod
    ! depending on calculation needed
    TYPE hutch_3D_array
         TYPE(hutch_3D_list), DIMENSION(:, :), POINTER :: list_3D
-		!first index refers to relative position of a point in a hutch
-		!second index refers to ratio of radius to hutch size
-		!position=relative position of a point in a hutch 
-		!position=k*(number_y-1)*(number_x-1)+j*(number_x-1) + i, 
-		!where k refers to which z position the point is in
-		!j refers to which y position the point is in
-		!i refers to which x position the point is in
-		INTEGER size_position
-		REAL, DIMENSION(:), POINTER :: ratio_radius_hutch
-		INTEGER size_ratio
+        !first index refers to relative position of a point in a hutch
+        !second index refers to ratio of radius to hutch size
+        !position=relative position of a point in a hutch 
+        !position=k*(number_y-1)*(number_x-1)+j*(number_x-1) + i, 
+        !where k refers to which z position the point is in
+        !j refers to which y position the point is in
+        !i refers to which x position the point is in
+        INTEGER size_position
+        REAL, DIMENSION(:), POINTER :: ratio_radius_hutch
+        INTEGER size_ratio
    END TYPE hutch_3D_array
 
 
@@ -404,45 +401,45 @@ module model_mod
 contains
 
   subroutine create_model(num_elements, atom_type, num_each_type, lx, ly, lz, file_name, comment)
-	INTEGER, INTENT(IN) :: num_elements
-	INTEGER, DIMENSION(:) :: atom_type
-	INTEGER, DIMENSION(:) :: num_each_type
-	REAL, INTENT(IN) :: lx, ly, lz
-	CHARACTER(LEN=*) file_name
-	CHARACTER(LEN=*) comment
+    INTEGER, INTENT(IN) :: num_elements
+    INTEGER, DIMENSION(:) :: atom_type
+    INTEGER, DIMENSION(:) :: num_each_type
+    REAL, INTENT(IN) :: lx, ly, lz
+    CHARACTER(LEN=*) file_name
+    CHARACTER(LEN=*) comment
 
-	INTEGER i, j
-	REAL ran2
-	INTEGER seed1
-	INTEGER istat1
+    INTEGER i, j
+    REAL ran2
+    INTEGER seed1
+    INTEGER istat1
 
-	seed1 = 2389
+    seed1 = 2389
 
-	OPEN(10, FILE=file_name, IOSTAT=istat1, STATUS='UNKNOWN')
-	
-	IF(istat1 .NE. 0) THEN
-	  WRITE(*,*) 'Cannot open file: ', file_name
-	  RETURN
-	ENDIF
+    OPEN(10, FILE=file_name, IOSTAT=istat1, STATUS='UNKNOWN')
+    
+    IF(istat1 .NE. 0) THEN
+      WRITE(*,*) 'Cannot open file: ', file_name
+      RETURN
+    ENDIF
 
-	WRITE(10, *) comment
-	WRITE(10, *) lx, ly, lz
-	DO i=1, num_elements
-	  DO j=1, num_each_type(i)
-		WRITE(10, *) atom_type(i), lx * ran2(seed1), ly*ran2(seed1), lz * ran2(seed1)
-	  ENDDO
-	ENDDO
+    WRITE(10, *) comment
+    WRITE(10, *) lx, ly, lz
+    DO i=1, num_elements
+      DO j=1, num_each_type(i)
+        WRITE(10, *) atom_type(i), lx * ran2(seed1), ly*ran2(seed1), lz * ran2(seed1)
+      ENDDO
+    ENDDO
 
-	WRITE(10, *) -1
+    WRITE(10, *) -1
 
-	CLOSE(10)
-	
+    CLOSE(10)
+    
 
   end subroutine create_model
 
   ! Reads a model in the Kirkland .xyz file format from the file model_filename.
   ! Puts the first-line comment in "comment", the model in m, and returns 0 in
-  ! istat if the file can't be opened or the memory allocation fails.
+  ! istat if the file cant be opened or the memory allocation fails.
   subroutine read_model(model_filename, comment, m, istat)
 
     implicit none
@@ -452,21 +449,17 @@ contains
     type(model), intent(out) :: m
     integer, intent(out) :: istat      !0 for successful open, others for failure.
     
-    integer i
-	
-    integer atom_count, nat
-    
-    nat=0
-    
     open(1,file=model_filename,iostat=istat,status='old')
     if(istat.ne.0) then !Open fails
        write(*,*)"Error in opening flie,"," ",model_filename," status=",istat
        return
     endif
     
-    atom_count = 0
-    read(1,*)
-    read(1,*)
+    integer i, atom_count=0, nat=0
+    
+    read(1,*) ! Comment
+    read(1,*) ! This line contains the box size (lx, ly, lz).
+    ! Count how many atoms there are in the model.
     do while(atom_count.ne.-1)
        read(1,*)atom_count
        nat=nat+1.0
@@ -475,27 +468,38 @@ contains
 
     rewind(1)
 
+    ! Set the number of atoms in the model m and allocate space for each
+    ! direction.
     m%natoms = nat
     allocate(m%xx(nat), m%yy(nat), m%zz(nat), m%znum(nat), stat=istat)
     
+    ! Allocate should return 0 if successful.
     if(istat /= 0) then
        write (*,*) 'Unable to allocate memory for the model being read.'
        return
     endif
 
+    ! Read in the first 80 characters of the comment
     read(1,'(a80)') comment
+    ! Read in the box size.
     read(1,*) m%lx,m%ly,m%lz
+    ! Read in the atomic numbers and atom positions.
+    ! TODO - JASON incorporate composition_model function into this loop
     do i=1,nat
        read(1,*) m%znum(i),m%xx(i),m%yy(i),m%zz(i)
     enddo
     close(1)
 
+    ! Calculates the composition of the model and fills in nelements, atom_type, and composition
     call composition_model(m)
+    ! Reduce the z numbers of each atom to integers beginning with 1 for simple loops.   
     call reduce_znum(m, istat)
     m%rotated = .FALSE.
 
     call recenter_model(0.0, 0.0, 0.0, m)
 
+    ! Calls hutch_position, and hutch_add_atom as well in loops.
+    ! It does some allocation too.
     call model_init_hutch(m, istat)
 
     !write (*,*) 'Read ',nat,' atoms from the model described as:'
@@ -507,25 +511,31 @@ contains
 
 !*************************************************
 !subroutine reduce_znum
-!Reduce the z numbers of each atom to integers beginning with 1 for simple loops.	
+!Reduce the z numbers of each atom to integers beginning with 1 for simple loops.   
+! JASON - What I think this function does is look at the number of
+! elements (nelements) and assign each atomic number a "pointer number"
+! so that loops go faster. i.e. if you have atomic numbers 40, 13, and
+! 29, then you assign 1 to 40, 2 to 13, and 3 to 29 that way when you
+! loop through them you don't have to go through the entire 103-sized
+! array every time. But really, 103 is not that big. It will take
+! seconds. TODO I should figure out when this znum_r is used.
 subroutine reduce_znum(m,istat)
-	type(model), intent(out) :: m
-	integer, intent(out) :: istat
-	integer i, j
-	allocate(m%znum_r(m%natoms), stat=istat)
+    type(model), intent(out) :: m
+    integer, intent(out) :: istat
+    integer i, j
+    allocate(m%znum_r(m%natoms), stat=istat)
+    m%znum_r=0.0
 
-	m%znum_r=0.0
-
-	do i=1, m%natoms
-		do j=1, m%nelements
-			if(m%znum(i).eq.m%atom_type(j))then
-				m%znum_r(i) = j
-			endif
-		enddo
-	enddo
-!	do i=1, m%natoms
-!		write(*,*)m%znum(i),m%znum_r(i)
-!	enddo
+    do i=1, m%natoms
+        do j=1, m%nelements
+            if(m%znum(i).eq.m%atom_type(j))then
+                m%znum_r(i) = j
+            endif
+        enddo
+    enddo
+!   do i=1, m%natoms
+!       write(*,*)m%znum(i),m%znum_r(i)
+!   enddo
 end subroutine reduce_znum
 
 
@@ -533,7 +543,7 @@ end subroutine reduce_znum
   
   
   ! Writes the model in the data structure m to the file output_filename with
-  ! the first-line comment "comment".  istat is 0 if the file can't be written.
+  ! the first-line comment "comment".  istat is 0 if the file cant be written.
   subroutine write_model(output_filename, comment, m, istat)
     character (LEN=*),intent(in):: output_filename
     character (LEN=*), intent(in):: comment
@@ -571,6 +581,9 @@ end subroutine reduce_znum
     m%nelements=1
     znum_list(1) = m%znum(1)
     
+    ! TODO - JASON We should not be re-going through everything and
+    ! calculating nelements, here. Do it when we read these values in in
+    ! the first place on lines 486 to 489 in the read_model subroutine.
     do i=1,m%natoms
        isnew = 1
        do j=1,m%nelements
@@ -586,6 +599,19 @@ end subroutine reduce_znum
     m%atom_type = znum_list(1:m%nelements)
     m%composition = 0.0
 
+    ! TODO - JASON
+    ! Instead of calculating the composition like this, when I read in
+    ! the number of each atom type (i.e. atomic number), make an array
+    ! of size 103 and initialize it to 0. Then, when we run across an
+    ! atom of atomic number i, do array[i]=array[i]+1. Then at the end
+    ! we can count the number of non-zero entries, this will be
+    ! nelements. (Note that natoms will be calcuated already from the
+    ! read.) The compositions are then easily calculated when we go
+    ! through to count the number of non-zero entries by doing
+    ! array[i]=array[i]/real(natoms). However, I still need to figure
+    ! out what m%composition looks like so that I can convert that 103
+    ! sized composition array that was just calculated into the correct
+    ! format.
     do i = 1, m%natoms
        do j=1,m%nelements
           if(m%atom_type(j) == m%znum(i)) then
@@ -597,6 +623,9 @@ end subroutine reduce_znum
 
     m%composition = m%composition / real(m%natoms)
 
+    ! TODO - JASON
+    ! Figuure out why Feng Yi did this and see if I can optimize it with
+    ! the other calculations above.
     !Put the elements in atom_type and composition in atomic
     !number increasing order. Added by Feng Yi on 01/21/2009
 
@@ -621,12 +650,15 @@ end subroutine reduce_znum
   ! Shifts the atom positions in model so that the mid-point between the maximum and 
   ! and minimum atom positions in each dimensions sits at the position (xc, yc, zc),
   ! measured in units of the model supercell.
+  ! BIGO(natoms)*6
   subroutine recenter_model(xc, yc, zc, m)
     real, intent(in) :: xc, yc, zc
     type(model), intent(inout) :: m
     
     real :: xshift, yshift, zshift
 
+    ! maxval calculates the maximum value in the array. There are some
+    ! nice parameters for it described online by the way.
     xshift = xc*m%lx - (maxval(m%xx) + minval(m%xx))/2.0
     yshift = yc*m%ly - (maxval(m%yy) + minval(m%yy))/2.0
     zshift = zc*m%lz - (maxval(m%zz) + minval(m%zz))/2.0
@@ -642,6 +674,7 @@ end subroutine reduce_znum
   ! atoms in the box?  Are all the atomic numbers between 1 and 103
   ! (the range for which Kirkland calculated electron scattering factors)
   ! More should be added as we think of it.
+  ! BIGO(znum)*2 (so ~206, pretty small)
   subroutine check_model(m, istat)
     type(model), intent(in) :: m
     integer, intent(out) :: istat
@@ -709,9 +742,9 @@ end subroutine reduce_znum
 
     c=0
     do i = -(xp-1)/2, (xp-1)/2     !jwh fyi 040809
-      	 shift_x = real(i)*min%lx
+         shift_x = real(i)*min%lx
        do j = -(yp-1)/2, (yp-1)/2          
-		shift_y = real(j)*min%ly
+        shift_y = real(j)*min%ly
           do k = -(zp-1)/2, (zp-1)/2
              shift_z = real(k)*min%lz
 
@@ -719,7 +752,7 @@ end subroutine reduce_znum
              mout%yy(c*min%natoms+1:(c+1)*min%natoms) = min%yy + shift_y
              mout%zz(c*min%natoms+1:(c+1)*min%natoms) = min%zz + shift_z
              mout%znum(c*min%natoms+1:(c+1)*min%natoms) = min%znum
-	     mout%znum_r(c*min%natoms+1:(c+1)*min%natoms) = min%znum_r  !added by Feng Yi on 03/19/2009
+         mout%znum_r(c*min%natoms+1:(c+1)*min%natoms) = min%znum_r  !added by Feng Yi on 03/19/2009
 
              c = c+1
           end do
@@ -729,7 +762,7 @@ end subroutine reduce_znum
 !debug
 !open(unit=1005,file="periodic continue.txt",form='formatted',status='unknown')
 !do i= 1, mout%natoms
-!	write(1005,*)i, mout%znum(i), mout%znum_r(i), mout%xx(i), mout%yy(i), mout%zz(i)
+!   write(1005,*)i, mout%znum(i), mout%znum_r(i), mout%xx(i), mout%yy(i), mout%zz(i)
 !enddo
 
 
@@ -781,7 +814,7 @@ end subroutine reduce_znum
     istat = 0
     if (istat /= 0) return
 
-!	write(*,*)"periodic_continue_model"
+!   write(*,*)"periodic_continue_model"
     call periodic_continue_model(3, 3, 3, min, mt, .FALSE., istat)
     if (istat /= 0) return
 
@@ -832,21 +865,21 @@ end subroutine reduce_znum
 !open(unit=1008,file="test_mt.txt",form='formatted',status='unknown')
     ! Rotate the position vectors in mt
     do i=1,mt%natoms
-	if(abs(mt%xx(i)).le.1.2*sqrt(2.0)*min%lx/2)then
-		if(abs(mt%yy(i)).le.1.2*sqrt(2.0)*min%ly/2)then
-			if(abs(mt%zz(i)).le.1.2*sqrt(2.0)*min%lz/2)then
+    if(abs(mt%xx(i)).le.1.2*sqrt(2.0)*min%lx/2)then
+        if(abs(mt%yy(i)).le.1.2*sqrt(2.0)*min%ly/2)then
+            if(abs(mt%zz(i)).le.1.2*sqrt(2.0)*min%lz/2)then
 
-				x = mt%xx(i)*r(1,1) + mt%yy(i)*r(1,2) + mt%zz(i)*r(1,3) 
-       			y = mt%xx(i)*r(2,1) + mt%yy(i)*r(2,2) + mt%zz(i)*r(2,3) 
-	      			z = mt%xx(i)*r(3,1) + mt%yy(i)*r(3,2) + mt%zz(i)*r(3,3) 
-				mt%xx(i) = x
-	      			mt%yy(i) = y
-	      			mt%zz(i) = z
-				!write(1008,*)i, mt%znum_r(i), mt%xx(i), mt%yy(i), mt%zz(i)
+                x = mt%xx(i)*r(1,1) + mt%yy(i)*r(1,2) + mt%zz(i)*r(1,3) 
+                y = mt%xx(i)*r(2,1) + mt%yy(i)*r(2,2) + mt%zz(i)*r(2,3) 
+                    z = mt%xx(i)*r(3,1) + mt%yy(i)*r(3,2) + mt%zz(i)*r(3,3) 
+                mt%xx(i) = x
+                    mt%yy(i) = y
+                    mt%zz(i) = z
+                !write(1008,*)i, mt%znum_r(i), mt%xx(i), mt%yy(i), mt%zz(i)
 
-     			endif
-		endif
-	endif
+                endif
+        endif
+    endif
     end do
 
     ! cut the temporary model back to the original box size
@@ -896,9 +929,9 @@ end subroutine reduce_znum
                 mrot%yy(j) = mt%yy(i)
                 mrot%zz(j) = mt%zz(i)
                 mrot%znum(j) = mt%znum(i)
-		  mrot%znum_r(j) = mt%znum_r(i) !Added by Feng Yi on 03/19/2009   !Bug fixed : j to i -JWH 09/03/09
+          mrot%znum_r(j) = mt%znum_r(i) !Added by Feng Yi on 03/19/2009   !Bug fixed : j to i -JWH 09/03/09
 
-			!write(*,*)"here",i, mt%znum_r(i), mt%xx(i),mt%yy(i),mt%zz(i)
+            !write(*,*)"here",i, mt%znum_r(i), mt%xx(i),mt%yy(i),mt%zz(i)
 
                 call add_index(mrot%rot_i(orig_indices(i)), j)
                 j = j+1
@@ -922,7 +955,7 @@ end subroutine reduce_znum
     mrot%unrot_natoms = min%natoms
     
     IF(mrot%natoms .NE. 0) THEN !added by JWH 03/26/2009
-	call composition_model(mrot) ! have to recalculate this because the # of atoms
+    call composition_model(mrot) ! have to recalculate this because the # of atoms
                                  ! may have changed a little
     ENDIF
     !write(*,*)"MROT", mrot%natoms
@@ -938,7 +971,7 @@ end subroutine reduce_znum
 
 
 
-	       
+           
   ! copies the contents of model min to model mout
   subroutine copy_model(min, mout, istat)
     type(model), intent(in) :: min
@@ -1030,7 +1063,7 @@ end subroutine reduce_znum
     endif
 
     IF(ALLOCATED(scratch)) THEN
-	DEALLOCATE(scratch)
+    DEALLOCATE(scratch)
     ENDIF
 
   end subroutine add_index
@@ -1051,7 +1084,7 @@ end subroutine reduce_znum
     if(associated(ri))then   !JWH - 042109
       deallocate(ri)
     endif
- 	
+    
   end subroutine destroy_rot_indices
 
 
@@ -1061,6 +1094,7 @@ end subroutine reduce_znum
   ! the current model atom position arrays xa, ya, and za to the appropriate
   ! hutches.  It does NOT check whether ha has already been initialized, so this
   ! routine should NEVER be called more than once for the same hutch_array.
+  ! WARNING!!! THE BOX MUST BE A PERFECT CUBE FOR THIS FUCNTION TO WORK. - JASON
   subroutine model_init_hutch(m, status)
     type(model), intent(inout) :: m
     integer, intent(out) :: status
@@ -1072,6 +1106,8 @@ end subroutine reduce_znum
 
     status = 0
 
+    ! TODO - JASON Shouldn't ANINT be ceiling???
+    ! WARNING!!! THE BOX MUST BE A PERFECT CUBE FOR THIS TO WORK. - JASON
     m%ha%hutch_size = ((m%lx*m%ly*m%lz)/m%natoms*ATOMS_PER_HUTCH)**(1./3.)
     i = ANINT(m%lx/m%ha%hutch_size) !the closest number of hutch to fill in the box, added by Feng Yi on 03/06/2009
     m%ha%hutch_size = m%lx / i
@@ -1087,7 +1123,7 @@ end subroutine reduce_znum
     m%ha%nhutch_y = i
     m%ha%nhutch_z = i 
 
-	!write (*,*)m%ha%nhutch_x,m%ha%nhutch_y,m%ha%nhutch_z
+    !write (*,*)m%ha%nhutch_x,m%ha%nhutch_y,m%ha%nhutch_z
 
     allocate(m%ha%h(m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z), stat=istat)
     if (istat /= 0) then
@@ -1104,6 +1140,7 @@ end subroutine reduce_znum
     end if
     m%ha%atom_hutch = 0
 
+    ! ??? What does this do - JASON
     do hx = 1, m%ha%nhutch_x
        do hy = 1, m%ha%nhutch_y
           do hz = 1, m%ha%nhutch_z
@@ -1114,20 +1151,23 @@ end subroutine reduce_znum
     end do
 
     do i=1, m%natoms
+       ! hutch_position has BIGO(1)
        call hutch_position(m, m%xx(i), m%yy(i), m%zz(i), hx, hy, hz)
        if(hz < 1) then
-          write (*,*) 'Atom i=',i,' position is ',m%xx(i),', ',m%yy(i),', ',m%zz(i)
+          write (*,*) 'Atom i=', i, ' position is ', m%xx(i), ', ' ,m%yy(i), ', ', m%zz(i)
        endif
+       ! hutch_add_atom does reallocation - this can be expensive.
        call hutch_add_atom(m, i, hx, hy, hz)
     end do
 
-   !DO hx=1, m%ha%nhutch_x
-    ! DO hy=1, m%ha%nhutch_y
-!	DO hz=1, m%ha%nhutch_z
-!	  WRITE(*,*) hx, hy, hz, m%ha%h(hx,hy,hz)%nat
-!	ENDDO
- !    ENDDO
-  ! ENDDO !debug
+    ! debugging:
+    !DO hx=1, m%ha%nhutch_x
+        !DO hy=1, m%ha%nhutch_y
+            !DO hz=1, m%ha%nhutch_z
+                !WRITE(*,*) hx, hy, hz, m%ha%h(hx,hy,hz)%nat
+            !ENDDO
+        !ENDDO
+    !ENDDO
   end subroutine model_init_hutch
   
 
@@ -1180,11 +1220,11 @@ end subroutine reduce_znum
     integer, allocatable, dimension(:), target :: temp_atoms  ! temporary atoms list
     type(hutch_array), pointer :: ha
 
-	
-!	write(*,*)"testline1",px,py,pz
+    
+!   write(*,*)"testline1",px,py,pz
     ha => m%ha
     allocate(temp_atoms(m%natoms), stat=istat)
-!	allocate(temp_atoms(m%natoms*6), stat=istat) !for debug
+!   allocate(temp_atoms(m%natoms*6), stat=istat) !for debug
 
     if (istat /= 0) then
        write (*,*) 'Cannot allocate index list in hutch_list_3D.'
@@ -1192,7 +1232,7 @@ end subroutine reduce_znum
     endif
 
     call hutch_position(m, px, py, pz, hx, hy, hz)
-!	write(*,*)"testline2",radius
+!   write(*,*)"testline2",radius
     nh = ceiling(radius / ha%hutch_size)
 
     ! accumulate the atoms we want to keep into temp_atoms
@@ -1222,21 +1262,21 @@ end subroutine reduce_znum
                 hi = i
              end if
              if (ha%h(hi, hj, hk)%nat > 0) then
-			    !PRINT *, 'nlist+ha%h(hi,hj,hk)%nat-1 is: ', nlist+ha%h(hi,hj,hk)%nat-1 !for debug
+                !PRINT *, 'nlist+ha%h(hi,hj,hk)%nat-1 is: ', nlist+ha%h(hi,hj,hk)%nat-1 !for debug
                 temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
                 nlist = nlist+ha%h(hi,hj,hk)%nat
              endif
           end do
        end do
     end do
-!	write(*,*)"testline3",nlist
+!   write(*,*)"testline3",nlist
     allocate(atoms(nlist-1), stat=istat)
     if (istat /= 0) then
        write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
        return
     endif
 
-	!assign atoms to the subset of temp_atoms that was filled in
+    !assign atoms to the subset of temp_atoms that was filled in
     if (nlist > 1) then
        atoms = temp_atoms(1:nlist-1)
     else
@@ -1331,7 +1371,7 @@ end subroutine reduce_znum
     if(allocated(temp_atoms)) deallocate(temp_atoms)
 
     IF(ASSOCIATED(ha)) THEN
-	NULLIFY(ha)             !jwh - 062509
+    NULLIFY(ha)             !jwh - 062509
     ENDIF
 
   end subroutine hutch_list_pixel_old
@@ -1427,10 +1467,10 @@ nlist = m%natoms
 
     ! assign atoms to the subset of temp_atoms that was filled in
     if (nlist > 1) then
-	!atoms = temp_atoms(1:nlist-1)
-	do i=1, nlist
-		atoms(i) = i
-	enddo
+    !atoms = temp_atoms(1:nlist-1)
+    do i=1, nlist
+        atoms(i) = i
+    enddo
     else
        nullify(atoms)
        istat = -1
@@ -1442,7 +1482,7 @@ nlist = m%natoms
     if(allocated(temp_atoms)) deallocate(temp_atoms)
 
     IF(ASSOCIATED(ha)) THEN
-	NULLIFY(ha)             !jwh - 062509
+    NULLIFY(ha)             !jwh - 062509
     ENDIF
 
   end subroutine hutch_list_pixel_sq
@@ -1472,15 +1512,15 @@ nlist = m%natoms
     if (hz == 0) hz = 1
 
     IF(xx .GE. m%lx/2.0) THEN
-	hx = 1
+    hx = 1
     ENDIF
 
     IF(yy .GE. m%ly/2.0) THEN
-	hy = 1
+    hy = 1
     ENDIF
 
     IF(zz .GE. m%lz/2.0) THEN
-	hz = 1
+    hz = 1
     ENDIF
 
   end subroutine hutch_position
@@ -1506,12 +1546,16 @@ nlist = m%natoms
        scratch_atoms(1:nat) = ha%h(hx, hy, hz)%at
        scratch_atoms(nat+1) = atom
 
+       ! Reallocate with new size
+       ! TODO - JASON This is a major operation, can I fix it somehow?
        deallocate(ha%h(hx,hy,hz)%at)
        allocate(ha%h(hx,hy,hz)%at(1:nat+1)) ! +1 for fencepost 
 
        ha%h(hx,hy,hz)%at = scratch_atoms
 
     else
+       ! nat is set to 0 in a do loop in model_init_hutch, slightly before
+       ! this function is called. 
        allocate(ha%h(hx,hy,hz)%at(1:1))
        ha%h(hx,hy,hz)%at(1) = atom
     end if
@@ -1550,20 +1594,20 @@ nlist = m%natoms
     IF(ha%h(hx, hy, hz)%nat .GT. 1) THEN  !added by Feng Yi on 03/19/2009
     !allocate(ha%h(hx,hy,hz)%at(1:ha%h(hx,hy,hz)%nat-1))
         allocate(ha%h(hx,hy,hz)%at(ha%h(hx,hy,hz)%nat-1))
-	j=1
-	do i=1, ha%h(hx,hy,hz)%nat
-	  if (scratch_atoms(i) /= atom) then
-		ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
-		j=j+1
-	  end if
-	enddo
+    j=1
+    do i=1, ha%h(hx,hy,hz)%nat
+      if (scratch_atoms(i) /= atom) then
+        ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
+        j=j+1
+      end if
+    enddo
 
-	ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
-	ha%atom_hutch(atom,1) = 0
-	ha%atom_hutch(atom,2) = 0
-	ha%atom_hutch(atom,3) = 0
+    ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
+    ha%atom_hutch(atom,1) = 0
+    ha%atom_hutch(atom,2) = 0
+    ha%atom_hutch(atom,3) = 0
     ELSE
-	ha%h(hx,hy, hz)%nat = 0
+    ha%h(hx,hy, hz)%nat = 0
     ENDIF
 
     !debug
@@ -1581,18 +1625,18 @@ nlist = m%natoms
     
     integer i, j, k
     IF(ASSOCIATED(ha%h)) THEN
-	!WRITE(*,*) ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
-	do i=1, ha%nhutch_x
-	  do j=1, ha%nhutch_y
-	    do k=1, ha%nhutch_z
-		IF (ha%h(i,j,k)%nat .GT. 0) THEN !added by Feng Yi on 03/14/2009
-		  deallocate(ha%h(i,j,k)%at)
-		ENDIF
-	    enddo
-	  enddo
-	enddo
+    !WRITE(*,*) ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
+    do i=1, ha%nhutch_x
+      do j=1, ha%nhutch_y
+        do k=1, ha%nhutch_z
+        IF (ha%h(i,j,k)%nat .GT. 0) THEN !added by Feng Yi on 03/14/2009
+          deallocate(ha%h(i,j,k)%at)
+        ENDIF
+        enddo
+      enddo
+    enddo
 
-	deallocate(ha%h, ha%atom_hutch)
+    deallocate(ha%h, ha%atom_hutch)
     ENDIF !if associated(ha%h)
 
   end subroutine destroy_hutch
@@ -1639,7 +1683,7 @@ nlist = m%natoms
     !ratio_list from 0 to 0.5, 0.5 to 1.5, then step size with 1
     !ratio_list(1)=0.5, ratio_list(2)=1.5, ratio_list(3)=2.5, etc. 
     REAL size_ref !square size
-	   
+       
 
     INTEGER num_x, num_y
     INTEGER i1,j1,k1 
@@ -1653,7 +1697,7 @@ nlist = m%natoms
     REAL p_x, p_y
     
     REAL x_square, y_square
-	   
+       
     size_ref = m%ha%hutch_size
     !num_temp1 = CEILING(m%lx/2-0.5)+1
     num_temp1 = CEILING(m%lx/2/size_ref)  !changed by Feng Yi on 03/25/2005
@@ -1694,7 +1738,7 @@ nlist = m%natoms
     DO i1=1, num_y
        DO j1=1, num_x
           num_temp1 = (i1-1) * num_x + j1
-		   
+           
 
           DO k1=1, list_1_2D%size_ratio
              num_temp2 = 0
@@ -1791,12 +1835,12 @@ nlist = m%natoms
 
 !***************************************
 !destroy allocated variable list_1_2D
-	!destroy hutch_2D_array
+    !destroy hutch_2D_array
   SUBROUTINE destroy_hutch_2D_array
-	  !TYPE(hutch_2D_array) list1
+      !TYPE(hutch_2D_array) list1
 
     INTEGER i1, j1
-	  
+      
     DO i1=1, list_1_2D%size_position
        DO j1=1,list_1_2D%size_ratio
           DEALLOCATE(list_1_2D%list_2D(i1,j1)%list_x)
@@ -1816,215 +1860,215 @@ nlist = m%natoms
 !it is only called once. ONCE,NOTICE!!!!!
 
     SUBROUTINE pre_calc_3D_hutch(m)
-	   !TYPE(hutch_3D_array) list1
-	   TYPE(model), TARGET, INTENT(IN) :: m
-	   REAL,ALLOCATABLE, DIMENSION(:) :: ratio_list
-	   !ratio_list from 0 to 0.5, 0.5 to 1.5, then step size with 1
-	   !ratio_list(1)=0.5, ratio_list(2)=1.5, ratio_list(3)=2.5, etc. 
-	   REAL size_ref !square size
-	   
+       !TYPE(hutch_3D_array) list1
+       TYPE(model), TARGET, INTENT(IN) :: m
+       REAL,ALLOCATABLE, DIMENSION(:) :: ratio_list
+       !ratio_list from 0 to 0.5, 0.5 to 1.5, then step size with 1
+       !ratio_list(1)=0.5, ratio_list(2)=1.5, ratio_list(3)=2.5, etc. 
+       REAL size_ref !square size
+       
 
            INTEGER num_x, num_y, num_z
-	   INTEGER i1,j1,k1, k2 
-	   INTEGER(SELECTED_INT_KIND (3)) n1,n2, n3
-	   INTEGER(SELECTED_INT_KIND(3)) nh
-	   INTEGER num_temp1
-	   !INTEGER,ALLOCATABLE, DIMENSION(:, :) :: num_temp2
-	   INTEGER num_temp2
-	   INTEGER(SELECTED_INT_KIND (3)),ALLOCATABLE, DIMENSION(:, :) :: temp_list
-	   REAL r_dist, ref_dist
-	   REAL p_x, p_y, p_z
-	   
-	   REAL x_hutch, y_hutch, z_hutch
-	   
+       INTEGER i1,j1,k1, k2 
+       INTEGER(SELECTED_INT_KIND (3)) n1,n2, n3
+       INTEGER(SELECTED_INT_KIND(3)) nh
+       INTEGER num_temp1
+       !INTEGER,ALLOCATABLE, DIMENSION(:, :) :: num_temp2
+       INTEGER num_temp2
+       INTEGER(SELECTED_INT_KIND (3)),ALLOCATABLE, DIMENSION(:, :) :: temp_list
+       REAL r_dist, ref_dist
+       REAL p_x, p_y, p_z
+       
+       REAL x_hutch, y_hutch, z_hutch
+       
            size_ref = m%ha%hutch_size
-   	   !num_temp1 = CEILING(m%lx/2-0.5)+1
-	   num_temp1 = CEILING(m%lx/size_ref) !changed by Feng Yi on 03/25/2009
-	   IF( .NOT. ALLOCATED(ratio_list)) THEN 
-	       ALLOCATE(ratio_list(num_temp1))
-	   ENDIF
-	   ratio_list(1) = 0.5
-	  DO i1=2, num_temp1
+       !num_temp1 = CEILING(m%lx/2-0.5)+1
+       num_temp1 = CEILING(m%lx/size_ref) !changed by Feng Yi on 03/25/2009
+       IF( .NOT. ALLOCATED(ratio_list)) THEN 
+           ALLOCATE(ratio_list(num_temp1))
+       ENDIF
+       ratio_list(1) = 0.5
+      DO i1=2, num_temp1
              ratio_list(i1) = ratio_list(i1-1) + 1
-	  ENDDO
-	   num_x=2
-	   num_y=2
-	   num_z=2
+      ENDDO
+       num_x=2
+       num_y=2
+       num_z=2
 
-	   list_1_3D%size_ratio = SIZE(ratio_list,1)
-	   list_1_3D%size_position =  num_x*num_y*num_z
-	 !debug here
-	!WRITE(*, *) m%ha%hutch_size, ratio_list(SIZE(ratio_list,1))
-	!WRITE(*,*) 'the biggest size is: ', m%ha%hutch_size * ratio_list(SIZE(ratio_list,1))
-	!****************************
+       list_1_3D%size_ratio = SIZE(ratio_list,1)
+       list_1_3D%size_position =  num_x*num_y*num_z
+     !debug here
+    !WRITE(*, *) m%ha%hutch_size, ratio_list(SIZE(ratio_list,1))
+    !WRITE(*,*) 'the biggest size is: ', m%ha%hutch_size * ratio_list(SIZE(ratio_list,1))
+    !****************************
        !POINTER allocation
-	   ALLOCATE(list_1_3D%list_3D(list_1_3D%size_position ,list_1_3D%size_ratio ))
+       ALLOCATE(list_1_3D%list_3D(list_1_3D%size_position ,list_1_3D%size_ratio ))
 
-	   ALLOCATE(list_1_3D%ratio_radius_hutch(list_1_3D%size_ratio))
-	   list_1_3D%ratio_radius_hutch = ratio_list
-	  !debug
-	  !WRITE(*, *) 'list_1_3D: ', list_1_3D%ratio_radius_hutch
+       ALLOCATE(list_1_3D%ratio_radius_hutch(list_1_3D%size_ratio))
+       list_1_3D%ratio_radius_hutch = ratio_list
+      !debug
+      !WRITE(*, *) 'list_1_3D: ', list_1_3D%ratio_radius_hutch
 
-	   !IF (.NOT. ALLOCATED(num_temp2)) THEN
-	    ! ALLOCATE(num_temp2(list1%size_position ,list1%size_ratio))
-	   !ENDIF
+       !IF (.NOT. ALLOCATED(num_temp2)) THEN
+        ! ALLOCATE(num_temp2(list1%size_position ,list1%size_ratio))
+       !ENDIF
            
-	  i1 = 2*CEILING(ratio_list(list_1_3D%size_ratio)) + 1
-	  j1 = i1
-	  k1 = i1
-	  
-	   IF(.NOT. ALLOCATED(temp_list)) THEN
-	     ALLOCATE(temp_list(3, i1*j1*k1))  !this size can be modified
-		 !first dimension refers to x and y, 1 is x and 2 is y
-		 !second dimension refers to x or y relative position
-	   ENDIF
+      i1 = 2*CEILING(ratio_list(list_1_3D%size_ratio)) + 1
+      j1 = i1
+      k1 = i1
+      
+       IF(.NOT. ALLOCATED(temp_list)) THEN
+         ALLOCATE(temp_list(3, i1*j1*k1))  !this size can be modified
+         !first dimension refers to x and y, 1 is x and 2 is y
+         !second dimension refers to x or y relative position
+       ENDIF
 
-	   
-	   
+       
+       
 
        DO i1=1, num_z
-	     DO j1=1, num_y
-		   DO k1=1,num_x
+         DO j1=1, num_y
+           DO k1=1,num_x
 
-		   num_temp1 = (i1-1) * num_y * num_x + (j1-1) * num_x + k1
-		   
+           num_temp1 = (i1-1) * num_y * num_x + (j1-1) * num_x + k1
+           
 
-		     DO k2=1, list_1_3D%size_ratio
-		       num_temp2 = 0
-		      !Calculate which hutch is within distance r to the point
-		      !consider the worst case
-		       ref_dist = size_ref * ratio_list(k2)
-			   nh = CEILING(ratio_list(k2))
-			   DO n1=-nh, nh
-			     !***********x dimension***********
-			     IF(n1 .GT. 0) THEN
-				 !pick rightmost corner of square
-			          p_x=(k1-1.0)*0.5
-				 ELSEIF (n1 .LT. 0) THEN
-				 !pick leftmost corner of square
-				   p_x=(k1-2.0)*0.5
-				 ELSE
-				   p_x=0
-				 ENDIF
-			    DO n2=-nh, nh
-			      !***********y dimension***********
-			     IF(n2 .GT. 0) THEN
-				 !pick rightmost corner of square
-				   p_y=(j1-1.0)*0.5
-				 ELSEIF (n2 .LT. 0) THEN
-				 !pick leftmost corner of square
-				   p_y=(j1-2.0)*0.5
-				 ELSE
-				   p_y=0
-				 ENDIF
+             DO k2=1, list_1_3D%size_ratio
+               num_temp2 = 0
+              !Calculate which hutch is within distance r to the point
+              !consider the worst case
+               ref_dist = size_ref * ratio_list(k2)
+               nh = CEILING(ratio_list(k2))
+               DO n1=-nh, nh
+                 !***********x dimension***********
+                 IF(n1 .GT. 0) THEN
+                 !pick rightmost corner of square
+                      p_x=(k1-1.0)*0.5
+                 ELSEIF (n1 .LT. 0) THEN
+                 !pick leftmost corner of square
+                   p_x=(k1-2.0)*0.5
+                 ELSE
+                   p_x=0
+                 ENDIF
+                DO n2=-nh, nh
+                  !***********y dimension***********
+                 IF(n2 .GT. 0) THEN
+                 !pick rightmost corner of square
+                   p_y=(j1-1.0)*0.5
+                 ELSEIF (n2 .LT. 0) THEN
+                 !pick leftmost corner of square
+                   p_y=(j1-2.0)*0.5
+                 ELSE
+                   p_y=0
+                 ENDIF
 
-				   DO n3=-nh, nh
+                   DO n3=-nh, nh
                     !***********z dimension***********
-			          IF(n3 .GT. 0) THEN
-				      !pick rightmost corner of square
-				         p_z=(i1-1.0)*0.5
-				      ELSEIF (n3 .LT. 0) THEN
-				      !pick leftmost corner of square
-				         p_z=(i1-2.0)*0.5
-				      ELSE
-				         p_z=0
-				      ENDIF
+                      IF(n3 .GT. 0) THEN
+                      !pick rightmost corner of square
+                         p_z=(i1-1.0)*0.5
+                      ELSEIF (n3 .LT. 0) THEN
+                      !pick leftmost corner of square
+                         p_z=(i1-2.0)*0.5
+                      ELSE
+                         p_z=0
+                      ENDIF
 
 
-				      !closest point in a hutch to the origin
-			          !pick the reference hutch center as the origin
-			          IF(n1 .NE. 0) THEN
-			             x_hutch = (n1-n1/ABS(n1)*0.5)*size_ref
-			          ELSE
-			            x_hutch = 0.0
-			          ENDIF
+                      !closest point in a hutch to the origin
+                      !pick the reference hutch center as the origin
+                      IF(n1 .NE. 0) THEN
+                         x_hutch = (n1-n1/ABS(n1)*0.5)*size_ref
+                      ELSE
+                        x_hutch = 0.0
+                      ENDIF
 
-			          IF(n2 .NE. 0) THEN
-			             y_hutch = (n2-n2/ABS(n2)*0.5)*size_ref
-			          ELSE
-			             y_hutch = 0.0
-			          ENDIF
+                      IF(n2 .NE. 0) THEN
+                         y_hutch = (n2-n2/ABS(n2)*0.5)*size_ref
+                      ELSE
+                         y_hutch = 0.0
+                      ENDIF
 
-				   IF(n3 .NE. 0) THEN
-				       z_hutch = (n3-n3/ABS(n3)*0.5)*size_ref
-			          ELSE
-			             z_hutch = 0.0
-			          ENDIF
+                   IF(n3 .NE. 0) THEN
+                       z_hutch = (n3-n3/ABS(n3)*0.5)*size_ref
+                      ELSE
+                         z_hutch = 0.0
+                      ENDIF
 
-			          !Calculate the closest distance between one part of the reference square
-			          !and a square with relative number position n1 and n2
-				 r_dist = sqrt((x_hutch-p_x)**2+(y_hutch-p_y)**2+(z_hutch-p_z)**2)
+                      !Calculate the closest distance between one part of the reference square
+                      !and a square with relative number position n1 and n2
+                 r_dist = sqrt((x_hutch-p_x)**2+(y_hutch-p_y)**2+(z_hutch-p_z)**2)
 
-			          !compare r_dist with ref_dist
-			          IF(r_dist .LE. ref_dist) THEN
-			             num_temp2 = num_temp2 + 1
-			             temp_list(1,num_temp2) = n1
-			             temp_list(2,num_temp2) = n2
-				     temp_list(3,num_temp2) = n3
-			          ENDIF
+                      !compare r_dist with ref_dist
+                      IF(r_dist .LE. ref_dist) THEN
+                         num_temp2 = num_temp2 + 1
+                         temp_list(1,num_temp2) = n1
+                         temp_list(2,num_temp2) = n2
+                     temp_list(3,num_temp2) = n3
+                      ENDIF
 
                    ENDDO !n3
 
-			    ENDDO !n2
+                ENDDO !n2
 
-			 ENDDO !n1
+             ENDDO !n1
 
-			 
-			 list_1_3D%list_3D(num_temp1,k2)%size_d = num_temp2
-			 ALLOCATE(list_1_3D%list_3D(num_temp1,k2)%list_x(num_temp2))
-			 ALLOCATE(list_1_3D%list_3D(num_temp1,k2)%list_y(num_temp2))
-			 ALLOCATE(list_1_3D%list_3D(num_temp1,k2)%list_z(num_temp2))
+             
+             list_1_3D%list_3D(num_temp1,k2)%size_d = num_temp2
+             ALLOCATE(list_1_3D%list_3D(num_temp1,k2)%list_x(num_temp2))
+             ALLOCATE(list_1_3D%list_3D(num_temp1,k2)%list_y(num_temp2))
+             ALLOCATE(list_1_3D%list_3D(num_temp1,k2)%list_z(num_temp2))
 
-			 list_1_3D%list_3D(num_temp1,k2)%list_x = temp_list(1, 1:num_temp2)
-			 list_1_3D%list_3D(num_temp1,k2)%list_y = temp_list(2, 1:num_temp2)
-			 list_1_3D%list_3D(num_temp1,k2)%list_z = temp_list(3, 1:num_temp2)
+             list_1_3D%list_3D(num_temp1,k2)%list_x = temp_list(1, 1:num_temp2)
+             list_1_3D%list_3D(num_temp1,k2)%list_y = temp_list(2, 1:num_temp2)
+             list_1_3D%list_3D(num_temp1,k2)%list_z = temp_list(3, 1:num_temp2)
 
 
 
-		    ENDDO ! k2
-		   
-		   
+            ENDDO ! k2
+           
+           
            ENDDO !k1
-	     ENDDO !j1
-	   ENDDO  !i1
+         ENDDO !j1
+       ENDDO  !i1
 
-	   IF (ALLOCATED(temp_list)) THEN
-	     DEALLOCATE(temp_list)
-	   ENDIF
+       IF (ALLOCATED(temp_list)) THEN
+         DEALLOCATE(temp_list)
+       ENDIF
 
-	  hlist_3D_calc = .TRUE.
-	  IF(ALLOCATED(ratio_list)) THEN
-	    DEALLOCATE(ratio_list)
-	  ENDIF
+      hlist_3D_calc = .TRUE.
+      IF(ALLOCATED(ratio_list)) THEN
+        DEALLOCATE(ratio_list)
+      ENDIF
 
-	!this is for debug
-	!WRITE(*,*) 'hutch_list_3D is: '
-	!WRITE(*,*) list_1_3D%list_3D(8,1)%list_x
-	!WRITE(*,*) list_1_3D%list_3D(8,1)%list_y
+    !this is for debug
+    !WRITE(*,*) 'hutch_list_3D is: '
+    !WRITE(*,*) list_1_3D%list_3D(8,1)%list_x
+    !WRITE(*,*) list_1_3D%list_3D(8,1)%list_y
         !WRITE(*,*) 'zlist is: '
-	!WRITE(*,*) list_1_3D%list_3D(8,1)%list_z
-	END SUBROUTINE pre_calc_3D_hutch
+    !WRITE(*,*) list_1_3D%list_3D(8,1)%list_z
+    END SUBROUTINE pre_calc_3D_hutch
 
 
 
-	!destroy hutch_3D_array
-	!destroy list_1_3D
-	SUBROUTINE destroy_hutch_3D_array
-	  !TYPE(hutch_3D_array) list1
+    !destroy hutch_3D_array
+    !destroy list_1_3D
+    SUBROUTINE destroy_hutch_3D_array
+      !TYPE(hutch_3D_array) list1
 
-	  INTEGER i1, j1
-	  
-	  DO i1=1, list_1_3D%size_position
-	    DO j1=1,list_1_3D%size_ratio
-		  DEALLOCATE(list_1_3D%list_3D(i1,j1)%list_x)
-		  DEALLOCATE(list_1_3D%list_3D(i1,j1)%list_y)
-		  DEALLOCATE(list_1_3D%list_3D(i1,j1)%list_z)
-		ENDDO
-	  ENDDO
+      INTEGER i1, j1
+      
+      DO i1=1, list_1_3D%size_position
+        DO j1=1,list_1_3D%size_ratio
+          DEALLOCATE(list_1_3D%list_3D(i1,j1)%list_x)
+          DEALLOCATE(list_1_3D%list_3D(i1,j1)%list_y)
+          DEALLOCATE(list_1_3D%list_3D(i1,j1)%list_z)
+        ENDDO
+      ENDDO
 
-	  DEALLOCATE(list_1_3D%list_3D)
-	  DEALLOCATE(list_1_3D%ratio_radius_hutch)
-	END SUBROUTINE destroy_hutch_3D_array
+      DEALLOCATE(list_1_3D%list_3D)
+      DEALLOCATE(list_1_3D%ratio_radius_hutch)
+    END SUBROUTINE destroy_hutch_3D_array
 
 
 !**************************************
@@ -2035,14 +2079,15 @@ nlist = m%natoms
   ! more efficient than old algorithm
   ! use private variable list_1_3D
   subroutine hutch_list_3D(m, px, py, pz, radius, atoms, istat, nlist)
+  ! TODO - JASON Go through this function... it is called in eam_initial
 
     type(model), target, intent(in) :: m
-	!TYPE(hutch_3D_array), INTENT(IN) :: list1 !sotre relative position of each hutch
-	!which are need for calculation
+    !TYPE(hutch_3D_array), INTENT(IN) :: list1 !sotre relative position of each hutch
+    !which are need for calculation
     real, intent(in) :: px, py, pz
     real, intent(in) :: radius
    !integer,  dimension(:), pointer, intent(out) :: atoms
-	integer,  dimension(:), pointer :: atoms
+    integer,  dimension(:), pointer :: atoms
     integer, intent(out) :: nlist        ! number of atoms in list
    !integer :: nlist        ! number of atoms in list
     integer, intent(out) :: istat
@@ -2051,7 +2096,7 @@ nlist = m%natoms
     integer :: i, j, k, k1    ! counting variables
     integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
     integer, allocatable, dimension(:), target :: temp_atoms  ! temporary atoms list
-	!INTEGER hx_min, hx_max, hy_min, hy_max, hz_min, hz_max !because hutchsize*num_hutch>box size
+    !INTEGER hx_min, hx_max, hy_min, hy_max, hz_min, hz_max !because hutchsize*num_hutch>box size
     type(hutch_array), pointer :: ha
 
     INTEGER p_relative_3D, p_relative_2D
@@ -2064,7 +2109,7 @@ nlist = m%natoms
 
     ha => m%ha
     allocate(temp_atoms(m%natoms), stat=istat)
-!	allocate(temp_atoms(m%natoms*6), stat=istat) !for debug
+!   allocate(temp_atoms(m%natoms*6), stat=istat) !for debug
 
     if (istat /= 0) then
        write (*,*) 'Cannot allocate index list in hutch_list_3D.'
@@ -2072,45 +2117,45 @@ nlist = m%natoms
     endif
 
     call hutch_position_eff(m, px, py, pz, hx, hy, hz,p_relative_3D, p_relative_2D)
-	
-	!debug
-	!WRITE(*,*) 'hutch_list_3D:', hx, hy, hz
-!	write(*,*)"testline2",radius
+    
+    !debug
+    !WRITE(*,*) 'hutch_list_3D:', hx, hy, hz
+!   write(*,*)"testline2",radius
     ratio1 = radius / ha%hutch_size
     nh = ceiling(ratio1)
      
     New_Algorithm = .FALSE.
-	
+    
     IF(.NOT. hlist_3D_calc) THEN
        CALL pre_calc_3D_hutch(m)
        !hlist_3D_calc = .TRUE.
     ENDIF
 
 
-	!debug
-	!WRITE(*, *) 'ratio1 is: ', ratio1
-	!WRITE(*, *) 'list_1_3D: ', list_1_3D%ratio_radius_hutch
-	!WRITE(*, *) 'size of list_1_3D ', list_1_3D%size_ratio
-	!***************** 
-	!first, find which ratio range
-	!WRITE(*, *) 'size of list_1_3D -1 is: ', list_1_3D%size_ratio-1 
-	DO i=1, list_1_3D%size_ratio
-	  IF(i .EQ. 1) THEN
-		IF((ratio1 .GE. 0) .AND. (ratio1 .LE. list_1_3D%ratio_radius_hutch(i))) THEN
-		  ratio_position = i
-		  New_Algorithm = .TRUE. 
-		  EXIT
-		ENDIF
-	  ELSE
-		IF((ratio1 .GE. list_1_3D%ratio_radius_hutch(i-1)) .AND. (ratio1 .LE. list_1_3D%ratio_radius_hutch(i))) THEN
-		 ! WRITE(*, *) i, ratio1, list_1_3D%ratio_radius_hutch(i) !debug
-		  ratio_position = i
-		  New_Algorithm = .TRUE. 
-		  EXIT
-		ENDIF
-		
-	  ENDIF
-	ENDDO
+    !debug
+    !WRITE(*, *) 'ratio1 is: ', ratio1
+    !WRITE(*, *) 'list_1_3D: ', list_1_3D%ratio_radius_hutch
+    !WRITE(*, *) 'size of list_1_3D ', list_1_3D%size_ratio
+    !***************** 
+    !first, find which ratio range
+    !WRITE(*, *) 'size of list_1_3D -1 is: ', list_1_3D%size_ratio-1 
+    DO i=1, list_1_3D%size_ratio
+      IF(i .EQ. 1) THEN
+        IF((ratio1 .GE. 0) .AND. (ratio1 .LE. list_1_3D%ratio_radius_hutch(i))) THEN
+          ratio_position = i
+          New_Algorithm = .TRUE. 
+          EXIT
+        ENDIF
+      ELSE
+        IF((ratio1 .GE. list_1_3D%ratio_radius_hutch(i-1)) .AND. (ratio1 .LE. list_1_3D%ratio_radius_hutch(i))) THEN
+         ! WRITE(*, *) i, ratio1, list_1_3D%ratio_radius_hutch(i) !debug
+          ratio_position = i
+          New_Algorithm = .TRUE. 
+          EXIT
+        ENDIF
+        
+      ENDIF
+    ENDDO
 
         IF (New_Algorithm) THEN
            nlist = 1
@@ -2195,26 +2240,26 @@ nlist = m%natoms
            end do
            
         ENDIF !which algorithm to be picked up
-        !	write(*,*)"testline3",nlist
-	allocate(atoms(nlist-1), stat=istat)
-	if (istat /= 0) then
+        !   write(*,*)"testline3",nlist
+    allocate(atoms(nlist-1), stat=istat)
+    if (istat /= 0) then
            write (*,*) 'Unable to allocate memory for atom indices in hutch_list_3D.'
            return
-	endif
+    endif
 
-	!assign atoms to the subset of temp_atoms that was filled in
-	if (nlist > 1) then
+    !assign atoms to the subset of temp_atoms that was filled in
+    if (nlist > 1) then
            !WRITE(*, *) 'nlist-1 is: ', nlist -1  !debug
            atoms = temp_atoms(1:nlist-1)
-	   !WRITE(*, *) 'atoms are: ', atoms !debug
-	else
+       !WRITE(*, *) 'atoms are: ', atoms !debug
+    else
            nullify(atoms)
            istat = -1
-	endif
-	
-	IF(ASSOCIATED(ha)) THEN
-	   NULLIFY(ha) 
-	ENDIF
+    endif
+    
+    IF(ASSOCIATED(ha)) THEN
+       NULLIFY(ha) 
+    ENDIF
         DEALLOCATE(temp_atoms) !added by Feng Yi on 03/03/2009
   end subroutine hutch_list_3D
 
@@ -2230,16 +2275,16 @@ nlist = m%natoms
     type(model), intent(in) :: m
     real, intent(in) :: xx, yy, zz
     integer, intent(out) :: hx, hy, hz
-	INTEGER, INTENT(OUT) :: p_relative_2D, p_relative_3D
+    INTEGER, INTENT(OUT) :: p_relative_2D, p_relative_3D
 
-	REAL,DIMENSION(3) :: hutch_center !hutch center 
-	INTEGER i
-	INTEGER n1, n2, n3
-	INTEGER num_x, num_y, num_z
+    REAL,DIMENSION(3) :: hutch_center !hutch center 
+    INTEGER i
+    INTEGER n1, n2, n3
+    INTEGER num_x, num_y, num_z
 
-	num_x=2
-	num_y=2
-	num_z=2
+    num_x=2
+    num_y=2
+    num_z=2
 
     hx = ceiling( (xx + 0.5*m%lx) / m%ha%hutch_size)
     hy = ceiling( (yy + 0.5*m%ly) / m%ha%hutch_size)
@@ -2247,38 +2292,38 @@ nlist = m%natoms
 
     !debug
     !if ((hx <0) .OR. (hy <0) .OR. (hz <0)) THEN
-!	WRITE(*,*)  'somthing strange happen!'
+!   WRITE(*,*)  'somthing strange happen!'
  !  endif
    !*********************************
     if (hx == 0) hx = 1
     if (hy == 0) hy = 1
     if (hz == 0) hz = 1
     
-	hutch_center(1) = (hx-0.5) * m%ha%hutch_size 
-	hutch_center(2) = (hy-0.5) * m%ha%hutch_size 
-	hutch_center(3) = (hz-0.5) * m%ha%hutch_size 
+    hutch_center(1) = (hx-0.5) * m%ha%hutch_size 
+    hutch_center(2) = (hy-0.5) * m%ha%hutch_size 
+    hutch_center(3) = (hz-0.5) * m%ha%hutch_size 
 
-	IF((xx + 0.5*m%lx) .GE. hutch_center(1)) THEN
-	  n3 = 2
-	ELSE
-	  n3=1
-	ENDIF
+    IF((xx + 0.5*m%lx) .GE. hutch_center(1)) THEN
+      n3 = 2
+    ELSE
+      n3=1
+    ENDIF
 
-	IF((yy + 0.5*m%ly) .GE. hutch_center(2)) THEN
-	  n2 = 2
-	ELSE
-	  n2=1
-	ENDIF
+    IF((yy + 0.5*m%ly) .GE. hutch_center(2)) THEN
+      n2 = 2
+    ELSE
+      n2=1
+    ENDIF
 
-	IF((zz + 0.5*m%lz) .GE. hutch_center(3)) THEN
-	  n1 = 2
-	ELSE
-	  n1=1
-	ENDIF
+    IF((zz + 0.5*m%lz) .GE. hutch_center(3)) THEN
+      n1 = 2
+    ELSE
+      n1=1
+    ENDIF
 
-	p_relative_2D = (n2-1) * num_x + n3
-	p_relative_3D = (n1-1) * num_y * num_x + (n2-1) * num_x + n3
-	
+    p_relative_2D = (n2-1) * num_x + n3
+    p_relative_3D = (n1-1) * num_y * num_x + (n2-1) * num_x + n3
+    
   end subroutine hutch_position_eff
 
 
@@ -2290,7 +2335,7 @@ nlist = m%natoms
   ! use private variable list_1_2D
   subroutine hutch_list_pixel(m, px, py, diameter, atoms, istat)
     type(model), target, intent(in) :: m
-	!TYPE(hutch_2D_array), INTENT(IN) :: list1
+    !TYPE(hutch_2D_array), INTENT(IN) :: list1
     real, intent(in) :: px, py, diameter
     integer, pointer, dimension(:) :: atoms
     integer, intent(out) :: istat
@@ -2306,17 +2351,17 @@ nlist = m%natoms
     type(hutch_array), pointer :: ha
     !real hx_min, hx_max, hy_min, hy_max !added by Feng Yi on 03/05/2009
 
-	INTEGER p_relative_3D, p_relative_2D
-	INTEGER ratio_position
-	REAL ratio1
-	LOGICAL New_Algorithm
+    INTEGER p_relative_3D, p_relative_2D
+    INTEGER ratio_position
+    REAL ratio1
+    LOGICAL New_Algorithm
 
 
     ha => m%ha
 
    IF (.NOT. hlist_2D_calc) THEN
-	CALL pre_calc_2D_hutch(m)
-	hlist_2D_calc = .TRUE.
+    CALL pre_calc_2D_hutch(m)
+    hlist_2D_calc = .TRUE.
    ENDIF
 
     allocate(temp_atoms(m%natoms), stat=istat)
@@ -2327,47 +2372,47 @@ nlist = m%natoms
 
     call hutch_position_eff(m, px, py, 0.0, hx, hy, hz, p_relative_3D, p_relative_2D)
 
-	!ratio1 = (diameter/2.) / ha%hutch_size
-	ratio1 = (diameter) / ha%hutch_size    !temporary, res=radius - Jinwoo Hwang
-	nh = ceiling( ratio1)
+    !ratio1 = (diameter/2.) / ha%hutch_size
+    ratio1 = (diameter) / ha%hutch_size    !temporary, res=radius - Jinwoo Hwang
+    nh = ceiling( ratio1)
 
     !write (*,*) 'hutch size is :', ha%hutch_size
     !write (*,*) 'center top hutch is ', hx, hy, hz
     !write (*,*) 'hutch radius is: ', nh
-	!first, find which ratio range 
-	DO i=1, list_1_2D%size_ratio
-	  IF(i .EQ. 1) THEN
-	    IF((ratio1 .GE. 0) .AND. (ratio1 .LE. list_1_2D%ratio_radius_square(i))) THEN
-		  ratio_position = i
-		  New_Algorithm = .TRUE. 
-		  EXIT
-		ENDIF
-	  ELSE
-	    IF((ratio1 .GE. list_1_2D%ratio_radius_square(i-1)) .AND. (ratio1 .LE. list_1_2D%ratio_radius_square(i))) THEN  !old way- i,i+1
-		  ratio_position = i
-		  New_Algorithm = .TRUE. 
-		  EXIT
-		ENDIF
-	  ENDIF
-	ENDDO
+    !first, find which ratio range 
+    DO i=1, list_1_2D%size_ratio
+      IF(i .EQ. 1) THEN
+        IF((ratio1 .GE. 0) .AND. (ratio1 .LE. list_1_2D%ratio_radius_square(i))) THEN
+          ratio_position = i
+          New_Algorithm = .TRUE. 
+          EXIT
+        ENDIF
+      ELSE
+        IF((ratio1 .GE. list_1_2D%ratio_radius_square(i-1)) .AND. (ratio1 .LE. list_1_2D%ratio_radius_square(i))) THEN  !old way- i,i+1
+          ratio_position = i
+          New_Algorithm = .TRUE. 
+          EXIT
+        ENDIF
+      ENDIF
+    ENDDO
   !WRITE (*, *) 'nhutch_z is: ', ha%nhutch_z  !debug
 
   !added by Feng Yi on 03/05/2009
   !IF (((hx-nh) .LT. 1) .OR. ((hy-nh) .LT. 1)) THEN
-!	New_Algorithm = .FALSE.
+!   New_Algorithm = .FALSE.
  ! ENDIF
   !IF (((hx+nh) .GE. ha%nhutch_x ) .OR. ((hy+nh) .GE. ha%nhutch_y)) THEN
-!	New_Algorithm = .FALSE.
+!   New_Algorithm = .FALSE.
  ! ENDIF
 !commented by Feng Yi on 03/06/2009
 
   IF(New_Algorithm) THEN
     nlist = 1
-	DO hk = 1, ha%nhutch_z
-	  DO k1=1, list_1_2D%list_2D(p_relative_2D, ratio_position)%size_d
-	    j = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_y(k1)
-	    j = hy + j
-	    if (j > ha%nhutch_y) then
+    DO hk = 1, ha%nhutch_z
+      DO k1=1, list_1_2D%list_2D(p_relative_2D, ratio_position)%size_d
+        j = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_y(k1)
+        j = hy + j
+        if (j > ha%nhutch_y) then
            hj = j - ha%nhutch_y
         else if (j < 1) then
            hj = j+ ha%nhutch_y
@@ -2375,9 +2420,9 @@ nlist = m%natoms
            hj = j
         end if
 
-	    i = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_x(k1)
-	    i = hx + i
-	    if (i > ha%nhutch_x) then !Periodic boundary condition
+        i = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_x(k1)
+        i = hx + i
+        if (i > ha%nhutch_x) then !Periodic boundary condition
           hi = i - ha%nhutch_x
         else if (i < 1) then
           hi = i + ha%nhutch_x
@@ -2385,13 +2430,13 @@ nlist = m%natoms
           hi = i
         end if
         
-		if (ha%h(hi, hj, hk)%nat > 0) then
+        if (ha%h(hi, hj, hk)%nat > 0) then
              temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
              nlist = nlist+ha%h(hi,hj,hk)%nat
         endif
 
-	  ENDDO !end k1
-	ENDDO !hk
+      ENDDO !end k1
+    ENDDO !hk
   ELSE
   !inefficient algorithm will be used
     WRITE(*, *) 'Inefficient pixel algorithm is used'
@@ -2422,11 +2467,11 @@ nlist = m%natoms
        end do
     end do
 
-	ENDIF !which algorithm to be picked up
+    ENDIF !which algorithm to be picked up
     
     !added by Feng Yi on 03/15/2009
     !IF(nlist .GT. 1) THEN
-	allocate(atoms(nlist-1), stat=istat)
+    allocate(atoms(nlist-1), stat=istat)
     !ENDIF
     if (istat /= 0) then
        write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
@@ -2445,7 +2490,7 @@ nlist = m%natoms
     DEALLOCATE(temp_atoms)
  
     IF(ASSOCIATED(ha)) THEN
-	NULLIFY(ha) !added by Feng Yi on 03/19/2009
+    NULLIFY(ha) !added by Feng Yi on 03/19/2009
     ENDIF
   end subroutine hutch_list_pixel
 !***************************************************
