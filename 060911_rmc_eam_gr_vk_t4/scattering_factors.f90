@@ -1352,23 +1352,23 @@ CONTAINS
 !********************************************************
   SUBROUTINE f_e_cal(number_elements, element_list, k_list, f_e_list)
     INTEGER, INTENT(in) :: number_elements
-	INTEGER, INTENT(in), DIMENSION(number_elements) :: element_list !increasing order
-	REAL, INTENT(in), DIMENSION(:) :: k_list
-	REAL, INTENT(out), DIMENSION(:,:) ::f_e_list
+    INTEGER, INTENT(in), DIMENSION(number_elements) :: element_list !increasing order
+    REAL, INTENT(in), DIMENSION(:) :: k_list
+    REAL, INTENT(out), DIMENSION(:,:) ::f_e_list
 
 
-	INTEGER i,j
-	INTEGER number_k
+    INTEGER i,j
+    INTEGER number_k
 
-	CALL read_f_e !assign value of coefficients
+    CALL read_f_e !assign value of coefficients
 
-	number_k=SIZE(k_list)
+    number_k=SIZE(k_list)
 
-	DO i=1, number_elements
-	  DO j=1, number_k
-	    f_e_list(i,j) = f_e(element_list(i), k_list(j))
-	  ENDDO
-	ENDDO
+    DO i=1, number_elements
+      DO j=1, number_k
+        f_e_list(i,j) = f_e(element_list(i), k_list(j))
+      ENDDO
+    ENDDO
 
 
 
@@ -2309,23 +2309,23 @@ END FUNCTION f_x
 !********************************************************
   SUBROUTINE f_x_cal(number_elements, element_list, k_list, f_x_list)
     INTEGER, INTENT(in) :: number_elements
-	INTEGER, INTENT(in), DIMENSION(number_elements) :: element_list
-	REAL, INTENT(in), DIMENSION(:) :: k_list
-	REAL, INTENT(out), DIMENSION(:,:) ::f_x_list
+    INTEGER, INTENT(in), DIMENSION(number_elements) :: element_list
+    REAL, INTENT(in), DIMENSION(:) :: k_list
+    REAL, INTENT(out), DIMENSION(:,:) ::f_x_list
 
 
-	INTEGER i,j
-	INTEGER number_k
+    INTEGER i,j
+    INTEGER number_k
 
-	number_k=SIZE(k_list)
+    number_k=SIZE(k_list)
 
-	CALL read_f_x
+    CALL read_f_x
 
-	DO i=1, number_elements
-	  DO j=1, number_k
-	    f_x_list(i,j) = f_x(element_list(i), k_list(j))
-	  ENDDO
-	ENDDO
+    DO i=1, number_elements
+      DO j=1, number_k
+        f_x_list(i,j) = f_x(element_list(i), k_list(j))
+      ENDDO
+    ENDDO
 
 
 

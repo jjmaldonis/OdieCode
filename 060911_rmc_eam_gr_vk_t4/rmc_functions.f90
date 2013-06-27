@@ -36,7 +36,7 @@ CONTAINS
 !This function is used to calculate chi square
   FUNCTION chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, V, V_err,&
        gr_e_sim, gr_n_sim, gr_x_sim, V_sim, scale_fac,&
-	rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+    rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
     !used_data_sets=A logical array determine whether electron, neutron, X-ray or FEM data are available
     !gr_e electron G(r) data
@@ -59,7 +59,7 @@ CONTAINS
     REAL, POINTER, DIMENSION(:) :: gr_e_sim,gr_n_sim,gr_x_sim
     REAL, POINTER, DIMENSION(:) :: V_sim
     real, intent(in) :: scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x 
-    real, intent (in) :: del_r_e, del_r_n, del_r_x	
+    real, intent (in) :: del_r_e, del_r_n, del_r_x  
     integer, intent(in) ::nk
     real, intent(out) :: chi2_gr, chi2_vk
     
@@ -79,12 +79,12 @@ CONTAINS
     i=1
     IF(used_data_sets(i)) THEN
        !sum1(i)=sum((gr_e_sim-gr_e)**2)*weights(i)
-	nf = 0
-	do j=int(rmin_e/del_r_e)+1, int(rmax_e/del_r_e)+1    !jwh -032409
-		nf = nf + 1
-		sum1(i) = sum1(i)+weights(i)*((gr_e_sim(j)-gr_e(j))/gr_e_err(j))**2
-	enddo
-	sum1(i) = sum1(i)/nf
+    nf = 0
+    do j=int(rmin_e/del_r_e)+1, int(rmax_e/del_r_e)+1    !jwh -032409
+        nf = nf + 1
+        sum1(i) = sum1(i)+weights(i)*((gr_e_sim(j)-gr_e(j))/gr_e_err(j))**2
+    enddo
+    sum1(i) = sum1(i)/nf
 
     ENDIF
     
@@ -92,36 +92,36 @@ CONTAINS
     i=i+1
     IF(used_data_sets(i)) THEN
        !sum1(i)=sum((gr_n_sim-gr_n)**2)*weights(i)
-	nf = 0
-	do j=int(rmin_n/del_r_n)+1, int(rmax_n/del_r_n)+1    !jwh -032409
-		nf = nf +1
-		sum1(i) = sum1(i)+weights(i)*(gr_n_sim(j)-gr_n(j))**2
-	enddo
-	sum1(i) = sum1(i)/nf
+    nf = 0
+    do j=int(rmin_n/del_r_n)+1, int(rmax_n/del_r_n)+1    !jwh -032409
+        nf = nf +1
+        sum1(i) = sum1(i)+weights(i)*(gr_n_sim(j)-gr_n(j))**2
+    enddo
+    sum1(i) = sum1(i)/nf
     ENDIF
     
     !X-ray diffraction data
     i=i+1
     IF(used_data_sets(i)) THEN
        !sum1(i)=sum((gr_x_sim-gr_x)**2)*weights(i)
-	nf = 0
-	do j=int(rmin_x/del_r_x)+1, int(rmax_x/del_r_x)+1    !jwh -032409
-		nf = nf + 1
-		sum1(i) = sum1(i)+weights(i)*(gr_x_sim(j)-gr_x(j))**2
-	enddo
-	sum1(i) = sum1(i)/nf
+    nf = 0
+    do j=int(rmin_x/del_r_x)+1, int(rmax_x/del_r_x)+1    !jwh -032409
+        nf = nf + 1
+        sum1(i) = sum1(i)+weights(i)*(gr_x_sim(j)-gr_x(j))**2
+    enddo
+    sum1(i) = sum1(i)/nf
     ENDIF
     
     !FEM data
     i=i+1
     IF(used_data_sets(i)) THEN
        !sum1(i)=sum(((V_sim-V*scale_fac)/(scale_fac*V_err))**2)*weights(i)
-	nf = 0
-	do j=1,nk
-		nf = nf + 1
-		sum1(i) = sum1(i)+weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
-	enddo
-	sum1(i) = sum1(i)/nf
+    nf = 0
+    do j=1,nk
+        nf = nf + 1
+        sum1(i) = sum1(i)+weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
+    enddo
+    sum1(i) = sum1(i)/nf
     ENDIF
 
     chi2_gr = sum1(3)
@@ -166,7 +166,6 @@ CONTAINS
     ! length radius, centered on the hutch containing  the point (px, py, pz),
     ! using the hutch array.  Useful for calculating G(r).  Returns 1 in istat
     ! if memory allocation fails and -1 if no atoms are found.
-
     CALL hutch_list_3D(m, m%xx(moved_atom),m%yy(moved_atom),m%zz(moved_atom), radius, atoms, istat, nlist)
 
     IF (istat .EQ. 1) THEN
@@ -181,7 +180,7 @@ CONTAINS
     ENDIF
 
   !Begin to calculate pair distance
-  !Notice, there are totally (nlist-1) atoms
+  !Note, there are (nlist-1) atoms in total
 
   !First, determine the type of moved_atom 
     DO i=1, m%nelements
@@ -192,50 +191,45 @@ CONTAINS
     ENDDO
     
     DO i=1, (nlist-1)
-       !Do not count the pair distance to itself
-       IF (atoms(i) .NE. moved_atom) THEN
-          
-          DO j=1, m%nelements
-             IF(m%atom_type(j) .EQ. m%znum(atoms(i))) THEN
-                num2 = j
+        !Do not count the pair distance to itself
+        IF (atoms(i) .NE. moved_atom) THEN
+            DO j=1, m%nelements
+                IF(m%atom_type(j) .EQ. m%znum(atoms(i))) THEN
+                    num2 = j
                 EXIT
-             ENDIF
-	  ENDDO !j=1, m%nelements
+                ENDIF
+            ENDDO !j=1, m%nelements
           
-       !ENDIF  !032409 - jwh
-       
-       !Calculate the atomic distance
-       !Compare with cutoff_r
+            !ENDIF  !032409 - jwh
+           
+            !Calculate the atomic distance
+            !Compare with cutoff_r
+            temp_x = abs(m%xx(moved_atom) - m%xx(atoms(i)))  !pbc added - JWH 04/14/2009
+            temp_y = abs(m%yy(moved_atom) - m%yy(atoms(i)))
+            temp_z = abs(m%zz(moved_atom) - m%zz(atoms(i)))
 
-	temp_x = abs(m%xx(moved_atom) - m%xx(atoms(i)))  !pbc added - JWH 04/14/2009
-	temp_y = abs(m%yy(moved_atom) - m%yy(atoms(i)))
-	temp_z = abs(m%zz(moved_atom) - m%zz(atoms(i)))
+            !write(*,*)"abs=", temp_x, temp_y, temp_z
+            
+            temp_x = temp_x - m%lx*anint(temp_x/m%lx)
+            temp_y = temp_y - m%ly*anint(temp_y/m%ly)
+            temp_z = temp_z - m%lz*anint(temp_z/m%lz)
+              
+            dist_pair = temp_x**2 + temp_y**2 + temp_z**2
+            dist_pair = SQRT(dist_pair)
+               
+            IF (dist_pair  .LT. cutoff_r(num1, num2)) THEN
+            !write(*,*)dist_pair  , cutoff_r(num1, num2) !debug - jwh 032409
+                check_cutoffs=.FALSE.
+                EXIT
+            else
+                check_cutoffs = .TRUE.  !jwh 032409
+                 ENDIF
 
-	!write(*,*)"abs=", temp_x, temp_y, temp_z
-	
-	temp_x = temp_x - m%lx*anint(temp_x/m%lx)
-	temp_y = temp_y - m%ly*anint(temp_y/m%ly)
-	temp_z = temp_z - m%lz*anint(temp_z/m%lz)
-       
-       dist_pair = temp_x**2 + temp_y**2 + temp_z**2
-             
-       dist_pair = SQRT(dist_pair)
-       
-       IF (dist_pair  .LT. cutoff_r(num1, num2)) THEN
-	!write(*,*)dist_pair  , cutoff_r(num1, num2) !debug - jwh 032409
-          check_cutoffs=.FALSE.
-	   EXIT
-	else
-		check_cutoffs = .TRUE.  !jwh 032409
-       ENDIF
-
-	endif !032409 - jwh
-       
-    ENDDO !i=1, (nlist-1)
+            ENDIF !032409 - jwh
+        ENDDO !i=1, (nlist-1)
 
     !if (associated(atoms)) deallocate(atoms) ! pmv 4/17/09
     if (nlist .GT. 1) deallocate(atoms) ! FY 4/17/09
-
     
   END FUNCTION check_cutoffs
   
@@ -272,11 +266,11 @@ CONTAINS
     aa = alpha*(rand2 - 0.5)
     bb = alpha*(rand3 - 0.5)
     cc = alpha*(rand4 - 0.5)
-	
+    
     m%xx(w) = m%xx(w) + aa 
     m%yy(w) = m%yy(w) + bb 
     m%zz(w) = m%zz(w) + cc
-	
+    
     if(m%xx(w)>m%lx*0.5) m%xx(w)=m%xx(w)-m%lx       !pbc 
     if(m%yy(w)>m%ly*0.5) m%yy(w)=m%yy(w)-m%ly
     if(m%zz(w)>m%lz*0.5) m%zz(w)=m%zz(w)-m%lz

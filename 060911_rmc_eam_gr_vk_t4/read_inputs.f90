@@ -15,10 +15,10 @@ CONTAINS
 !Pixel distance
 !status
 
-!	change log
-!	gr_e_err is added - jwh 04/25/2009
-!	modified to print what's read from the fem file right away - JWH 05/08/2009
-!	The order of reading FEM angles are changed to nphi, npsi, ntheta = JWH 09/04/09
+!   change log
+!   gr_e_err is added - jwh 04/25/2009
+!   modified to print what's read from the fem file right away - JWH 05/08/2009
+!   The order of reading FEM angles are changed to nphi, npsi, ntheta = JWH 09/04/09
 
 
 
@@ -73,21 +73,18 @@ INTEGER, INTENT(OUT) :: status2
 !Variable declared in this subroutine, local variables
 !comment1=comment in param_filename
 CHARACTER (LEN=80) comment1  
-CHARACTER (LEN=20) ScatteringFile !Which is scattering file name, at most 20 characters
-!Electron, neutron and X-ray all use this name, but in order
-CHARACTER (LEN=20) FemFile !Which is FEM data file name, at most 20 characters
+CHARACTER (LEN=20) ScatteringFile ! The scattering file name, at most 20 characters
+    ! Note: Electron, neutron, and X-ray data all use this name, but in order.
+CHARACTER (LEN=20) FemFile ! The FEM data file name, at most 20 characters
 INTEGER FileNameLength !The file name length in ScatteringFile or FemFile
-INTEGER i
+INTEGER i, j
 real Indicator_End !Indicator_End=-1 means the end of file reaches
 INTEGER status1 !Indicate the status of opening file in this subroutine
-!Files for electron, neutron, X-ray scattering and FEM data
+    !Files for electron, neutron, X-ray scattering and FEM data
 LOGICAL File_End !Indicate FileEnd has reached
 INTEGER Num_Line !Number of lines in each data file except comment line
 REAL, POINTER, DIMENSION(:) :: TempData !Temperature data
 INTEGER Stat_Allocate1, Stat_Allocate2, Stat_Allocate3,Stat_Allocate4 !Allocate status, 0 means success
-
-integer j
-
 
 OPEN(20, FILE=param_filename,IOSTAT=status2, STATUS='OLD')
 IF(status2 .NE. 0) THEN !Open fails
@@ -137,41 +134,41 @@ IF(ScatteringFile(1:1) .NE. '#') THEN !Electron scattering file exists
      READ(30, '(A80)') comment1
      DO WHILE( .NOT. File_End)
         READ(30, *) Indicator_End
-		IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-		  !PRINT *, 'Indicator_End is: ', Indicator_End
-		  !PRINT *, 'Electron scattering file end is reached'
-		  EXIT !Exit this loop
-		ELSE
-		  Num_Line = Num_Line + 1
-		  !READ(30, *) 
-		ENDIF
-	 ENDDO
+        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
+          !PRINT *, 'Indicator_End is: ', Indicator_End
+          !PRINT *, 'Electron scattering file end is reached'
+          EXIT !Exit this loop
+        ELSE
+          Num_Line = Num_Line + 1
+          !READ(30, *) 
+        ENDIF
+     ENDDO
 
-	 REWIND(30) !Go to the beginning of the file
+     REWIND(30) !Go to the beginning of the file
 
-	 READ(30, '(A80)') comment1
-	 ALLOCATE(TempData(3*Num_Line),STAT=Stat_Allocate1)
-	 IF(Stat_Allocate1 .EQ. 0) THEN
+     READ(30, '(A80)') comment1
+     ALLOCATE(TempData(3*Num_Line),STAT=Stat_Allocate1)
+     IF(Stat_Allocate1 .EQ. 0) THEN
        READ(30, *) TempData
-	   ALLOCATE(r_e(Num_Line), STAT=Stat_Allocate2)
-	   ALLOCATE(gr_e(Num_Line), STAT=Stat_Allocate3)
+       ALLOCATE(r_e(Num_Line), STAT=Stat_Allocate2)
+       ALLOCATE(gr_e(Num_Line), STAT=Stat_Allocate3)
           allocate(gr_e_err(num_line), stat=stat_allocate4)   !JWH 04/25/2009
-	   IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0) .and. (Stat_Allocate4 .EQ. 0)  ) THEN
+       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0) .and. (Stat_Allocate4 .EQ. 0)  ) THEN
           r_e=TempData(1:3*Num_Line:3)
           gr_e=TempData(2:3*Num_Line:3)
           gr_e_err=tempdata(3:3*num_line:3)
-	   ELSE
-	     PRINT *, 'Electron scattering part 2 or 3 fails!'
-		 RETURN
-	   ENDIF !Allocate2 and 3
-	   
-	 ELSE
-	   PRINT *, 'Electron scattering part allocation fail'
-	   RETURN
-	 ENDIF
+       ELSE
+         PRINT *, 'Electron scattering part 2 or 3 fails!'
+         RETURN
+       ENDIF !Allocate2 and 3
+       
+     ELSE
+       PRINT *, 'Electron scattering part allocation fail'
+       RETURN
+     ENDIF
 
-	 DEALLOCATE(TempData)
-	
+     DEALLOCATE(TempData)
+    
    ELSE
     PRINT *, 'Open electron scattering file fails'
    ENDIF
@@ -210,39 +207,39 @@ IF(ScatteringFile(1:1) .NE. '#') THEN !Electron scattering file exists
      READ(30, '(A80)') comment1
      DO WHILE( .NOT. File_End)
         READ(30, *) Indicator_End
-		IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-		  !PRINT *, 'Neutron scattering file end is reached!'
-		  EXIT !Exit this loop
-		ELSE
-		  Num_Line = Num_Line + 1
-		  !READ(30, *) 
-		ENDIF
-	 ENDDO
+        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
+          !PRINT *, 'Neutron scattering file end is reached!'
+          EXIT !Exit this loop
+        ELSE
+          Num_Line = Num_Line + 1
+          !READ(30, *) 
+        ENDIF
+     ENDDO
 
-	 REWIND(30) !Go to the beginning of the file
+     REWIND(30) !Go to the beginning of the file
 
-	 READ(30, '(A80)') comment1
-	 ALLOCATE(TempData(2*Num_Line),STAT=Stat_Allocate1)
-	 IF(Stat_Allocate1 .EQ. 0) THEN
+     READ(30, '(A80)') comment1
+     ALLOCATE(TempData(2*Num_Line),STAT=Stat_Allocate1)
+     IF(Stat_Allocate1 .EQ. 0) THEN
        READ(30, *) TempData
-	   ALLOCATE(r_n(Num_Line), STAT=Stat_Allocate2)
-	   ALLOCATE(gr_n(Num_Line), STAT=Stat_Allocate3)
+       ALLOCATE(r_n(Num_Line), STAT=Stat_Allocate2)
+       ALLOCATE(gr_n(Num_Line), STAT=Stat_Allocate3)
 
-	   IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0)) THEN
+       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0)) THEN
           r_n=TempData(1:2*Num_Line:2)
           gr_n=TempData(2:2*Num_Line:2)
-	   ELSE
-	     PRINT *, 'Neutron scattering part 2 or 3 fails!'
-		 RETURN
-	   ENDIF !Allocate2 and 3
-	   
-	 ELSE
-	   PRINT *, 'Neutron scattering part allocation fail'
-	   RETURN
-	 ENDIF
+       ELSE
+         PRINT *, 'Neutron scattering part 2 or 3 fails!'
+         RETURN
+       ENDIF !Allocate2 and 3
+       
+     ELSE
+       PRINT *, 'Neutron scattering part allocation fail'
+       RETURN
+     ENDIF
 
-	 DEALLOCATE(TempData)
-	
+     DEALLOCATE(TempData)
+    
    ELSE
     PRINT *, 'Open Neutron scattering file fails'
    ENDIF
@@ -282,39 +279,39 @@ IF(ScatteringFile(1:1) .NE. '#') THEN !X-ray scattering file exists
      READ(30, '(A80)') comment1
      DO WHILE( .NOT. File_End)
         READ(30, *) Indicator_End
-		IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-		  !PRINT *, 'X-ray scattering file end is reached!'
-		  EXIT !Exit this loop
-		ELSE
-		  Num_Line = Num_Line + 1
-		  !READ(30, *) 
-		ENDIF
-	 ENDDO   						
-	 REWIND(30) !Go to the beginning of the file
+        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
+          !PRINT *, 'X-ray scattering file end is reached!'
+          EXIT !Exit this loop
+        ELSE
+          Num_Line = Num_Line + 1
+          !READ(30, *) 
+        ENDIF
+     ENDDO                          
+     REWIND(30) !Go to the beginning of the file
 
-	 READ(30, '(A80)') comment1
-	 ALLOCATE(TempData(2*Num_Line),STAT=Stat_Allocate1)
-	 IF(Stat_Allocate1 .EQ. 0) THEN
+     READ(30, '(A80)') comment1
+     ALLOCATE(TempData(2*Num_Line),STAT=Stat_Allocate1)
+     IF(Stat_Allocate1 .EQ. 0) THEN
        READ(30, *) TempData
-	   ALLOCATE(r_x(Num_Line), STAT=Stat_Allocate2)
-	   ALLOCATE(gr_x(Num_Line), STAT=Stat_Allocate3)
+       ALLOCATE(r_x(Num_Line), STAT=Stat_Allocate2)
+       ALLOCATE(gr_x(Num_Line), STAT=Stat_Allocate3)
 
-	   IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0)) THEN
+       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0)) THEN
           r_x=TempData(1:2*Num_Line:2)
 
           gr_x=TempData(2:2*Num_Line:2)
-	   ELSE
-	     PRINT *, 'X-ray scattering part 2 or 3 fails!'
-		 RETURN
-	   ENDIF !Allocate2 and 3
-	   
-	 ELSE
-	   PRINT *, 'X-ray scattering part allocation fail'
-	   RETURN
-	 ENDIF
+       ELSE
+         PRINT *, 'X-ray scattering part 2 or 3 fails!'
+         RETURN
+       ENDIF !Allocate2 and 3
+       
+     ELSE
+       PRINT *, 'X-ray scattering part allocation fail'
+       RETURN
+     ENDIF
 
-	 DEALLOCATE(TempData)
-	
+     DEALLOCATE(TempData)
+    
    ELSE
     PRINT *, 'Open X-ray scattering file fails'
    ENDIF
@@ -361,43 +358,43 @@ IF(FemFile(1:1) .NE. '#') THEN !FEM file exists
      READ(30, '(A80)') comment1
      DO WHILE( .NOT. File_End)
         READ(30, *) Indicator_End
-		IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-		  !PRINT *, 'FEM file end is reached'
-		  EXIT !Exit this loop
-		ELSE
-		  Num_Line = Num_Line + 1
-		  !READ(30, *) 
-		ENDIF
-	 ENDDO
+        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
+          !PRINT *, 'FEM file end is reached'
+          EXIT !Exit this loop
+        ELSE
+          Num_Line = Num_Line + 1
+          !READ(30, *) 
+        ENDIF
+     ENDDO
 
-	 REWIND(30) !Go to the beginning of the file
+     REWIND(30) !Go to the beginning of the file
 
-	 READ(30, '(A80)') comment1
-	 ALLOCATE(TempData(4*Num_Line),STAT=Stat_Allocate1)
-	 IF(Stat_Allocate1 .EQ. 0) THEN
+     READ(30, '(A80)') comment1
+     ALLOCATE(TempData(4*Num_Line),STAT=Stat_Allocate1)
+     IF(Stat_Allocate1 .EQ. 0) THEN
        READ(30, *) TempData
-	   ALLOCATE(k(Num_Line), STAT=Stat_Allocate2)
-	   ALLOCATE(V(Num_Line), STAT=Stat_Allocate3)
-	   ALLOCATE(V_err(Num_Line), STAT=Stat_Allocate4)
-	   ALLOCATE(V_background(Num_Line))
+       ALLOCATE(k(Num_Line), STAT=Stat_Allocate2)
+       ALLOCATE(V(Num_Line), STAT=Stat_Allocate3)
+       ALLOCATE(V_err(Num_Line), STAT=Stat_Allocate4)
+       ALLOCATE(V_background(Num_Line))
 
-	   IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0) .AND. (Stat_Allocate4 .EQ. 0)) THEN
-       	   k=TempData(1:4*Num_Line:4)
-       	   V=TempData(2:4*Num_Line:4)
-		   V_err=TempData(3:4*Num_Line:4)
-		   V_background=TempData(4:4*Num_Line:4)
-	   ELSE
-	     PRINT *, 'FEM part 2 or 3, or 4 fails!'
-		 RETURN
-	   ENDIF !Allocate2, 3 and 4
-	   
-	 ELSE
-	   PRINT *, 'FEM part allocation fail'
-	   RETURN
-	 ENDIF
+       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0) .AND. (Stat_Allocate4 .EQ. 0)) THEN
+           k=TempData(1:4*Num_Line:4)
+           V=TempData(2:4*Num_Line:4)
+           V_err=TempData(3:4*Num_Line:4)
+           V_background=TempData(4:4*Num_Line:4)
+       ELSE
+         PRINT *, 'FEM part 2 or 3, or 4 fails!'
+         RETURN
+       ENDIF !Allocate2, 3 and 4
+       
+     ELSE
+       PRINT *, 'FEM part allocation fail'
+       RETURN
+     ENDIF
 
-	 DEALLOCATE(TempData)
-	
+     DEALLOCATE(TempData)
+    
    ELSE
     PRINT *, 'Open FEM file fails'
    ENDIF

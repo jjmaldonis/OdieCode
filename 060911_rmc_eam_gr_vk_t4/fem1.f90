@@ -58,7 +58,7 @@
 !   rejects the rmc move tested by fem_update.  resets all the positions of the moved atoms in all
 !   the rotated models.  model MUST have the moved atom put back to its original position.
 ! 
-!! subroutine print_image(m, res, k, besselfunc1, besselfunc2, scatfact_e, istat)
+! subroutine print_image(m, res, k, besselfunc1, besselfunc2, scatfact_e, istat)
 !   Generates all images and prints them at particular k and rotation.
 !   It can be called from main program while rmc running.
 
@@ -99,38 +99,38 @@
 !   first verion, 01-06-09, pmv
 !   init_rot is modified by Feng Yi on 01/15/2009
 !
-!	Modified by Jinwoo Hwang 01/27/2009	
-!	subroutines fem_initialize, init_pix were modified. 
-!	- fem_initilize assumes 'resolution=pix diameter'.
-!	- Now pixel spacing (dr) and position are determined by the resolution and the model size.
-!	subroutine fem_initialize reads bessel function and calls electron scattering factors. 
-!	- These functions are passed to subroutines fem, fem_update, and intensity.
-!	subroutine intensity was modified to calculate I(k) and V(K). 
-!	- The code is based on Raymond-Biswas rmc_Vk.
-!	subroutine print_image2 is written. It calculates I(k) and prints them out. 
-!	-It stops the program after printing, so it should be called separately from the RMC process.  
+!   Modified by Jinwoo Hwang 01/27/2009 
+!   subroutines fem_initialize, init_pix were modified. 
+!   - fem_initilize assumes 'resolution=pix diameter'.
+!   - Now pixel spacing (dr) and position are determined by the resolution and the model size.
+!   subroutine fem_initialize reads bessel function and calls electron scattering factors. 
+!   - These functions are passed to subroutines fem, fem_update, and intensity.
+!   subroutine intensity was modified to calculate I(k) and V(K). 
+!   - The code is based on Raymond-Biswas rmc_Vk.
+!   subroutine print_image2 is written. It calculates I(k) and prints them out. 
+!   -It stops the program after printing, so it should be called separately from the RMC process.  
 !
 !   Modified by Jinwoo Hwang 01/30/2009
 !   gr_i allocation corrected. Now the gr_i is only allocated up to the maximum possible bin size.
 !   print_image1 was written for printing I(k) during RMC.
 !   For consistency for now, program was set to be "resolution = radius of pixel".
-!	Miscellaneous changes made for parameter max_r, npix_x, npix_y
-!	Bessel function J0 and aperture function A1 is now calculated in fem_initialize. 
-!	
-!	Modified by Jinwoo Hwang 02/18/2009
-!	Array bound error fixed in const4.
-!	All pixels were in positive x-y plane. Now they are corrected to cover the area centered at (0,0).
+!   Miscellaneous changes made for parameter max_r, npix_x, npix_y
+!   Bessel function J0 and aperture function A1 is now calculated in fem_initialize. 
+!   
+!   Modified by Jinwoo Hwang 02/18/2009
+!   Array bound error fixed in const4.
+!   All pixels were in positive x-y plane. Now they are corrected to cover the area centered at (0,0).
 !
-!	Modified by Jinwoo Hwang 02/24/2009
-!	Debug done - Now the V(k) caculation yields same result as the old RMC_JWH.
+!   Modified by Jinwoo Hwang 02/24/2009
+!   Debug done - Now the V(k) caculation yields same result as the old RMC_JWH.
 !
-!	Debug by Jinwoo Hwang 03/04/09
-!	For testing purpose the pixels were fixed with 8x8 specific positions, and rotations were fixed to 3.
-!	In fem_update, the double loop (do m=1,npix, do n=1,rot_atom%natoms)didn't have PBC. It's now added.
-!	In fem_update, in the same double loop, some typos were fixed (m was written as j). 
-!	
-!	fem accept and reject process tested and debug was done. The fem_reject_move now includes the return of the
-!	int_i, int_sq, m%positions to their old values. - Jinwoo Hwang 03/05/09
+!   Debug by Jinwoo Hwang 03/04/09
+!   For testing purpose the pixels were fixed with 8x8 specific positions, and rotations were fixed to 3.
+!   In fem_update, the double loop (do m=1,npix, do n=1,rot_atom%natoms)didn't have PBC. It's now added.
+!   In fem_update, in the same double loop, some typos were fixed (m was written as j). 
+!   
+!   fem accept and reject process tested and debug was done. The fem_reject_move now includes the return of the
+!   int_i, int_sq, m%positions to their old values. - Jinwoo Hwang 03/05/09
 !
 !       added subroutines write_intensities to output the entire int_i array to a single file.
 !       it's also added to the list of public subroutines - pmv 03-06-09
@@ -145,7 +145,7 @@
 !
 !  add a variable femsim in fem subroutine, set it for .TRUE. for only femsim calculation
 !  set it for .false. for rmc calculation. Did by Feng Yi on 03/19/2009
-!  also in fem subroutine, for femsim calculation, only size 1 of mrot is needed	
+!  also in fem subroutine, for femsim calculation, only size 1 of mrot is needed    
 !
 !  add an optional argument use_femsim to fem subroutine. If use_femsim is present, it will 
 !  be assigned to femsim. The default value of femsim is .FALSE.  By Feng Yi on 03/19/2009
@@ -260,16 +260,16 @@ contains
 
         
     IF(PRESENT(square_pixel)) THEN
-	pixel_square = square_pixel
+    pixel_square = square_pixel
     ELSE
-	pixel_square = .FALSE.
+    pixel_square = .FALSE.
     ENDIF
 
     IF(pixel_square) THEN
-	!r_max = SQRT(8.0) * res !diagonal in a square
-	r_max = 2 * res !small pixel inscribed in Airy circle
+    !r_max = SQRT(8.0) * res !diagonal in a square
+    r_max = 2 * res !small pixel inscribed in Airy circle
     ELSE
-	r_max = 2*res     !assuming resolution=radius
+    r_max = 2*res     !assuming resolution=radius
     ENDIF
     !r_max = 6*res  !Check how cut-off affect v, 05/11/2009
  
@@ -299,42 +299,42 @@ contains
 
     !OPEN(101,FILE='j0_file.xyz', STATUS='UNKNOWN')
     !DO i=0, const4
-!	WRITE(101, *) i*fem_bin_width, j0(i)
+!   WRITE(101, *) i*fem_bin_width, j0(i)
     !ENDDO
     !CLOSE(101)
 
 !    OPEN(102,FILE='a1_file.xyz', STATUS='UNKNOWN')
 !    DO i=0, const4
-!	WRITE(102, *) i*fem_bin_width, a1(i)
+!   WRITE(102, *) i*fem_bin_width, a1(i)
 !    ENDDO
 !    CLOSE(102)
 
     IF(pixel_square) THEN
-	!dr = res ! condition 1, shift by res
-	!npix_x=CEILING(m%lx/dr) 
-	!npix_y=CEILING(m%ly/dr)  !integer of pixel number, shifted by dr
-	!dr = m%lx/npix_x !changed by Feng Yi, fractional number of pixel
-	!**********************
-	!dr = res * 2.0  !no overlap between pixels
-	!npix_x = ANINT(m%lx/dr)
-	!npix_y = ANINT(m%ly/dr)
-	!***********************
-	dr = SQRT(2.0) * res !small pixel, inscribed in the Airy circle
-	npix_x = ANINT(m%lx/dr)
-	npix_y = ANINT(m%ly/dr)
-	!dr = SQRT(2.0) * res/2.0 !small pixel, inscribed in the Airy circle,shifted by half pixel size
-	!npix_x = ANINT(m%lx/dr)
-	!npix_y = ANINT(m%ly/dr)
+    !dr = res ! condition 1, shift by res
+    !npix_x=CEILING(m%lx/dr) 
+    !npix_y=CEILING(m%ly/dr)  !integer of pixel number, shifted by dr
+    !dr = m%lx/npix_x !changed by Feng Yi, fractional number of pixel
+    !**********************
+    !dr = res * 2.0  !no overlap between pixels
+    !npix_x = ANINT(m%lx/dr)
+    !npix_y = ANINT(m%ly/dr)
+    !***********************
+    dr = SQRT(2.0) * res !small pixel, inscribed in the Airy circle
+    npix_x = ANINT(m%lx/dr)
+    npix_y = ANINT(m%ly/dr)
+    !dr = SQRT(2.0) * res/2.0 !small pixel, inscribed in the Airy circle,shifted by half pixel size
+    !npix_x = ANINT(m%lx/dr)
+    !npix_y = ANINT(m%ly/dr)
     ELSE
-	!dr=2*res/1.414214   !resolution=pixel radius. dr=pixel spacing
-	!npix_x=int(m%lx/dr)
-	!npix_y=int(m%ly/dr)
-	!separated just by dr = res
- 	!dr = res
-	dr = 2.0 *res
-	npix_x=aint(m%lx/dr)
-	npix_y=aint(m%ly/dr)
-	
+    !dr=2*res/1.414214   !resolution=pixel radius. dr=pixel spacing
+    !npix_x=int(m%lx/dr)
+    !npix_y=int(m%ly/dr)
+    !separated just by dr = res
+    !dr = res
+    dr = 2.0 *res
+    npix_x=aint(m%lx/dr)
+    npix_y=aint(m%ly/dr)
+    
     !******************************
     !npix_x=CEILING(m%lx/dr) + 1 !changed by Feng Yi on 06/02/2009, condition 1
     !npix_y=CEILING(m%ly/dr) + 1
@@ -356,7 +356,7 @@ contains
 !    write(*,*)"total number of rotation =", nrot
 
     allocate(int_i(nk, npix, nrot), old_int(nk, npix, nrot), old_int_sq(nk, npix, nrot), &
-	 int_sq(nk, npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
+     int_sq(nk, npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
     nullify(old_index, old_pos)
 
 !    if (istat /= 0) then
@@ -376,13 +376,13 @@ contains
 !       return
 !    endif
 
-    !do j=1,m%nelements	   
+    !do j=1,m%nelements    
     !   do i=1, nk
     !      scatfact_e(j,i)=0.0    !loop is required to initialize with keeping k intact.  !tr RE-ok-jwh
     !   enddo
     !enddo
 
-    do j=1,m%nelements	   
+    do j=1,m%nelements     
        do i=1, nk
           scatfact_e(j,i)=f_e(m%atom_type(j),k(i)) 
        enddo
@@ -417,29 +417,29 @@ contains
     REAL test1
     
    IF( PRESENT(square_pixel)) THEN
-	pixel_square = square_pixel
+    pixel_square = square_pixel
    ELSE
-   	pixel_square = .FALSE.
+    pixel_square = .FALSE.
    ENDIF
 
 
    IF( PRESENT(use_femsim)) THEN
-	femsim = use_femsim
+    femsim = use_femsim
    ELSE
-   	femsim = .FALSE.
+    femsim = .FALSE.
    ENDIF
 
    !femsim = .FALSE.
    IF( PRESENT(rot_begin)) THEN
-	begin_rot = rot_begin
+    begin_rot = rot_begin
    ELSE
-   	begin_rot  = 1
+    begin_rot  = 1
    ENDIF
 
    IF( PRESENT(rot_end)) THEN
-	end_rot = rot_end
+    end_rot = rot_end
    ELSE
-   	end_rot = nrot
+    end_rot = nrot
    ENDIF
    IF(femsim) THEN   !This is addeb by Feng Yi on 03/19/2009 only for femsim calculation
 
@@ -459,16 +459,16 @@ contains
           write(*,*) 'Cannot allocate rotated model array.'
           return
        endif
-	!WRITE(*,*) i, 'Before rotate_model' !debug
-	!rot(i,1) =0.0
-	!rot(i,2) =0.0
-	!rot(i,3) = 0.0 !for PSF and resolution test
+    !WRITE(*,*) i, 'Before rotate_model' !debug
+    !rot(i,1) =0.0
+    !rot(i,2) =0.0
+    !rot(i,3) = 0.0 !for PSF and resolution test
        call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(1), istat) !memory leak
-	!WRITE(*,*) 'Atom positions!'
-	!WRITE(*,*) 1, mrot(1)%xx(1), mrot(1)%yy(1), mrot(1)%zz(1)
-	!WRITE(*,*) 2, mrot(1)%xx(2), mrot(1)%yy(2), mrot(1)%zz(2)
+    !WRITE(*,*) 'Atom positions!'
+    !WRITE(*,*) 1, mrot(1)%xx(1), mrot(1)%yy(1), mrot(1)%zz(1)
+    !WRITE(*,*) 2, mrot(1)%xx(2), mrot(1)%yy(2), mrot(1)%zz(2)
 
-!	WRITE(*,*) i, rot(i,1), rot(i,2), rot(i,3)
+!   WRITE(*,*) i, rot(i,1), rot(i,2), rot(i,3)
        if (istat /= 0) then
           write (*,*) 'Failed to rotate model ',i
           return
@@ -477,14 +477,14 @@ contains
        do j=1, npix
           ! WRITE(*,*) 'j is: ', j, pix(j,1), pix(j,2) !debug
           call intensity(mrot(1), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
-	  !test1=sin(exp(j*0.2345)) !test memory leak
+      !test1=sin(exp(j*0.2345)) !test memory leak
        enddo
-	!WRITE(*,*) i, 'After intensity cal!' !debug
+    !WRITE(*,*) i, 'After intensity cal!' !debug
        !DEALLOCATE mrot(1)
        CALL destroy_model(mrot(1)) !memory leak
        DEALLOCATE(mrot) !memory leak
        
-	!WRITE (*,*) 'rotated ', i !debug
+    !WRITE (*,*) 'rotated ', i !debug
     enddo !end i=1, nrot
 
       
@@ -492,7 +492,7 @@ contains
     do i=1, nk
        Vk(i) = (sum(int_sq(i,1:npix,1:nrot)/(npix*nrot))/(sum(int_i(i,1:npix,1:nrot)/(npix*nrot))**2) ) - 1.0
        !tempporally added by Feng Yi just for femsim
-!	WRITE(*,*) k(i), Vk(i), sum(int_i(i,1:npix,1:nrot)/(npix*nrot))
+!   WRITE(*,*) k(i), Vk(i), sum(int_i(i,1:npix,1:nrot)/(npix*nrot))
     enddo
     !***********************************************************
     
@@ -525,13 +525,13 @@ contains
 
        call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
 
-	!testing rotation
-	do j=1, mrot(i)%natoms
-		if(mrot(i)%znum(j).eq.40)then
-!			write(1003,*)i,j, mrot(i)%znum_r(j), mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
-!			write(1004,*)"o", mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
-		endif
-	enddo
+    !testing rotation
+    do j=1, mrot(i)%natoms
+        if(mrot(i)%znum(j).eq.40)then
+!           write(1003,*)i,j, mrot(i)%znum_r(j), mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
+!           write(1004,*)"o", mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
+        endif
+    enddo
 
        if (istat /= 0) then
           write (*,*) 'Failed to rotate model ',i
@@ -541,10 +541,10 @@ contains
 
 
 
-	!debug
-	!do i=1, mrot(96)%natoms
-	!	write(1007,*)i, mrot(96)%znum(i), mrot(96)%znum_r(i), mrot(96)%xx(i), mrot(96)%yy(i), mrot(96)%zz(i)
-	!enddo
+    !debug
+    !do i=1, mrot(96)%natoms
+    !   write(1007,*)i, mrot(96)%znum(i), mrot(96)%znum_r(i), mrot(96)%xx(i), mrot(96)%yy(i), mrot(96)%zz(i)
+    !enddo
 
 
     allocate(old_index(nrot), old_pos(nrot), stat=istat)
@@ -572,9 +572,9 @@ contains
 
           call intensity(mrot(i), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
 
-	   int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
-	   psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
-	   psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
+       int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
+       psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
+       psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
        enddo
     enddo
 
@@ -586,14 +586,14 @@ contains
 
  
     if(myid.eq.0)then
-  	  do i=1, nk
-  	     Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
-	     Vk(i) = Vk(i) - v_background(i)  ! background subtraction	 052210 JWH
-  	  end do
+      do i=1, nk
+         Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
+         Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
+      end do
     endif
 
 
-    deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)	
+    deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)  
    ENDIF
 
 
@@ -603,16 +603,16 @@ contains
 !****************************************
 
    SUBROUTINE I_average(i_k)
-	IMPLICIT NONE
+    IMPLICIT NONE
 
-	REAL ,DIMENSION(:), INTENT(OUT) :: i_k
-	INTEGER i
+    REAL ,DIMENSION(:), INTENT(OUT) :: i_k
+    INTEGER i
 
-	i_k = 0.0
-	
-	DO i=1, nk
-	  i_k(i) = SUM(int_i(i,1:npix,1:nrot))/(npix * nrot)
-	ENDDO
+    i_k = 0.0
+    
+    DO i=1, nk
+      i_k(i) = SUM(int_i(i,1:npix,1:nrot))/(npix * nrot)
+    ENDDO
 
    END SUBROUTINE I_average
 
@@ -641,9 +641,9 @@ contains
 
 
     IF( PRESENT(square_pixel)) THEN
-	pixel_square = square_pixel
+    pixel_square = square_pixel
    ELSE
-   	pixel_square = .FALSE.
+    pixel_square = .FALSE.
    ENDIF
     ! res is diameter of a pixel, but later we need the square of the radius
     res2 = (res)**2    !temporary - radius = resolution assumed - JWH 02/25/09
@@ -712,7 +712,7 @@ contains
        ! if moving the atom changes the number of times it appears in the rotated model,
        ! just give up: re-rotation the entire model, and recalculate all the intensities
        ! (might not be necessary to recalculate all the intensities.  have to think about that
-	   
+       
        if(mrot(i)%rot_i(atom)%nat /= rot_atom%natoms) then
 
 !          write(*,*)"scratch", mrot(i)%rot_i(atom)%nat, rot_atom%natoms
@@ -721,81 +721,81 @@ contains
 
        if(mrot(i)%rot_i(atom)%nat /= 0) then
 
-		do j=1, mrot(i)%rot_i(atom)%nat
-		   call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
-		   call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), & 
-		   mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
+        do j=1, mrot(i)%rot_i(atom)%nat
+           call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
+           call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), & 
+           mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
 
-		enddo
-	endif
+        enddo
+    endif
 
        !write (*,*) 'Rerotating the model from scratch.'
 
 
-	old_mrot_roti_nat = mrot(i)%rot_i(atom)%nat
+    old_mrot_roti_nat = mrot(i)%rot_i(atom)%nat
        call destroy_model(mrot(i))
        call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m_in, mrot(i), istat)
        
        do m=1, npix
-		no_int_recal = .true.
+        no_int_recal = .true.
 
-		if(rot_atom%natoms /= 0) then
-			do n=1, rot_atom%natoms
-				temp1 = rot_atom%xx(n) - pix(m,1)
-				temp2 = rot_atom%yy(n) - pix(m,2)
-				temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-				temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-				rr_x_new = ABS(temp1)
-				rr_y_new = ABS(temp2)
-				rot_dist_sq = (temp1)**2 + (temp2)**2
-	
-				IF(pixel_square) THEN
-					sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
-					IF((rr_x_new .LE. sqrt1_2_res) .AND. (rr_y_new .LE. sqrt1_2_res)) THEN
-						CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-						int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-						no_int_recal = .false.
-					ENDIF
-				ELSE
-					sqrt1_2_res = res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
-					if (rot_dist_sq <= res2) then
-						call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-						int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-						no_int_recal = .false.
-					endif
-				ENDIF
-			enddo
-		endif
+        if(rot_atom%natoms /= 0) then
+            do n=1, rot_atom%natoms
+                temp1 = rot_atom%xx(n) - pix(m,1)
+                temp2 = rot_atom%yy(n) - pix(m,2)
+                temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
+                temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
+                rr_x_new = ABS(temp1)
+                rr_y_new = ABS(temp2)
+                rot_dist_sq = (temp1)**2 + (temp2)**2
+    
+                IF(pixel_square) THEN
+                    sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
+                    IF((rr_x_new .LE. sqrt1_2_res) .AND. (rr_y_new .LE. sqrt1_2_res)) THEN
+                        CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                        int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                        no_int_recal = .false.
+                    ENDIF
+                ELSE
+                    sqrt1_2_res = res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
+                    if (rot_dist_sq <= res2) then
+                        call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                        int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                        no_int_recal = .false.
+                    endif
+                ENDIF
+            enddo
+        endif
 
-		if(no_int_recal)then
-			if(old_mrot_roti_nat /= 0) then
-	
-				do n=1, old_mrot_roti_nat
-	
-					temp1 = old_pos(i)%pos(n,1) - pix(m,1)
-					temp2 = old_pos(i)%pos(n,2) - pix(m,2)
-					temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-					temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-					rr_x_old = ABS(temp1)
-					rr_y_old = ABS(temp2)
-					orig_dist_sq = (temp1)**2 + (temp2)**2
-		
-					IF(pixel_square) THEN
-					    sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
-						IF((rr_x_old .LE. sqrt1_2_res) .AND. (rr_y_old .LE. sqrt1_2_res)) THEN
-							CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-							int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-						ENDIF
-					ELSE
-						if (orig_dist_sq <= res2) then
-							call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-							int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-						endif
-					ENDIF
-				enddo
-			endif
-		endif
-	enddo
+        if(no_int_recal)then
+            if(old_mrot_roti_nat /= 0) then
+    
+                do n=1, old_mrot_roti_nat
+    
+                    temp1 = old_pos(i)%pos(n,1) - pix(m,1)
+                    temp2 = old_pos(i)%pos(n,2) - pix(m,2)
+                    temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
+                    temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
+                    rr_x_old = ABS(temp1)
+                    rr_y_old = ABS(temp2)
+                    orig_dist_sq = (temp1)**2 + (temp2)**2
+        
+                    IF(pixel_square) THEN
+                        sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/
+                        IF((rr_x_old .LE. sqrt1_2_res) .AND. (rr_y_old .LE. sqrt1_2_res)) THEN
+                            CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                            int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                        ENDIF
+                    ELSE
+                        if (orig_dist_sq <= res2) then
+                            call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                            int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                        endif
+                    ENDIF
+                enddo
+            endif
+        endif
+    enddo
 
        old_index(i)%nat = -1
 
@@ -840,9 +840,9 @@ contains
                 temp2 = rot_atom%yy(n) - pix(m,2)
                 temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
                 temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-		rr_x_new = ABS(temp1)
-		rr_y_new = ABS(temp2)
-				
+        rr_x_new = ABS(temp1)
+        rr_y_new = ABS(temp2)
+                
                 rot_dist_sq = (temp1)**2 + (temp2)**2
 
                 temp1 = old_pos(i)%pos(n,1) - pix(m,1)
@@ -850,38 +850,38 @@ contains
                 temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
                 temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
 
-		rr_x_old = ABS(temp1)
-		rr_y_old = ABS(temp2)
+        rr_x_old = ABS(temp1)
+        rr_y_old = ABS(temp2)
 
                 orig_dist_sq = (temp1)**2 + (temp2)**2
 
                 IF(pixel_square) THEN
-		  IF(((rr_x_old .LE. res) .AND. (rr_y_old .LE. res)) .OR. ((rr_x_new .LE. res) .AND. (rr_y_new .LE. res))) THEN
-		    CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+          IF(((rr_x_old .LE. res) .AND. (rr_y_old .LE. res)) .OR. ((rr_x_new .LE. res) .AND. (rr_y_new .LE. res))) THEN
+            CALL intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-		  ENDIF
-		ELSE
+          ENDIF
+        ELSE
                   if ( (rot_dist_sq <= res2) .OR. (orig_dist_sq <= res2) ) then
                     call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                   endif
-		ENDIF
+        ENDIF
              enddo
           enddo
        endif
 
-	100 continue
-	do m=1, npix
-		psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, m, i)
-		psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)	 
-	enddo
+    100 continue
+    do m=1, npix
+        psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, m, i)
+        psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)   
+    enddo
     
     !Deallocate ind in rot_atom%rot_i
  
     DO n=1, SIZE(rot_atom%rot_i,1)
-	if(associated(rot_atom%rot_i(n)%ind))then
-	  DEALLOCATE(rot_atom%rot_i(n)%ind)
-	ENDIF
+    if(associated(rot_atom%rot_i(n)%ind))then
+      DEALLOCATE(rot_atom%rot_i(n)%ind)
+    ENDIF
     ENDDO
 
     deallocate(rot_atom%xx, rot_atom%yy, rot_atom%zz, rot_atom%znum,  rot_atom%rot_i, rot_atom%znum_r, stat=istat)
@@ -893,14 +893,14 @@ contains
 
     ! recalculate the variance
     if(myid.eq.0)then
-	    do i=1, nk
-	       Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
-		Vk(i) = Vk(i) - v_background(i)   !background subtraction 052210 JWH
-	    end do
+        do i=1, nk
+           Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
+        Vk(i) = Vk(i) - v_background(i)   !background subtraction 052210 JWH
+        end do
     endif
-	
+    
     deallocate(moved_atom%xx, moved_atom%yy, moved_atom%zz, moved_atom%znum, &
-		 moved_atom%atom_type, moved_atom%znum_r, moved_atom%composition, stat=istat)
+         moved_atom%atom_type, moved_atom%znum_r, moved_atom%composition, stat=istat)
     deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
 
 
@@ -1020,7 +1020,7 @@ contains
     type(model), intent(in) :: m
     real, intent(in) :: res
     real, dimension(:), intent(in) :: k
-	real, dimension(:,:), pointer :: scatfact_e
+    real, dimension(:,:), pointer :: scatfact_e
     integer, intent(out) :: istat
     LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
 
@@ -1028,9 +1028,9 @@ contains
     LOGICAL pixel_square
 
     IF( PRESENT(square_pixel)) THEN
-	pixel_square = square_pixel
+    pixel_square = square_pixel
    ELSE
-   	pixel_square = .FALSE.
+    pixel_square = .FALSE.
    ENDIF
 
     ! initialize the rotated models
@@ -1097,31 +1097,31 @@ contains
     endif
 
     IF(PRESENT(square_pixel)) THEN
-	pixel_square = square_pixel
+    pixel_square = square_pixel
     ELSE
-	pixel_square = .FALSE.
+    pixel_square = .FALSE.
     ENDIF
 
 !    write(*,*)"pixels"
     k=1
     IF(pixel_square) THEN
-!	   write(*,*)"pixels1"
+!      write(*,*)"pixels1"
       DO i=1, npix_x
         DO j=1, npix_y
-	   pix(k,1) = (i-1)*dr+(dr/2.0)-(m%lx/2.0) 
+       pix(k,1) = (i-1)*dr+(dr/2.0)-(m%lx/2.0) 
           pix(k,2) = (j-1)*dr+(dr/2.0)-(m%ly/2.0)
-!	  WRITE(*,*) k, pix(k,1), pix(k,2) !debug
-	  k = k + 1
-	ENDDO
+!     WRITE(*,*) k, pix(k,1), pix(k,2) !debug
+      k = k + 1
+    ENDDO
       ENDDO
     ELSE
-!	   write(*,*)"pixels2"
+!      write(*,*)"pixels2"
       do i=1, npix_x
         do j=1, npix_y
           pix(k,1) = (i-1)*dr+(dr/2.0)-(m%lx/2.0) !condition 2
           pix(k,2) = (j-1)*dr+(dr/2.0)-(m%ly/2.0)
-	  !*************************************
-	  !pix(k,1) = (i-1)*dr-(m%lx/2.0)
+      !*************************************
+      !pix(k,1) = (i-1)*dr-(m%lx/2.0)
           !pix(k,2) = (j-1)*dr-(m%ly/2.0)  !changed by FY on 06/02/2009, condition 1
           !write(*,*)pix(k,1),pix(k,2)
           k = k+1
@@ -1172,15 +1172,15 @@ contains
     step_size(2) = TWOPI / npsi
     step_size(3) = PI / ntheta  !not used any more after weighting by psi angle - JWH 09/03/09
 
-	jj = 1
+    jj = 1
 
-	do i=1, nphi
+    do i=1, nphi
            do j=1, npsi/2
             
               psi_temp = (j-1)*step_size(2)
               ntheta_w(j) = int(sin(psi_temp)*ntheta)
-!		write(*,*)i,j,"ntheta=",ntheta_w(j) 
-		if(ntheta_w(j).ge.0)then
+!       write(*,*)i,j,"ntheta=",ntheta_w(j) 
+        if(ntheta_w(j).ge.0)then
                    if(ntheta_w(j).gt.0)then
                       pp = 2*(ntheta_w(j)-1)
                    endif
@@ -1188,31 +1188,31 @@ contains
                       pp = 1
                    endif
 
-           	  do k=1, pp
-			if(k*(pi/(ntheta_w(j)-1)).lt.pi)then
+              do k=1, pp
+            if(k*(pi/(ntheta_w(j)-1)).lt.pi)then
                              rot_temp(jj,1) = (i-1)*step_size(1)
-			     rot_temp(jj,2) = (j-1)*step_size(2)
-           		     rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
-			     !write(*,*)j, jj, rot_temp(jj,1), rot_temp(jj,2), rot_temp(jj,3)
-			     jj = jj + 1
-			endif
-             	  enddo
-		endif
+                 rot_temp(jj,2) = (j-1)*step_size(2)
+                     rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
+                 !write(*,*)j, jj, rot_temp(jj,1), rot_temp(jj,2), rot_temp(jj,3)
+                 jj = jj + 1
+            endif
+                  enddo
+        endif
           enddo
-	enddo
+    enddo
 
-	num_rot = jj - 1
+    num_rot = jj - 1
 
        allocate(rot(num_rot, 3), stat=istat)
 
-	do i=1, num_rot
-		rot(i,1) = rot_temp(i,1)
-		rot(i,2) = rot_temp(i,2)	
-		rot(i,3) = rot_temp(i,3)
-!		write(*,*)"rot",i, rot(i,1), rot(i,2), rot(i,3)
-	enddo
+    do i=1, num_rot
+        rot(i,1) = rot_temp(i,1)
+        rot(i,2) = rot_temp(i,2)    
+        rot(i,3) = rot_temp(i,3)
+!       write(*,*)"rot",i, rot(i,1), rot(i,2), rot(i,3)
+    enddo
 
-	deallocate(rot_temp)
+    deallocate(rot_temp)
 
   end subroutine init_rot
 
@@ -1243,22 +1243,22 @@ contains
 
    
     IF(PRESENT(square_pixel)) THEN
-	pixel_square = square_pixel
+    pixel_square = square_pixel
     ELSE
-	pixel_square = .FALSE.
+    pixel_square = .FALSE.
     ENDIF
 
     IF(pixel_square) THEN
-	sqrt1_2_res = SQRT(0.5) * res
+    sqrt1_2_res = SQRT(0.5) * res
     ELSE
-	sqrt1_2_res = res
+    sqrt1_2_res = res
     ENDIF
 
     IF(pixel_square) THEN
-	!r_max = SQRT(8.0) * res
-	r_max = 2 * res !small pixel inscribed in Airy circle
+    !r_max = SQRT(8.0) * res
+    r_max = 2 * res !small pixel inscribed in Airy circle
     ELSE
-	r_max = 2*res     !assuming resolution=radius
+    r_max = 2*res     !assuming resolution=radius
     ENDIF
 
     !r_max = 6*res    !check cut-off effect on 05/11/2009
@@ -1266,9 +1266,9 @@ contains
   
     !WRITE(*,*) 'Begin hutch_pixel',px, py !debug 
     IF(pixel_square) THEN
-	call hutch_list_pixel_sq(m_int, px, py, res, pix_atoms, istat) !small pixel inscribed in Airy circle
+    call hutch_list_pixel_sq(m_int, px, py, res, pix_atoms, istat) !small pixel inscribed in Airy circle
     ELSE
-	call hutch_list_pixel(m_int, px, py, res, pix_atoms, istat)
+    call hutch_list_pixel(m_int, px, py, res, pix_atoms, istat)
     ENDIF
 
      !WRITE(*,*) 'Finish hutch_pixel!' !debug
@@ -1283,7 +1283,7 @@ contains
 
 
     IF(pixel_square) THEN
-	ALLOCATE( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
+    ALLOCATE( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
     ENDIF
     ! replaced code recalculating znum_r with code copying it from previous calculations 3/18/09 pmv  !tr RE-ok-jwh
     !WRITE(*,*) 'before using znum_r'
@@ -1320,12 +1320,12 @@ contains
 
         x2=x2-m_int%lx*anint(x2/m_int%lx)       
         y2=y2-m_int%ly*anint(y2/m_int%ly)
-	 rr_x(i) = ABS(x2)
-	 rr_y(i) = ABS(y2)
+     rr_x(i) = ABS(x2)
+     rr_y(i) = ABS(y2)
         rr_a(i)=sqrt(x2*x2 + y2*y2)
 !       if((rr_x(i).le.res) .AND. (rr_y(i) .le. res))then
-	 if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le. sqrt1_2_res))then !small pixel inscribed in Airy circle
-	
+     if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le. sqrt1_2_res))then !small pixel inscribed in Airy circle
+    
 !k_1=0.82333
 !if(k_1.eq.k(6))then
 !write(*,*)k_1,px,py,m_int%xx(pix_atoms(i)),m_int%yy(pix_atoms(i))
@@ -1368,17 +1368,17 @@ contains
     IF(pixel_square) THEN
       do i=1,size(pix_atoms)
        !if((rr_x(i).le.res) .AND. (rr_y(i) .le. res))then
-	if((rr_x(i).le.sqrt1_2_res) .AND. (rr_y(i) .le. sqrt1_2_res))then
+    if((rr_x(i).le.sqrt1_2_res) .AND. (rr_y(i) .le. sqrt1_2_res))then
           do j=i,size(pix_atoms)
              !if((rr_x(j).le.res) .AND. (rr_y(j) .le. res))then
-	     if((rr_x(j).le.sqrt1_2_res) .AND. (rr_y(j) .le. sqrt1_2_res))then
+         if((rr_x(j).le.sqrt1_2_res) .AND. (rr_y(j) .le. sqrt1_2_res))then
                 x2=x1(i)-x1(j)
                 y2=y1(i)-y1(j)
                 rr=sqrt(x2*x2 + y2*y2)
                 kk=int(const2*rr)
-		!IF(kk .GE. bin_max) THEN !debug
-		!  WRITE(*,*) 'kk is larger than bin_max', kk, bin_max
-		!ENDIF
+        !IF(kk .GE. bin_max) THEN !debug
+        !  WRITE(*,*) 'kk is larger than bin_max', kk, bin_max
+        !ENDIF
                 if(i == j)then
                    t1=sum1(znum_r(i),i)
                    gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1 
@@ -1394,17 +1394,17 @@ contains
     ELSE
       do i=1,size(pix_atoms)
        if(rr_a(i).le.res)then
-	!if(rr_a(i) .le. res*3.0)then  !check cut-off effect
+    !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
           do j=i,size(pix_atoms)
              if(rr_a(j).le.res)then
-	     !if(rr_a(j) .le. res*3.0)then  !check cut-off effect
+         !if(rr_a(j) .le. res*3.0)then  !check cut-off effect
                 x2=x1(i)-x1(j)
                 y2=y1(i)-y1(j)
                 rr=sqrt(x2*x2 + y2*y2)
                 kk=int(const2*rr)
-		!IF(kk .GE. bin_max) THEN !debug
-		!  WRITE(*,*) 'kk is larger than bin_max', kk, bin_max
-		!ENDIF
+        !IF(kk .GE. bin_max) THEN !debug
+        !  WRITE(*,*) 'kk is larger than bin_max', kk, bin_max
+        !ENDIF
                 if(i == j)then
                    t1=sum1(znum_r(i),i)
                    gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1 
@@ -1453,7 +1453,7 @@ contains
    ENDIF
    !WRITE(*,*) 'x1, y1, rr_a, znum_r'
    IF(SIZE(pix_atoms) .GT. 0) THEN
-   	DEALLOCATE(pix_atoms)
+    DEALLOCATE(pix_atoms)
    ENDIF
    !WRITE(*,*) 'pix_atoms deal', 'sum1 size: ', SIZE(sum1, 1), SIZE(sum1, 2)
    IF(ALLOCATED(sum1)) THEN
@@ -1461,7 +1461,7 @@ contains
    ENDIF
    !WRITE(*,*) 'sum1 deal'
    IF(ALLOCATED(rr_x)) THEN
-	DEALLOCATE(rr_x, rr_y) 
+    DEALLOCATE(rr_x, rr_y) 
    ENDIF
 
 
@@ -1506,9 +1506,9 @@ contains
     endif
  
     if (allocated(scratch)) then
-	deallocate(scratch)  ! added 3/18/09 pmv 
+    deallocate(scratch)  ! added 3/18/09 pmv 
     endif
-		  
+          
   end subroutine add_pos
 
 
@@ -1533,11 +1533,11 @@ contains
 
     do i=myid+1, nrot, numprocs
        !if(old_index(i)%nat /= 0) deallocate(old_index(i)%ind)  ! deallocate lists added 3/18/09, pmv  !tr-jwh
-	if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
+    if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
        nullify(old_index(i)%ind)
        old_index(i)%nat = 0
        !if(old_pos(i)%nat /= 0) deallocate(old_pos(i)%pos) ! deallocate added 3/18/09 pmv  !tr-jwh
-	if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
+    if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
        nullify(old_pos(i)%pos)
        old_pos(i)%nat = 0
     enddo
@@ -1610,29 +1610,29 @@ contains
         ELSE
 
            DATA A/-.7031250000000000D-01,.1121520996093750D+00, &
-			-.5725014209747314D+00,.6074042001273483D+01, &
-			-.1100171402692467D+03,.3038090510922384D+04, &
-			-.1188384262567832D+06,.6252951493434797D+07, &
-			-.4259392165047669D+09,.3646840080706556D+11, &
-			-.3833534661393944D+13,.4854014686852901D+15/
+            -.5725014209747314D+00,.6074042001273483D+01, &
+            -.1100171402692467D+03,.3038090510922384D+04, &
+            -.1188384262567832D+06,.6252951493434797D+07, &
+            -.4259392165047669D+09,.3646840080706556D+11, &
+            -.3833534661393944D+13,.4854014686852901D+15/
            DATA B/ .7324218750000000D-01,-.2271080017089844D+00, &
-			.1727727502584457D+01,-.2438052969955606D+02, &
-			.5513358961220206D+03,-.1825775547429318D+05, &
-			.8328593040162893D+06,-.5006958953198893D+08, &
-			.3836255180230433D+10,-.3649010818849833D+12, &
-			.4218971570284096D+14,-.5827244631566907D+16/
+            .1727727502584457D+01,-.2438052969955606D+02, &
+            .5513358961220206D+03,-.1825775547429318D+05, &
+            .8328593040162893D+06,-.5006958953198893D+08, &
+            .3836255180230433D+10,-.3649010818849833D+12, &
+            .4218971570284096D+14,-.5827244631566907D+16/
            DATA A1/.1171875000000000D+00,-.1441955566406250D+00, &
-			.6765925884246826D+00,-.6883914268109947D+01, &
-			.1215978918765359D+03,-.3302272294480852D+04, &
-			.1276412726461746D+06,-.6656367718817688D+07, &
-			.4502786003050393D+09,-.3833857520742790D+11, &
-			.4011838599133198D+13,-.5060568503314727D+15/
+            .6765925884246826D+00,-.6883914268109947D+01, &
+            .1215978918765359D+03,-.3302272294480852D+04, &
+            .1276412726461746D+06,-.6656367718817688D+07, &
+            .4502786003050393D+09,-.3833857520742790D+11, &
+            .4011838599133198D+13,-.5060568503314727D+15/
            DATA B1/-.1025390625000000D+00,.2775764465332031D+00, &
-			-.1993531733751297D+01,.2724882731126854D+02, &
-			-.6038440767050702D+03,.1971837591223663D+05, &
-			-.8902978767070678D+06,.5310411010968522D+08, &
-			-.4043620325107754D+10,.3827011346598605D+12, &
-			-.4406481417852278D+14,.6065091351222699D+16/
+            -.1993531733751297D+01,.2724882731126854D+02, &
+            -.6038440767050702D+03,.1971837591223663D+05, &
+            -.8902978767070678D+06,.5310411010968522D+08, &
+            -.4043620325107754D+10,.3827011346598605D+12, &
+            -.4406481417852278D+14,.6065091351222699D+16/
 
 
            K0=12
