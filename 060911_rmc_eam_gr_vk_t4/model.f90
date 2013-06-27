@@ -449,13 +449,13 @@ contains
     type(model), intent(out) :: m
     integer, intent(out) :: istat      !0 for successful open, others for failure.
     
+    integer :: i, atom_count=0, nat=0
+
     open(1,file=model_filename,iostat=istat,status='old')
     if(istat.ne.0) then !Open fails
        write(*,*)"Error in opening flie,"," ",model_filename," status=",istat
        return
     endif
-    
-    integer i, atom_count=0, nat=0
     
     read(1,*) ! Comment
     read(1,*) ! This line contains the box size (lx, ly, lz).
