@@ -76,7 +76,7 @@ doubleprecision :: t0, t1
 
 
 write(*,*)
-write(*,*) "This is the dev version!"
+write(*,*) "This is the dev version of rmc!"
 write(*,*)
 
 call mpi_init(mpierr)

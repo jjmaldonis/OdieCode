@@ -223,76 +223,62 @@ end subroutine read_eam
 !subroutine eam_initial
 !Calculates initial energy of model using eam potential
 subroutine eam_initial(m, te1)
+    implicit none
+    type(model), intent(in) :: m
+    integer :: i, j
+    integer,  dimension(:), pointer :: atoms
+    integer:: nlist, rbin, rhobin
+    real :: xij, yij, zij, r, r2
+    real :: phi1, phi2, rho1, rho2
+    real, intent(out) :: te1
+    integer :: istat
 
-implicit none
-type(model), intent(in) :: m
-integer :: i, j
-integer,  dimension(:), pointer :: atoms
-integer:: nlist, rbin, rhobin
-real :: xij, yij, zij, r, r2
-real :: phi1, phi2, rho1, rho2
-real, intent(out) :: te1
-integer :: istat
+    do i=1, m%natoms
+    phi2 = 0.0
+    rho2 = 0.0
+        ! hutch_list_3D is a big function...
+        ! nlist is the number of atoms in the hutch?
+        call hutch_list_3D(m, m%xx(i), m%yy(i), m%zz(i), eam_max_r, atoms, istat, nlist)
+        do j=1, nlist-1
+            if(atoms(j).ne.i)then
+                xij = m%xx(i) - m%xx(atoms(j))
+                yij = m%yy(i) - m%yy(atoms(j))          
+                zij = m%zz(i) - m%zz(atoms(j))
+                xij = xij-m%lx*anint(xij/(m%lx))                
+                yij = yij-m%ly*anint(yij/(m%ly))            
+                zij = zij-m%lz*anint(zij/(m%lz))
 
-
-
-do i=1, m%natoms
-phi2 = 0.0
-rho2 = 0.0
-    ! hutch_list_3D is a big function...
-    ! nlist is the number of atoms in the hutch?
-    call hutch_list_3D(m, m%xx(i), m%yy(i), m%zz(i), eam_max_r, atoms, istat, nlist)
-    do j=1, nlist-1
-        if(atoms(j).ne.i)then
-            xij = m%xx(i) - m%xx(atoms(j))
-            yij = m%yy(i) - m%yy(atoms(j))          
-            zij = m%zz(i) - m%zz(atoms(j))
-
-            xij = xij-m%lx*anint(xij/(m%lx))                
-            yij = yij-m%ly*anint(yij/(m%ly))            
-            zij = zij-m%lz*anint(zij/(m%lz))
-
-            r2 = xij**2+yij**2+zij**2
-
-            if(r2.lt.eam_max_r*eam_max_r)then
-                r = sqrt(r2)
-                rbin = int(r/dr)+1
-
-                phi1 = phi(m%znum_r(i), m%znum_r(atoms(j)) , rbin)
-                phi2 = phi2 + phi1
-                rho1 = rho(m%znum_r(i), rbin)
-                rho2 = rho2 + rho1
-
-!if(i.eq.3629)then
-!   write(*,*)r, phi1, rho1
-!endif
-
+                r2 = xij**2+yij**2+zij**2
+                if(r2.lt.eam_max_r*eam_max_r)then
+                    r = sqrt(r2)
+                    rbin = int(r/dr)+1
+                    phi1 = phi(m%znum_r(i), m%znum_r(atoms(j)) , rbin)
+                    phi2 = phi2 + phi1
+                    rho1 = rho(m%znum_r(i), rbin)
+                    rho2 = rho2 + rho1
+                    !if(i.eq.3629) write(*,*)r, phi1, rho1
+                endif
             endif
+        enddo
+
+        rhobin = int(rho2/drho)+1
+        if(rhobin.le.0)then
+            e1(i) = 0.5*phi2
+            !write(*,*)phi2
+        else
+            ! TODO What is this f?
+            !write(*,*)phi2
+            e1(i) = f(m%znum_r(i), rhobin) + 0.5*phi2
         endif
+        deallocate(atoms)
     enddo
 
-    rhobin = int(rho2/drho)+1
-    if(rhobin.le.0)then
-        e1(i) = 0.5*phi2
-        !write(*,*)phi2
-    else
-        ! TODO What is this f?
-        !write(*,*)phi2
-        e1(i) = f(m%znum_r(i), rhobin) + 0.5*phi2
-    endif
-    deallocate(atoms)
-enddo
-
-
-
-te1=0.0
-
-do i=1, m%natoms
-    !write(*,*)"e1", i, e1(i)
-    te1 = te1 + e1(i)
-enddo
-
-!write(*,*)"initial energy=", te1
+    te1=0.0
+    do i=1, m%natoms
+        !write(*,*)"e1", i, e1(i)
+        te1 = te1 + e1(i)
+    enddo
+    !write(*,*)"initial energy=", te1
 
 end subroutine eam_initial
 

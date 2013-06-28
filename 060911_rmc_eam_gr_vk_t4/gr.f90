@@ -194,12 +194,12 @@ subroutine scatt_power(m,used_data_sets,istat)
     
         !Test printing - scattering factors of each atom as a fucntion of q.
         !open(unit=902,file="test_scat_fact_x.txt",form='formatted',status='unknown')
-        do j=1,m%nelements
-            do k=1, 100
-                q=k*scat_binsize
-                write(902,*)j,q,scatfact_x(j,k)  
-            enddo
-        enddo
+        !do j=1,m%nelements
+            !do k=1, 100
+                !q=k*scat_binsize
+                !write(902,*)j,q,scatfact_x(j,k)  
+            !enddo
+        !enddo
         !close(902)
     
         xifi = 0.0
@@ -369,31 +369,28 @@ subroutine gr_no_hutch(m,used_data_sets)
                 zij = zij-m%lz*anint(zij/(m%lz))            
     
                 R2 = xij**2+yij**2+zij**2
-                R=sqrt(R2)
+                R = sqrt(R2)
 
                 if(used_data_sets(1)) then
                     rmax_e = del_r_e*mbin_e
                     if(R.lt.rmax_e)then
                         ig = int(R/del_r_e) +1
                         IF(ig .GT. (mbin_e )) THEN
-                          WRITE(*,*) 'Initialization error!', ig, mbin_e 
-                        ENDIF
-                        
+                            write(*,*) 'Initialization error!', ig, mbin_e 
+                        endif
                         !WRITE(*,*) 'Wrong here!' !debug
                         !WRITE(*,*) 'ig is: ', ig, 'mbin_e is; ', mbin_e
                         gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig)+1
-                        gr_e_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig)       
-                        
+                        gr_e_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig)
                     endif
                 endif
-
 
                 if(used_data_sets(2)) then
                     rmax_n = del_r_n*mbin_n
                     if(R.lt.rmax_n)then
                         ig = int(R/del_r_n) +1
-                        gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig)+1   
-                        gr_n_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig)       
+                        gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig)+1
+                        gr_n_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig)
                     endif
                 endif
 
@@ -401,8 +398,8 @@ subroutine gr_no_hutch(m,used_data_sets)
                     rmax_x = del_r_x*mbin_x
                     if(R.lt.rmax_x)then
                         ig = int(R/del_r_x) +1
-                        gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig)+1   
-                        gr_x_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig)       
+                        gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig)+1
+                        gr_x_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig)
                     endif
                 endif
             endif
