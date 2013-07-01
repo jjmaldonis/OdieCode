@@ -7,10 +7,10 @@
 APP = femsim_test
 
 # list of source files
-SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem1.f90 gr.f90 eam.f90 femsim.f90
+SRC = ran2.f90 globals.f90 read_inputs_v2.f90 model_v2.f90 rmc_functions.f90 scattering_factors.f90 fem1_v2.f90 gr.f90 eam.f90 femsim.f90
 
 # list of object files
-OBJ = ran2.o globals.o read_inputs.o model.o rmc_functions.o scattering_factors.o fem1.o gr.o eam.o femsim.f90
+OBJ = ran2.o globals.o read_inputs_v2.o model_v2.o rmc_functions.o scattering_factors.o fem1_v2.o gr.o eam.o femsim.f90
 
 # define libraries needed by the linker
 #LIBS = -L/export/apps/openmpi_intel_20130618/lib -lmpi

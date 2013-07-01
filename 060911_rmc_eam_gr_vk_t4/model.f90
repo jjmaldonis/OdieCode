@@ -587,6 +587,8 @@ end subroutine reduce_znum
     do i=1,m%natoms
        isnew = 1
        do j=1,m%nelements
+          ! If atom i's atomic number is already in the list, don't add
+          ! its atomic number to the list again.
           if(m%znum(i) == znum_list(j)) isnew = 0
        enddo
        if (isnew /= 0) then

@@ -88,7 +88,8 @@ program femsim
   endif
   ! Added by jason on 06/28/13
   call check_model(m, istat)
-  call recenter_model(0.0, 0.0, 0.0, m)
+  ! recenter_model is called in read_model
+  !call recenter_model(0.0, 0.0, 0.0, m)
 
   ! Added by jason to make this more similar to RMC.
   param_filename = 'param_file.in'

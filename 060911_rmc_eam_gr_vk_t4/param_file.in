@@ -1,4 +1,4 @@
-parameter file opened
+#parameter file opened. set a filename to # to ignore it
 100  !total RMC steps - ignore
 968.89    !temperature
 0.671    !maximum move distance
@@ -8,7 +8,7 @@ parameter file opened
 1.76 1.76 1.76
 #
 0	!weight of electron scattering
-0  0
+0  0 !rmin_e rmax_e
 #
 0
 0  0
