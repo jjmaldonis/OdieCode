@@ -26,12 +26,10 @@ program femsim
   include "mpif.h"
 
   type(model) :: m
-  !real, allocatable, dimension(:) :: k, vk, i_k
   real res
   real, dimension(:,:), pointer :: scatfac_e
   character(len=256) :: c, model_filename, outbase, outfile
   integer :: len, istat, nk, i
-  !real :: kstart, kstep
   integer :: nphi, ntheta, npsi
   LOGICAL use_femsim
   ! Added by Jason from rmc_v_1_0.f90 for read_input function
@@ -95,6 +93,7 @@ program femsim
   param_filename = 'param_file.in'
   allocate(cutoff_r(m%nelements,m%nelements),stat=istat)
   call read_inputs(param_filename,temperature, max_move, cutoff_r, used_data_sets, weights, gr_e, r_e, gr_e_err,     gr_n, r_n, gr_x, r_x, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, scale_fac, Q, fem_algorithm, pixel_distance, total_steps, rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
+
   
   ! Added by jason so that I didn't have to input these. The new read_inputs
   ! reads in most of this.
@@ -102,44 +101,16 @@ program femsim
   nk = size(k)
   square_pixel = .TRUE.
   use_femsim = .TRUE.
-
-  ! FEM parameters
-  !write (*,*) ' '
-  !write (*,*) 'Please enter the real-space pixel diameter in Angstroms:'
-  !read (*,*) res
-  !write (*,*) 'Please enter the first k point in 1/Angstroms:'
-  !read (*,*) kstart
-  !write (*,*) 'Please enter the stepsize in k in 1/Angstroms:'
-  !read (*,*) kstep
-  !write (*,*) 'Please enter the number of points in k:'
-  !read (*,*) nk
-
-  ! Simulation parameters
-  !write (*,*) 'Please enter the number of rotations in theta:'
-  !read (*,*) ntheta
-  !write (*,*) 'Please enter the number of rotations in phi:'
-  !read (*,*) nphi
-  !write (*,*) 'Please enter the number of rotations in psi:'
-  !read (*,*) npsi
-
-  !write (*,*) 'Please enter the output filename:'
-  !read (*,*) outbase
   outbase = "jason-test_femsim"
-
   ! Set-up parameters and arrays for fem_initialize
   res = 0.5*res  ! fem_initialize wants pixel radius
 
-  !allocate(k(0))  
-  !deallocate(k)
-  !write(*,*) 'deallcate k succeeds!'
-  allocate(k(nk), vk(nk), i_k(nk),stat=istat)
+  allocate(vk(size(vk_exp)), i_k(nk),stat=istat)
   if( istat /= 0) then
      write (*,*) 'Cannot allcoate memory for V(k) in top level program.'
      write (*,*) 'Exiting.'
      stop
   endif
-
-  !k = (/ ( (kstart + kstep*real(i)), i=0, nk-1 ) /)
 
   ! Open the V(k) output file
   outfile = trim(outbase) // '_vk.out'
@@ -161,7 +132,7 @@ program femsim
   endif
   close(301)
 
-  ! fem initialize
+  ! Fem initialization
   write (*,*) ' '
   write (*,*) 'Initializing FEM calculation.'
   call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfac_e, istat, square_pixel)
@@ -171,7 +142,7 @@ program femsim
      stop
   endif
 
-  ! fem calculate with hutch
+  ! Fem calculate with hutch
   use_femsim = .TRUE.
   write (*,*) ' '
   write (*,*) 'Calculating V(k)'
@@ -188,6 +159,7 @@ program femsim
   
   write (300, *) 'k   V(k)'
   do i=1, nk
+     write (*, *) k(i), vk(i)
      write (300, *) k(i), vk(i)
   enddo
   close(unit=300)

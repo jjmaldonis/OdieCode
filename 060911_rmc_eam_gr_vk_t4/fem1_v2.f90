@@ -654,9 +654,6 @@ contains
         const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q)
         const2 = 1/fem_bin_width
         const3 = TWOPI
-        !JASON - TODO
-        deallocate(A1)
-        allocate(A1(52073))
 
         if(pixel_square) then
             do i=1,size(pix_atoms)
@@ -674,9 +671,6 @@ contains
                     x1(i)=x2
                     y1(i)=y2
                     j=int(const1*rr_a(i))
-                    if(j .eq. 0) write(*,*) "     j = ",j
-                    !JASON - I need to make sure the below line is ok.
-                    if(j .eq. 0) j=1
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
@@ -749,6 +743,14 @@ contains
                     do jj=1,m_int%nelements
                         !write(111,*)gr_i(ii,jj,j)
                         pp=const3*j*k(i)
+                        ! The following lines are also debug code. Delete them. TODO
+                        ! It looks like k is not getting initialized.
+                        !if(pp .eq. -2147483648) then
+                        !    pp=0
+                        !    write(*,*) "pp=",const3,"*",j,"*",k(i)," = ", const3*j*k(i)
+                        !endif
+                        !write(*,*) "pp=",const3,"*",j,"*",k(i)," = ", const3*j*k(i)
+                        !if(pp .eq. -2147483648) pp=0
                         !pp=0 !JASON - DELETE THIS LINE. I had to put it in to get femsim to work... TODO
                         int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
                     enddo
