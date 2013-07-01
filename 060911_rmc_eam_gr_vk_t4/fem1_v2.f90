@@ -675,6 +675,7 @@ contains
                     y1(i)=y2
                     j=int(const1*rr_a(i))
                     if(j .eq. 0) write(*,*) "     j = ",j
+                    !JASON - I need to make sure the below line is ok.
                     if(j .eq. 0) j=1
                     sum1(znum_r(i),i)=A1(j)
                 endif
