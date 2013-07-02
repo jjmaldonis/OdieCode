@@ -35,8 +35,8 @@ CONTAINS
 !***************************************************************
 !This function is used to calculate chi square
   FUNCTION chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, V, V_err,&
-       gr_e_sim, gr_n_sim, gr_x_sim, V_sim, scale_fac,&
-    rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+        gr_e_sim, gr_n_sim, gr_x_sim, V_sim, scale_fac,&
+        rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
     !used_data_sets=A logical array determine whether electron, neutron, X-ray or FEM data are available
     !gr_e electron G(r) data
@@ -48,88 +48,77 @@ CONTAINS
     !gr_n_sim=simulated g(r) for neutron scattering
     !gr_x_sim=simulated g(r) for X-ray scattering
     !V_sim=simulated V(k) for variance data
-    !All these all read from main program
-
-    LOGICAL, DIMENSION(4) :: used_data_sets
-    REAL,  DIMENSION(4) :: weights
-    REAL, POINTER, DIMENSION(:) :: gr_e, gr_e_err
-    REAL, POINTER, DIMENSION(:) :: gr_n
-    REAL, POINTER, DIMENSION(:) :: gr_x
-    REAL, POINTER, DIMENSION(:) :: V, V_err
-    REAL, POINTER, DIMENSION(:) :: gr_e_sim,gr_n_sim,gr_x_sim
-    REAL, POINTER, DIMENSION(:) :: V_sim
+    logical, dimension(4) :: used_data_sets
+    real,  dimension(4) :: weights
+    real, pointer, dimension(:) :: gr_e, gr_e_err
+    real, pointer, dimension(:) :: gr_n
+    real, pointer, dimension(:) :: gr_x
+    real, pointer, dimension(:) :: v, v_err
+    real, pointer, dimension(:) :: gr_e_sim,gr_n_sim,gr_x_sim
+    real, pointer, dimension(:) :: v_sim
     real, intent(in) :: scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x 
     real, intent (in) :: del_r_e, del_r_n, del_r_x  
     integer, intent(in) ::nk
     real, intent(out) :: chi2_gr, chi2_vk
-    
-    !********The following are local variables******
-    INTEGER i, j
-    integer nf   !normalization factor   - JWH 04/25/2009
-    REAL chi_square
-    REAL,DIMENSION(4) :: sum1 !record summation of each contribution from diffraction data
-    !and FEM data
-    
+    integer i, j
+    integer nf   !normalization factor   - jwh 04/25/2009
+    real chi_square
+    real,dimension(4) :: sum1 !record summation of each contribution from diffraction data and fem data
+    sum1=0.0
     chi_square=1.0
-    DO i=1, 4
-       sum1(i)=0.0
-    ENDDO
     
     !Electron diffraction data
     i=1
-    IF(used_data_sets(i)) THEN
+    if(used_data_sets(i)) then
        !sum1(i)=sum((gr_e_sim-gr_e)**2)*weights(i)
-    nf = 0
-    do j=int(rmin_e/del_r_e)+1, int(rmax_e/del_r_e)+1    !jwh -032409
-        nf = nf + 1
-        sum1(i) = sum1(i)+weights(i)*((gr_e_sim(j)-gr_e(j))/gr_e_err(j))**2
-    enddo
-    sum1(i) = sum1(i)/nf
-
-    ENDIF
+        nf = 0
+        do j=int(rmin_e/del_r_e)+1, int(rmax_e/del_r_e)+1    !jwh -032409
+            nf = nf + 1
+            sum1(i) = sum1(i)+weights(i)*((gr_e_sim(j)-gr_e(j))/gr_e_err(j))**2
+        enddo
+        sum1(i) = sum1(i)/nf
+    endif
     
     !Neutron diffraction data
     i=i+1
-    IF(used_data_sets(i)) THEN
+    if(used_data_sets(i)) then
        !sum1(i)=sum((gr_n_sim-gr_n)**2)*weights(i)
-    nf = 0
-    do j=int(rmin_n/del_r_n)+1, int(rmax_n/del_r_n)+1    !jwh -032409
-        nf = nf +1
-        sum1(i) = sum1(i)+weights(i)*(gr_n_sim(j)-gr_n(j))**2
-    enddo
-    sum1(i) = sum1(i)/nf
-    ENDIF
+        nf = 0
+        do j=int(rmin_n/del_r_n)+1, int(rmax_n/del_r_n)+1    !jwh -032409
+            nf = nf +1
+            sum1(i) = sum1(i)+weights(i)*(gr_n_sim(j)-gr_n(j))**2
+        enddo
+        sum1(i) = sum1(i)/nf
+    endif
     
     !X-ray diffraction data
     i=i+1
-    IF(used_data_sets(i)) THEN
+    if(used_data_sets(i)) then
        !sum1(i)=sum((gr_x_sim-gr_x)**2)*weights(i)
-    nf = 0
-    do j=int(rmin_x/del_r_x)+1, int(rmax_x/del_r_x)+1    !jwh -032409
-        nf = nf + 1
-        sum1(i) = sum1(i)+weights(i)*(gr_x_sim(j)-gr_x(j))**2
-    enddo
-    sum1(i) = sum1(i)/nf
-    ENDIF
+        nf = 0
+        do j=int(rmin_x/del_r_x)+1, int(rmax_x/del_r_x)+1    !jwh -032409
+            nf = nf + 1
+            sum1(i) = sum1(i)+weights(i)*(gr_x_sim(j)-gr_x(j))**2
+        enddo
+        sum1(i) = sum1(i)/nf
+    endif
     
     !FEM data
     i=i+1
-    IF(used_data_sets(i)) THEN
+    if(used_data_sets(i)) then
        !sum1(i)=sum(((V_sim-V*scale_fac)/(scale_fac*V_err))**2)*weights(i)
-    nf = 0
-    do j=1,nk
-        nf = nf + 1
-        sum1(i) = sum1(i)+weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
-    enddo
-    sum1(i) = sum1(i)/nf
-    ENDIF
+        nf = 0
+        do j=1,nk
+            nf = nf + 1
+            sum1(i) = sum1(i)+weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
+        enddo
+        sum1(i) = sum1(i)/nf
+    endif
 
     chi2_gr = sum1(3)
     chi2_vk = sum1(4)
-
     chi_square=sum(sum1)
-    
-  END FUNCTION chi_square
+  end function chi_square
 
 
 !*******************************************************
@@ -139,7 +128,7 @@ CONTAINS
 !SUBROUTINE Calc_Type_Order(m, Type_Order) must be called first, then 
 !this function can be called
 !The check_cufoffs function return .TRUE. if 
-!****no any two atoms are within cutoff distance
+!****no two atoms are within cutoff distance
 !Otherwise return .FALSE.
 
   FUNCTION check_cutoffs(m,cutoff_r,moved_atom)

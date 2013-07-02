@@ -11,8 +11,8 @@ module fem_mod
 
     implicit none
     private
-    public :: fem_initialize, fem, I_average
-    !public:: fem_update, fem_accept_move, fem_reject_move
+    public :: fem_initialize, fem, I_average !femsim
+    public:: fem_update, fem_accept_move, fem_reject_move !rmc
     public :: write_intensities
     !public :: print_image1, print_image2
     type pos_list
@@ -275,6 +275,8 @@ contains
     end subroutine bessel_func
 
     subroutine init_rot(ntheta, nphi, npsi, num_rot, istat)
+    ! Calculates the rotation angles and initializes them into the global
+    ! rotation array rot. The rot_temp variable is probably unnecessary.
         integer, intent(in) :: ntheta, nphi, npsi
         integer, intent(out) :: istat
         integer :: i,j, k, jj, ii
@@ -306,7 +308,6 @@ contains
             do j=1, npsi/2
                 psi_temp = (j-1)*step_size(2)
                 ntheta_w(j) = int(sin(psi_temp)*ntheta)
-                !write(*,*)i,j,"ntheta=",ntheta_w(j) 
                 if(ntheta_w(j).ge.0)then
                     if(ntheta_w(j).gt.0)then
                         pp = 2*(ntheta_w(j)-1)
@@ -319,7 +320,6 @@ contains
                             rot_temp(jj,1) = (i-1)*step_size(1)
                             rot_temp(jj,2) = (j-1)*step_size(2)
                             rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
-                            !write(*,*)j, jj, rot_temp(jj,1), rot_temp(jj,2), rot_temp(jj,3)
                             jj = jj + 1
                         endif
                     enddo
@@ -339,7 +339,6 @@ contains
             rot(i,1) = rot_temp(i,1)
             rot(i,2) = rot_temp(i,2)
             rot(i,3) = rot_temp(i,3)
-            !write(*,*)"rot",i, rot(i,1), rot(i,2), rot(i,3)
         enddo
 
         deallocate(rot_temp)
@@ -351,9 +350,9 @@ contains
         integer, intent(in) :: npix_x, npix_y
         real :: dr
         integer, intent(out) :: istat
-        LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
+        logical, optional, intent(in) :: square_pixel
         integer :: i, j, k
-        LOGICAL :: pixel_square
+        logical :: pixel_square
 
         allocate(pix(npix, 2), stat=istat)
         if (istat /= 0) then
@@ -535,6 +534,8 @@ contains
                 return
             endif
 
+            ! I don't completely understand this loop. I thought what we wanted
+            ! to do here was to calculate all the rotated models now. Are we???
             do i=myid+1, nrot, numprocs
                 call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
                 if (istat /= 0) then
@@ -550,6 +551,7 @@ contains
             endif
 
             ! initialize old_index and old_pos arrays
+            ! ??? I don't know what these are.
             do i=myid+1, nrot, numprocs
                 old_index(i)%nat = 0
                 nullify(old_index(i)%ind)
@@ -557,9 +559,10 @@ contains
                 nullify(old_pos(i)%pos)
             enddo
 
-            ! calculate intensities
+            ! Calculate intensities. This is pretty expensive.
             do i=myid+1, nrot, numprocs
                 do j=1, npix
+                write(*,*) i, j
                     call intensity(mrot(i), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
                     int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                     psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
@@ -578,27 +581,28 @@ contains
             endif
 
             deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
-        endif
+        ENDIF !Femsim or RMC
     end subroutine fem
 
     subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel)
+    ! Calculates int_i for output.
         type(model), intent(in) :: m_int
         real, intent(in) :: res, px, py
         real, dimension(nk), intent(in) :: k
         real, dimension(nk), intent(out) :: int_i
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        LOGICAL,OPTIONAL, INTENT(IN) :: square_pixel
-        real, dimension(:,:,:), allocatable :: gr_i   ! unneeded 'save' keyword removed pmv 03/18/09  !tr RE-ok -jwh
+        logical,optional, intent(in) :: square_pixel
+        real, dimension(:,:,:), allocatable :: gr_i   ! unneeded 'save' keyword removed pmv 03/18/09  !tr re-ok -jwh
         real, dimension(:), allocatable ::x1, y1, rr_a
         real, dimension(:,:), allocatable :: sum1
         real :: x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max
         integer, pointer, dimension(:) :: pix_atoms, znum_r
         integer :: i,j,ii,jj,kk
         integer :: bin_max
-        LOGICAL pixel_square
-        REAL, ALLOCATABLE, DIMENSION(:) :: rr_x, rr_y
-        REAL sqrt1_2_res
+        logical pixel_square
+        real, allocatable, dimension(:) :: rr_x, rr_y
+        real sqrt1_2_res
         real k_1
 
         if(present(square_pixel)) then
@@ -655,11 +659,11 @@ contains
         const2 = 1/fem_bin_width
         const3 = TWOPI
 
+        ! Calculate sum1 for gr_i calculation in next loop.
         if(pixel_square) then
             do i=1,size(pix_atoms)
                 x2=m_int%xx(pix_atoms(i))-px
                 y2=m_int%yy(pix_atoms(i))-py
-
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
                 y2=y2-m_int%ly*anint(y2/m_int%ly)
                 rr_x(i) = ABS(x2)
@@ -691,11 +695,12 @@ contains
             enddo
         endif
 
+        ! Calculate gr_i for int_i in next loop.
         if(pixel_square) then
             do i=1,size(pix_atoms)
-                if((rr_x(i).le.sqrt1_2_res) .AND. (rr_y(i) .le.  sqrt1_2_res))then
+                if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size(pix_atoms)
-                        if((rr_x(j).le.sqrt1_2_res) .AND. (rr_y(j) .le.  sqrt1_2_res))then
+                        if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le.  sqrt1_2_res))then
                             x2=x1(i)-x1(j)
                             y2=y1(i)-y1(j)
                             rr=sqrt(x2*x2 + y2*y2)
@@ -737,21 +742,13 @@ contains
             enddo
         endif !pixel_square
 
+        ! Calculate int_i for output.
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
                     do jj=1,m_int%nelements
                         !write(111,*)gr_i(ii,jj,j)
                         pp=const3*j*k(i)
-                        ! The following lines are also debug code. Delete them. TODO
-                        ! It looks like k is not getting initialized.
-                        !if(pp .eq. -2147483648) then
-                        !    pp=0
-                        !    write(*,*) "pp=",const3,"*",j,"*",k(i)," = ", const3*j*k(i)
-                        !endif
-                        !write(*,*) "pp=",const3,"*",j,"*",k(i)," = ", const3*j*k(i)
-                        !if(pp .eq. -2147483648) pp=0
-                        !pp=0 !JASON - DELETE THIS LINE. I had to put it in to get femsim to work... TODO
                         int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
                     enddo
                 enddo
@@ -774,6 +771,366 @@ contains
             deallocate(rr_x, rr_y)
         endif
     end subroutine intensity
+
+
+    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat,square_pixel)
+        use mpi
+        type(model), intent(in) :: m_in
+        integer, intent(in) :: atom
+        real, intent(in) :: res
+        real, dimension(:), intent(in) :: k, v_background
+        real, dimension(:), intent(out) :: vk
+        real, dimension(:,:), pointer :: scatfact_e
+        integer, intent(out) :: istat
+        LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
+        real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq    !mpi
+        integer :: comm
+        type(model) :: moved_atom, rot_atom
+        integer :: i, j, m, n
+        real :: res2, rot_dist_sq, orig_dist_sq, temp1, temp2
+        REAL rr_x_old, rr_y_old, rr_x_new, rr_y_new
+        LOGICAL pixel_square
+        real :: sqrt1_2_res
+        integer :: old_mrot_roti_nat
+        logical :: no_int_recal
+        istat = 0
+
+        if( present(square_pixel)) then
+            pixel_square = square_pixel
+        else
+            pixel_square = .FALSE.
+        endif
+        ! res is diameter of a pixel, but later we need the square of the radius
+        res2 = (res)**2    !temporary - radius = resolution assumed - JWH 02/25/09
+
+        ! Create a new model (moved_atom) with only one atom in it and put the
+        ! position of the moved atom into it.
+        allocate(moved_atom%xx(1), moved_atom%yy(1), moved_atom%zz(1), moved_atom%znum(1), &
+        moved_atom%atom_type(1), moved_atom%znum_r(1), moved_atom%composition(1), stat=istat)
+        allocate(psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), sum_int_sq(size(k)), stat=istat)
+        moved_atom%natoms = 1
+        moved_atom%xx(1) = m_in%xx(atom)
+        moved_atom%yy(1) = m_in%yy(atom)
+        moved_atom%zz(1) = m_in%zz(atom)
+        moved_atom%znum(1) = m_in%znum(atom)
+        moved_atom%znum_r(1) = m_in%znum_r(atom)
+        moved_atom%lx = m_in%lx
+        moved_atom%ly = m_in%ly
+        moved_atom%lz = m_in%lz
+        moved_atom%nelements = 1
+        moved_atom%atom_type(1) = m_in%znum(atom)
+        moved_atom%composition(1) = 1.0
+        moved_atom%rotated = .FALSE.
+
+        ! update each rotated model with the position of the moved atom, then
+        ! recalculate the intensities of only the pixels involving the moved atom
+
+        old_int=0.0
+        old_int_sq=0.0
+
+        sum_int = 0.0
+        sum_int_sq = 0.0
+
+        psum_int = 0.0
+        psum_int_sq = 0.0
+
+        rotations: do i=myid+1, nrot, numprocs
+        write(*,*) 'rotation ', i
+            do m=1, npix
+                old_int(1:nk, m, i) = int_i(1:nk, m, i)
+                old_int_sq(1:nk, m, i) = int_sq(1:nk, m, i)
+            enddo
+
+            ! Rotate that moved atom
+            call rotate_model(rot(i,1), rot(i, 2), rot(i, 3), moved_atom, rot_atom, istat)
+
+            if( (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0) ) goto 100   !JWH - 04/14/2009
+            ! the rotated atom has left the model, so there is no structural
+            ! change - skip the rest of the loop
+            ! if moving the atom changes the number of times it appears in the
+            ! rotated model,
+            ! just give up: re-rotate the entire model, and recalculate all
+            ! the intensities
+            ! (might not be necessary to recalculate all the intensities.  have
+            ! to think about that
+            ! TODO
+
+            if(mrot(i)%rot_i(atom)%nat /= rot_atom%natoms) then
+                !write(*,*)"scratch", mrot(i)%rot_i(atom)%nat, rot_atom%natoms
+                ! store the original index and position in old_index and old_pos
+                if(mrot(i)%rot_i(atom)%nat /= 0) then
+                    do j=1, mrot(i)%rot_i(atom)%nat
+                        call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
+                        call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), &
+                        mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
+                    enddo
+                endif
+
+                !write (*,*) 'Rerotating the model from scratch.'
+
+                old_mrot_roti_nat = mrot(i)%rot_i(atom)%nat
+                call destroy_model(mrot(i))
+                call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m_in, mrot(i), istat)
+
+                do m=1, npix
+                    no_int_recal = .true.
+                    if(rot_atom%natoms /= 0) then
+                        do n=1, rot_atom%natoms
+                            temp1 = rot_atom%xx(n) - pix(m,1)
+                            temp2 = rot_atom%yy(n) - pix(m,2)
+                            temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
+                            temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
+                            rr_x_new = ABS(temp1)
+                            rr_y_new = ABS(temp2)
+                            rot_dist_sq = (temp1)**2 + (temp2)**2
+
+                            if(pixel_square) then
+                                sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/ ???
+                                if((rr_x_new .LE. sqrt1_2_res) .AND. (rr_y_new .LE.  sqrt1_2_res)) THEN
+                                    call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                                    int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                                    no_int_recal = .false.
+                                endif
+                            else
+                                sqrt1_2_res = res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/ ???
+                                if (rot_dist_sq <= res2) then
+                                    call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                                    int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                                    no_int_recal = .false.
+                                endif
+                            endif
+                        enddo
+                    endif
+
+                    if(no_int_recal)then
+                        if(old_mrot_roti_nat /= 0) then
+                            do n=1, old_mrot_roti_nat
+                                temp1 = old_pos(i)%pos(n,1) - pix(m,1)
+                                temp2 = old_pos(i)%pos(n,2) - pix(m,2)
+                                temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
+                                temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
+                                rr_x_old = ABS(temp1)
+                                rr_y_old = ABS(temp2)
+                                orig_dist_sq = (temp1)**2 + (temp2)**2
+
+                                if(pixel_square) then
+                                    sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/ ???
+                                    if((rr_x_old .LE. sqrt1_2_res) .AND.  (rr_y_old .LE.  sqrt1_2_res)) then
+                                        call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                                        int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                                    endif
+                                else
+                                    if (orig_dist_sq <= res2) then
+                                        call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
+                                        int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                                    endif
+                                endif
+                            enddo
+                        endif
+                    endif
+                enddo
+
+                old_index(i)%nat = -1
+
+            else
+                !write(*,*)"reg", mrot(i)%rot_i(atom)%nat, rot_atom%natoms
+
+                ! replace the original, rotated atom with its new position(s).
+                ! if it appears more than once
+                ! in the new model, the rotated model atoms should appear in the
+                ! same order as they do in the full-size, rotated model
+                !write (*,*) 'replacing rotated atoms with new positions.'
+
+                do j=1,mrot(i)%rot_i(atom)%nat
+                    ! store the original index and position in old_index and
+                    ! old_pos
+                    call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
+                    call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), &
+                    mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
+
+                    ! change the model atom position to the new, rotated
+                    ! position
+                    mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%xx(j)
+                    mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%yy(j)
+                    mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%zz(j)
+                enddo
+
+                ! now check if either the original position of the moved atom or
+                ! the rotated position of the moved
+                ! atom are inside each pixel.  If so, that pixel intensity must
+                ! be recalculated.
+                ! replace this with one loop over the rotated atom positions and
+                ! another over the original atom
+                ! positions, and if either is true, calculate the intensities.
+                ! that way it works for either case above.
+
+                do m=1, npix
+                    do n=1, rot_atom%natoms
+                        !This didn't have PBC. Now it's added below - 030409 -
+                        !JWH
+                        !rot_dist_sq = (mrot(i)%xx(n) - pix(m,1))**2 +
+                        !(mrot(i)%yy(n) -
+                        !pix(m,2))**2
+
+                        temp1 = rot_atom%xx(n) - pix(m,1)
+                        temp2 = rot_atom%yy(n) - pix(m,2)
+                        temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
+                        temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
+                        rr_x_new = ABS(temp1)
+                        rr_y_new = ABS(temp2)
+
+                        rot_dist_sq = (temp1)**2 + (temp2)**2
+
+                        temp1 = old_pos(i)%pos(n,1) - pix(m,1)
+                        temp2 = old_pos(i)%pos(n,2) - pix(m,2)
+                        temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
+                        temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
+
+                        rr_x_old = ABS(temp1)
+                        rr_y_old = ABS(temp2)
+
+                        orig_dist_sq = (temp1)**2 + (temp2)**2
+
+                        if(pixel_square) then
+                            if(((rr_x_old .LE. res) .AND. (rr_y_old .LE. res)) .OR. ((rr_x_new .LE. res) .AND. (rr_y_new .LE. res))) THEN
+                                call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                                int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                            endif
+                        else
+                            if ( (rot_dist_sq <= res2) .OR. (orig_dist_sq <= res2) ) then
+                                call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                                int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                            endif
+                        endif
+                    enddo
+                enddo
+            endif
+
+            100 continue
+            do m=1, npix
+                psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, m, i)
+                psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)
+            enddo
+
+            !Deallocate ind in rot_atom%rot_i
+
+            do n=1, size(rot_atom%rot_i,1)
+                if(associated(rot_atom%rot_i(n)%ind))then
+                    deallocate(rot_atom%rot_i(n)%ind)
+                endif
+            enddo
+
+            deallocate(rot_atom%xx, rot_atom%yy, rot_atom%zz, rot_atom%znum, rot_atom%rot_i, rot_atom%znum_r, stat=istat)
+
+        enddo rotations
+
+        call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
+        call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
+
+        ! recalculate the variance
+        if(myid.eq.0)then
+            do i=1, nk
+                Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
+                Vk(i) = Vk(i) - v_background(i)   !background subtraction 052210 JWH
+            end do
+        endif
+
+        deallocate(moved_atom%xx, moved_atom%yy, moved_atom%zz, moved_atom%znum, moved_atom%atom_type, moved_atom%znum_r, moved_atom%composition, stat=istat)
+        deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
+    end subroutine fem_update
+
+    subroutine fem_accept_move(comm)
+    ! accept the move.  don't need to change any of the atom positions in any of the rotated
+    ! models, but we do need to clear the old_index and old_pos arrays for reuse.
+        use mpi
+        integer :: comm
+        call fem_reset_old(comm)
+    end subroutine fem_accept_move
+
+    subroutine fem_reset_old(comm)
+    use mpi
+    integer :: i, comm
+    do i=myid+1, nrot, numprocs
+        if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
+            nullify(old_index(i)%ind)
+        old_index(i)%nat = 0
+        if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
+            nullify(old_pos(i)%pos)
+        old_pos(i)%nat = 0
+    enddo
+    end subroutine fem_reset_old
+
+    subroutine fem_reject_move(m, comm)
+    ! reject the move.  replace all the moved atoms with their original positions. 
+    ! requires that the model argument have the original (unmoved) positions in it.
+        use mpi
+        type(model), intent(inout) :: m
+        integer :: i, j, istat
+        integer :: comm
+
+        do i=myid+1, nrot, numprocs
+            ! the rotated atom wasn't in the model, so this model doesn't need
+            ! to be changed
+            if(old_index(i)%nat == 0) cycle
+            ! the move changed the number of atoms in the model, so the model
+            ! must be re-rotated
+            ! from scratch
+            if(old_index(i)%nat == -1) then
+                call destroy_model(mrot(i))
+                call rotate_model(rot(i,1), rot(i,2), rot(i,3), m, mrot(i), istat)
+                cycle
+            endif
+
+            ! otherwise, copy the old positions back into the model at the
+            ! correct indices
+            do j=1,old_index(i)%nat
+                mrot(i)%xx(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
+                mrot(i)%yy(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
+                mrot(i)%zz(old_index(i)%ind(j)) = old_pos(i)%pos(j,3)
+            enddo
+
+            !The saved intensity values must return to their old values - JWH
+            !03/05/09
+            do j=1, npix
+                int_i(1:nk, j, i) = old_int(1:nk, j, i)
+                int_sq(1:nk, j, i) = old_int_sq(1:nk, j, i)
+            enddo
+        enddo
+        call fem_reset_old(comm)
+    end subroutine fem_reject_move
+
+    subroutine add_pos(p, xx, yy, zz, istat)
+        type(pos_list), intent(inout) :: p
+        real, intent(in) :: xx, yy,  zz
+        integer, intent(out) :: istat
+        real, dimension(:,:), allocatable :: scratch
+        if (p%nat .GT. 0) then
+             allocate(scratch(p%nat+1,3), stat=istat)
+             if (istat /= 0) continue
+             scratch(1:p%nat, 1:3) = p%pos
+             p%nat = p%nat+1
+             scratch(p%nat,1) = xx
+             scratch(p%nat,2) = yy
+             scratch(p%nat,3) = zz
+             deallocate(p%pos)
+             allocate(p%pos(p%nat,3), stat=istat)
+             if (istat /= 0) continue
+             p%pos = scratch
+        else
+             p%nat = 1
+             allocate(p%pos(1,3), stat=istat)
+             if (istat /= 0) continue
+             p%pos(1,1) = xx
+             p%pos(1,2) = yy
+             p%pos(1,3) = zz
+        endif
+        if (istat /= 0) then
+            write (*,*) 'Error allocating memory in add_pos.'
+        endif
+        if (allocated(scratch)) then
+            deallocate(scratch)  ! added 3/18/09 pmv 
+        endif
+      end subroutine add_pos
 
 
 end module fem_mod

@@ -267,13 +267,13 @@ contains
     end subroutine recenter_model
 
     subroutine model_init_hutch(m, status)
-    ! initializes the hutch_array ha within the model.  It calcualtes the
-    ! hutch_size based on the
-    ! model box size and the parameter ATOMS_PER_HUTCH, the number of hutches in
-    ! the array nhutch_x, nhutch_y, and hhutch_z, then assigns all the atoms in
-    ! the current model atom position arrays xa, ya, and za to the appropriate
-    ! hutches.  It does NOT check whether ha has already been initialized, so this
-    ! routine should NEVER be called more than once for the same hutch_array.
+    ! Initializes the hutch_array ha within the model m. It calcualtes the
+    ! hutch_size (based on the model box size and the parameter
+    ! ATOMS_PER_HUTCH) and the number of hutches in the array (nhutch_x, nhutch_y,
+    ! and hhutch_z). It then assigns all the atoms in the current model atom
+    ! position arrays xa, ya, and za to the appropriate hutches.  It does NOT
+    ! check whether ha has already been initialized, so this routine should
+    ! NEVER be called more than once for the same hutch_array.
     ! WARNING!!! THE BOX MUST BE A PERFECT CUBE FOR THIS FUCNTION TO WORK. - JASON
         type(model), intent(inout) :: m
         integer, intent(out) :: status
@@ -640,7 +640,6 @@ contains
         integer p_relative_3D, p_relative_2D
         integer ratio_position
         real ratio1
-        logical New_Algorithm
 
         ha => m%ha
 
@@ -669,76 +668,44 @@ contains
             if(i .eq. 1) then
                 if((ratio1 .ge. 0) .and. (ratio1 .le.  list_1_2d%ratio_radius_square(i))) then
                     ratio_position = i
-                    new_algorithm = .true.
                     exit
                 endif
             else
                 if((ratio1 .ge. list_1_2d%ratio_radius_square(i-1)) .and.  (ratio1 .le. list_1_2d%ratio_radius_square(i))) then  !old way- i,i+1
                     ratio_position = i
-                    new_algorithm = .true.
                     exit
                 endif
             endif
         enddo
 
-        !Jason - TODO only use the new algorithm
-        if(new_algorithm) then
-            nlist = 1
-            do hk = 1, ha%nhutch_z
-                do k1=1, list_1_2d%list_2d(p_relative_2d, ratio_position)%size_d
-                    j = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_y(k1)
-                    j = hy + j
-                    if (j > ha%nhutch_y) then
-                        hj = j - ha%nhutch_y
-                    else if (j < 1) then
-                        hj = j+ ha%nhutch_y
-                    else
-                        hj = j
-                    end if
-                    i = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_x(k1)
-                    i = hx + i
-                    if (i > ha%nhutch_x) then !Periodic boundary condition
-                        hi = i - ha%nhutch_x
-                    else if (i < 1) then
-                        hi = i + ha%nhutch_x
-                    else
-                        hi = i
-                    end if
-                    if (ha%h(hi, hj, hk)%nat > 0) then
-                        temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
-                        nlist = nlist+ha%h(hi,hj,hk)%nat
-                    endif
-                enddo !end k1
-            enddo !hk
-        else
-            !inefficient algorithm will be used
-            write(*, *) 'Inefficient pixel algorithm is used'
-            nlist = 1
-            do hk = 1, ha%nhutch_z
-                do j = (hy-nh), (hy+nh)
-                    if (j > ha%nhutch_y) then
-                        hj = j - ha%nhutch_y
-                    else if (j < 1) then
-                        hj = j + ha%nhutch_y
-                    else
-                        hj = j
-                    end if
-                    do i = (hx-nh), (hx+nh)
-                        if (i > ha%nhutch_x) then
-                            hi = i - ha%nhutch_x
-                        else if (i < 1) then
-                            hi = i + ha%nhutch_x
-                        else
-                            hi = i
-                        end if
-                        if (ha%h(hi, hj, hk)%nat > 0) then
-                            temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
-                            nlist = nlist+ha%h(hi,hj,hk)%nat
-                        endif
-                    end do
-                end do
-            end do
-        endif !which algorithm to be used
+        ! Using new algorithm.
+        nlist = 1
+        do hk = 1, ha%nhutch_z
+            do k1=1, list_1_2d%list_2d(p_relative_2d, ratio_position)%size_d
+                j = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_y(k1)
+                j = hy + j
+                if (j > ha%nhutch_y) then
+                    hj = j - ha%nhutch_y
+                else if (j < 1) then
+                    hj = j+ ha%nhutch_y
+                else
+                    hj = j
+                end if
+                i = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_x(k1)
+                i = hx + i
+                if (i > ha%nhutch_x) then !Periodic boundary condition
+                    hi = i - ha%nhutch_x
+                else if (i < 1) then
+                    hi = i + ha%nhutch_x
+                else
+                    hi = i
+                end if
+                if (ha%h(hi, hj, hk)%nat > 0) then
+                    temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
+                    nlist = nlist+ha%h(hi,hj,hk)%nat
+                endif
+            enddo !end k1
+        enddo !hk
 
         allocate(atoms(nlist-1), stat=istat)
         if (istat /= 0) then
@@ -1077,6 +1044,7 @@ contains
         endif
     end subroutine periodic_continue_model
 
+
     subroutine hutch_list_3D(m, px, py, pz, radius, atoms, istat, nlist)
     ! Makes list (in atoms) of the indices of atoms that are in a space of
     ! length radius, centered on the hutch containing  the point (px, py, pz),
@@ -1088,14 +1056,11 @@ contains
         ! for each atom.
 
         type(model), target, intent(in) :: m
-        !TYPE(hutch_3D_array), INTENT(IN) :: list1 !sotre relative position of
-        !each hutch which are need for calculation
         real, intent(in) :: px, py, pz
         real, intent(in) :: radius
         !integer,  dimension(:), pointer, intent(out) :: atoms
         integer,  dimension(:), pointer :: atoms
         integer, intent(out) :: nlist        ! number of atoms in list
-        !integer :: nlist        ! number of atoms in list
         integer, intent(out) :: istat
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
         integer :: nh           ! number of hutches corresponding to radius
@@ -1103,27 +1068,22 @@ contains
         integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
         integer, allocatable, dimension(:), target :: temp_atoms  ! temporary atoms list
         type(hutch_array), pointer :: ha
-
         integer p_relative_3d, p_relative_2d
         integer ratio_position
         real ratio1
-        logical new_algorithm
         !integer i2, j2, k2 !consider the hutch across the box boundary
 
         ha => m%ha
         allocate(temp_atoms(m%natoms), stat=istat)
-
         if (istat /= 0) then
-        write (*,*) 'Cannot allocate index list in hutch_list_3D.'
-        return
+            write (*,*) 'Cannot allocate index list in hutch_list_3D.'
+            return
         endif
 
         call hutch_position_eff(m, px, py, pz, hx, hy, hz,p_relative_3D, p_relative_2D)
 
         ratio1 = radius / ha%hutch_size
         nh = ceiling(ratio1)
-
-        New_Algorithm = .FALSE.
 
         if(.not. hlist_3d_calc) then
             call pre_calc_3d_hutch(m)
@@ -1133,89 +1093,53 @@ contains
             if(i .eq. 1) then
                 if((ratio1 .ge. 0) .and. (ratio1 .le.  list_1_3d%ratio_radius_hutch(i))) then
                     ratio_position = i
-                    new_algorithm = .true.
                     exit
                 endif
             else
                 if((ratio1 .ge. list_1_3d%ratio_radius_hutch(i-1)) .and. (ratio1 .le.  list_1_3d%ratio_radius_hutch(i))) then
                     ratio_position = i
-                    new_algorithm = .true.
                     exit
                 endif
             endif
         enddo
 
-        if (new_algorithm) then
-            nlist = 1
-            do k1=1, list_1_3d%list_3d(p_relative_3d, ratio_position)%size_d
-                k = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_z(k1)
-                k = hz + k
-                if (k > ha%nhutch_z) then
-                    hk = k - ha%nhutch_z
-                else if (k < 1) then
-                    hk = k + ha%nhutch_z
-                else
-                    hk = k
-                end if
-                j = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_y(k1)
-                j = hy + j
-                if (j > ha%nhutch_y) then
-                    hj = j - ha%nhutch_y
-                else if (j < 1) then
-                    hj = j+ ha%nhutch_y
-                else
-                    hj = j
-                end if
-                i = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_x(k1)
-                i = hx + i
-                !Periodic boundary condition
-                if (i > ha%nhutch_x) then
-                    hi = i - ha%nhutch_x
-                else if (i < 1) then
-                    hi = i + ha%nhutch_x
-                else
-                    hi = i
-                end if
-                if (ha%h(hi, hj, hk)%nat > 0) then
-                    temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
-                    nlist = nlist+ha%h(hi,hj,hk)%nat
-                endif
-            enddo !k1
-        !TODO - Jason Only use the new algorithm.
-        else  ! New_algorithm is false
-            nlist = 1
-            do k = (hz-nh), (hz+nh)
-                if (k > ha%nhutch_z) then
-                    hk = k - ha%nhutch_z
-                else if (k < 1) then
-                    hk = k + ha%nhutch_z
-                else
-                    hk = k
-                end if
-                do j = (hy-nh), (hy+nh)
-                    if (j > ha%nhutch_y) then
-                        hj = j - ha%nhutch_y
-                    else if (j < 1) then
-                        hj = j+ ha%nhutch_y
-                    else
-                        hj = j
-                    end if
-                    do i = (hx-nh), (hx+nh)
-                        if (i > ha%nhutch_x) then !Periodic boundary condition
-                            hi = i - ha%nhutch_x
-                        else if (i < 1) then
-                            hi = i + ha%nhutch_x
-                        else
-                            hi = i
-                        end if
-                        if (ha%h(hi, hj, hk)%nat > 0) then
-                            temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
-                            nlist = nlist+ha%h(hi,hj,hk)%nat
-                        endif
-                    end do
-                end do
-            end do
-        endif !which algorithm to be picked up
+        ! Using new algorithm.
+        nlist = 1
+        do k1=1, list_1_3d%list_3d(p_relative_3d, ratio_position)%size_d
+            k = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_z(k1)
+            k = hz + k
+            if (k > ha%nhutch_z) then
+                hk = k - ha%nhutch_z
+            else if (k < 1) then
+                hk = k + ha%nhutch_z
+            else
+                hk = k
+            end if
+            j = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_y(k1)
+            j = hy + j
+            if (j > ha%nhutch_y) then
+                hj = j - ha%nhutch_y
+            else if (j < 1) then
+                hj = j+ ha%nhutch_y
+            else
+                hj = j
+            end if
+            i = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_x(k1)
+            i = hx + i
+            !Periodic boundary condition
+            if (i > ha%nhutch_x) then
+                hi = i - ha%nhutch_x
+            else if (i < 1) then
+                hi = i + ha%nhutch_x
+            else
+                hi = i
+            end if
+            if (ha%h(hi, hj, hk)%nat > 0) then
+                temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
+                nlist = nlist+ha%h(hi,hj,hk)%nat
+            endif
+        enddo !k1
+
         allocate(atoms(nlist-1), stat=istat)
         if (istat /= 0) then
             write (*,*) 'Unable to allocate memory for atom indices in hutch_list_3D.'
@@ -1250,7 +1174,6 @@ contains
         !integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
         integer, dimension(:), allocatable, target :: temp_atoms
         type(hutch_array), pointer :: ha
-
         ha => m%ha
 
         allocate(temp_atoms(m%natoms), stat=istat)
@@ -1260,7 +1183,6 @@ contains
         end if
 
         call hutch_position(m, px, py, 0.0, hx, hy, hz)
-
         nh = ceiling( (12.0) / ha%hutch_size)   !debug
         nlist = m%natoms
 
@@ -1279,13 +1201,12 @@ contains
             nullify(atoms)
             istat = -1
         endif
-
         if(allocated(temp_atoms)) deallocate(temp_atoms)
         if(associated(ha)) then
-        nullify(ha)             !jwh - 062509
+            nullify(ha)             !jwh - 062509
         endif
-
     end subroutine hutch_list_pixel_sq
+
 
     subroutine pre_calc_3d_hutch(m)
     !pre-calculate the relative hutch position with respect to the center hutch
@@ -1339,7 +1260,7 @@ contains
             !second dimension refers to x or y relative position
         endif
 
-        write(*,*) "There are do loops over the following numbers (nested): ", num_z, ", ", num_y, ",", num_x, ",", list_1_3d%size_ratio, ",", nh, ",", nh, ",", nh
+        ! The variables over these do loops are small (0-10) as far as I can tell.
         do i1=1, num_z
             do j1=1, num_y
                 do k1=1,num_x
@@ -1447,6 +1368,71 @@ contains
 
     end subroutine pre_calc_3d_hutch
 
+    subroutine hutch_move_atom(m, atom, xx, yy, zz)
+    ! Moves the atom with index atom from its current hutch in hutch_array to
+    ! to the hutch that encompasses position (xx, yy, zz).  Used to update the
+    ! hutch_array for a Monte Carlo move of one atom.
+        type(model), target, intent(inout) :: m
+        integer, intent(in) :: atom
+        real, intent(in) :: xx, yy, zz
+        integer :: hx, hy, hz
+        type(hutch_array), pointer :: ha
+        ha => m%ha
+        call hutch_remove_atom(m, atom)
+        call hutch_position(m, xx, yy, zz, hx, hy, hz)
+        call hutch_add_atom(m, atom, hx, hy, hz)
+        ha%atom_hutch(atom, 1) = hx
+        ha%atom_hutch(atom, 2) = hy
+        ha%atom_hutch(atom, 3) = hz
+    end subroutine hutch_move_atom
 
+
+    subroutine reject_position(m, atom, xx_cur, yy_cur, zz_cur)
+        type(model), intent(inout) :: m
+        integer, intent(in) :: atom
+        real, intent(in) :: xx_cur, yy_cur, zz_cur
+        !The moved atom in the original model, m, should return to their old position
+        !when the random move is rejected - JWH 03/05/09
+        m%xx(atom) = xx_cur
+        m%yy(atom) = yy_cur
+        m%zz(atom) = zz_cur
+    end subroutine reject_position
+
+
+    subroutine hutch_remove_atom(m, atom)
+    ! remove atom atom from its current hutch.  This reduces the number of atoms in hutch
+    ! array by one, so it should only be used in conjunction with hutch_add_atom.
+        type(model), target, intent(inout) :: m
+        integer, intent(in) :: atom
+        integer, dimension(m%ha%h(m%ha%atom_hutch(atom,1),m%ha%atom_hutch(atom,2),m%ha%atom_hutch(atom,3))%nat) :: scratch_atoms
+        integer :: hx, hy, hz, i, j
+        type(hutch_array), pointer :: ha
+        ha => m%ha
+
+        hx = ha%atom_hutch(atom,1)
+        hy = ha%atom_hutch(atom,2)
+        hz = ha%atom_hutch(atom,3)
+
+        scratch_atoms = ha%h(hx,hy,hz)%at
+        deallocate(ha%h(hx,hy,hz)%at)
+
+        if(ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
+            allocate(ha%h(hx,hy,hz)%at(ha%h(hx,hy,hz)%nat-1))
+            j=1
+            do i=1, ha%h(hx,hy,hz)%nat
+                if (scratch_atoms(i) /= atom) then
+                    ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
+                    j=j+1
+                end if
+            enddo
+
+            ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
+            ha%atom_hutch(atom,1) = 0
+            ha%atom_hutch(atom,2) = 0
+            ha%atom_hutch(atom,3) = 0
+        else
+            ha%h(hx,hy, hz)%nat = 0
+        endif
+    end subroutine hutch_remove_atom
 
 end module model_mod

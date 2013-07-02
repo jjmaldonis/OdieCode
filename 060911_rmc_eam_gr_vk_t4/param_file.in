@@ -1,6 +1,6 @@
 #parameter file opened. set a filename to # to ignore it
 100  !total RMC steps - ignore
-968.89    !temperature
+968.89    !starting temperature
 0.671    !maximum move distance
 !cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
 1.76 1.76 1.76

@@ -100,6 +100,7 @@ program femsim
   res = 0.61/Q
   nk = size(k)
   square_pixel = .TRUE.
+  !square_pixel = .FALSE.
   use_femsim = .TRUE.
   outbase = "jason-test_femsim"
   ! Set-up parameters and arrays for fem_initialize
