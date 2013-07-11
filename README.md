@@ -145,7 +145,7 @@ Note that I may not remember every step, so you may have to figure some things o
 The `PATH` variable is primarily set in `/etc/profile` and `/etc/profile.d/` .sh bash scripts. However, you wont be doing anything in /etc/profile.
 The `LD_LIBRARY_PATH` variable is primarily set in `/etc/ld.so.conf` and `/etc/ld.so.conf.d/` .sh bash scripts.  
 Note that you can override or append/prepend to any env var in your `~/.bashrc`.  
-Also note that whatever env vars are set when you submit a job are linked to the job - or something like that.  
+From Dan: When the job runs on the node, the job essentially logs in as the user to start and run the job, therefore it is not the same session you are in when creating and submitting the job. Having the users .bashrc set will cause the variables to be passed when the job logs in (I set them globally instead). Don’t forget to run `rocks sync config` and `rocks sync users` after adding and/or changing user accounts.  
 You can check to see if a specific executable is found in the correct spot with `which <executable>`.
 
 We will start with `PATH`.  
@@ -164,8 +164,8 @@ Create a file named `intel_<date>.sh` and paste the following contents into the 
     fi  
 </pre>
 
-If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
-If you are using Samba then create a new file called samba_<date>.sh and paste in the following line:  
+If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all `/export/...` to `/share/...` because I installed the Intel package in the `/export/...` directory. I dont know if this makes any difference, but the compute nodes dont see `/export`, they only see `/share` or `/state/partition1`. At least this is my understanding.  
+If you are using Samba then create a new file called `samba_<date>.sh` and paste in the following line:  
 
     export PATH=$PATH:/usr/local/samba/sbin  
 
