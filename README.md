@@ -87,10 +87,9 @@ I got the error:
 >    libstdc++ (including libstdc++6)  
 >    glibc  
 >    libgcc  
-
-Without these libraries, the compiler will not function properly. Please refer to Release Notes for more information."  
-at one point so I installed these libraries.  
-I searched for them using yum search <name> and then installed all the *.i686 ones with yum install <full_name> as taken from the yum search.  
+>Without these libraries, the compiler will not function properly. Please refer to Release Notes for more information."  
+ 
+I searched for these libraries using yum search <name> and then installed all the *.i686 ones with yum install <full_name> as taken from the yum search.  
 I then rechecked the installation dependencies and that problem was solved.  
 However, I still have the problem:  
 >The system does not use an Intel Architecture processor. The drivers for Hardware Event-based Sampling (EBS) data collection and Power analysis require a genuine Intel processor and will be disabled. To enable this functionality, install the product on a system with an Intel Architecture processor.
@@ -105,8 +104,8 @@ It finished successfully. I then executed the "source" commands that the output 
     source /share/apps/intel/intel-original-2013-x84-mv0.0/bin/compilervars.sh intel64  
 
 Your compilers are now:  
-*    For C++: icpc  
-*    For C: icc  
+*    For C++:     icpc  
+*    For C:       icc  
 *    For Fortran: ifort  
 
 Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).  
@@ -163,6 +162,7 @@ Create a file named intel_<date>.sh and paste the following contents into the fi
         source /share/apps/intel_20130618/advisor_xe_2013/advixe-vars.sh >/dev/null  
         source /share/apps/intel_20130618/bin/compilervars.sh intel64 >/dev/null  
     fi  
+    
 /pre>
 
 If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
