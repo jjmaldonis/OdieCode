@@ -485,7 +485,7 @@ contains
         r(3,2) = -stheta*cpsi
         r(3,3) = ctheta
 
-        ! Rotate the position vectors in mt (the temporary model).
+        ! Rotate the position vectors in mt (the temporary 3x3x3 model).
         do i=1,mt%natoms
             if(abs(mt%xx(i)).le.1.2*sqrt(2.0)*min%lx/2)then
                 if(abs(mt%yy(i)).le.1.2*sqrt(2.0)*min%ly/2)then
@@ -538,7 +538,8 @@ contains
            nullify(mrot%rot_i(i)%ind)
         enddo
 
-        ! now copy just the atoms inside the box from the temp model to the rotated one
+        ! now copy just the atoms inside the original box size 
+        ! from the temp model to the rotated one.
         j=1
         do i=1, mt%natoms
             if (mt%xx(i) <= lx2 .AND. mt%xx(i) >= -1.0*lx2) then
@@ -1052,8 +1053,10 @@ contains
     ! if memory allocation fails and -1 if no atoms are found.
     ! more efficient than old algorithm
     ! use private variable list_1_3D
-        ! TODO - JASON Go through this function... it is called in eam_initial
-        ! for each atom.
+
+    ! Returns the atoms (aka atom indices) that are within radius radius of 
+    ! position (px,py,pz) in the list 'atoms'. Stores in nlist the number of
+    ! atoms in this radius (i.e. size(atoms)+1 because of the original atom).
 
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, pz
@@ -1161,6 +1164,8 @@ contains
     end subroutine hutch_list_3d
 
     subroutine hutch_list_pixel_sq(m, px, py, diameter, atoms, istat)
+    ! Currently stores into atoms the index of every atom from 1 to m%natoms.
+    ! TODO That probably isn't what we want.
     ! I deleted a lot of commented lines in here that may be useful later.
     ! -Jason
         type(model), target, intent(in) :: m
@@ -1183,7 +1188,12 @@ contains
         end if
 
         call hutch_position(m, px, py, 0.0, hx, hy, hz)
+
+        !nh = ceiling( (diameter/2.) / ha%hutch_size)
+        !nh = ceiling( (diameter) / ha%hutch_size)      !res=radius - JWH 062509
+        !nh = ceiling( (diameter/sqrt(2.0)) / ha%hutch_size)      !modified for sqaure pix - JWH 062509  .. wrong jwh 032311
         nh = ceiling( (12.0) / ha%hutch_size)   !debug
+
         nlist = m%natoms
 
         allocate(atoms(nlist), stat=istat)
@@ -1202,9 +1212,7 @@ contains
             istat = -1
         endif
         if(allocated(temp_atoms)) deallocate(temp_atoms)
-        if(associated(ha)) then
-            nullify(ha)             !jwh - 062509
-        endif
+        if(associated(ha)) nullify(ha)   !jwh - 062509
     end subroutine hutch_list_pixel_sq
 
 

@@ -1,4 +1,4 @@
-This is the general flow femsim. Some things are left out if I think they are minor, and some are left out because the function name implies them or I already know they are done in the function (i.e. rotate_model rotates an individual model at an angle and recalculates some necessary things). It is also often necessary to calculate the hutch position - these calls are left out.
+This is the general flow femsim. Some things are left out if I think they are minor, and some are left out because the function name implies them or I already know they are done in the function (i.e. rotate_model rotates an individual model at an angle and recalculates some necessary things). It is also often necessary to calculate the hutch position - these calls are left out. 
 
 
 call read_model(model_filename, c, m, istat)

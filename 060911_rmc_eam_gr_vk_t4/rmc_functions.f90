@@ -131,96 +131,88 @@ CONTAINS
 !****no two atoms are within cutoff distance
 !Otherwise return .FALSE.
 
-  FUNCTION check_cutoffs(m,cutoff_r,moved_atom)
+    function check_cutoffs(m,cutoff_r,moved_atom)
+        logical check_cutoffs
+        real,dimension(:,:) ::cutoff_r
+        integer moved_atom
+        type(model) m
+        integer, dimension(:), pointer :: atoms
+        integer  nlist
+        integer istat
+        real radius, temp_x, temp_y, temp_z
+        integer i,j
+        integer num1, num2
+        real dist_pair
 
-    LOGICAL check_cutoffs
-    REAL,DIMENSION(:,:) ::cutoff_r
-    INTEGER moved_atom
-    TYPE(model) m
+        !find the maximum cut-off distance
+        radius=maxval(maxval(cutoff_r, 1),1)
 
-    INTEGER, DIMENSION(:), POINTER :: atoms
-    INTEGER  nlist
-    INTEGER istat
-    REAL radius, temp_x, temp_y, temp_z
-    INTEGER i,j
-    INTEGER num1, num2
-    REAL dist_pair
+        ! Find all atoms within radius radius of moved_atom and put them 
+        ! in the list atoms. Also sets nlist == size(atoms)+1.
+        call hutch_list_3D(m, m%xx(moved_atom),m%yy(moved_atom),m%zz(moved_atom), radius, atoms, istat, nlist)
+        if (istat .eq. 1) then
+            print *, 'memory allocation fails!'
+            return
+        else if(istat .eq. -1) then
+            print *, 'no atom is found'
+            check_cutoffs = .true. 
+            return
+        endif
 
-    !Find the maximum cut-off distance
-    radius=MAXVAL(MAXVAL(cutoff_r, 1),1)
+        !begin to calculate pair distance
+        !note, there are (nlist-1) atoms in total in 'atoms'
 
-    !PRINT *, 'radius is: ', radius
-
-    ! Makes list (in atoms) of the indices of atoms that are in a cube of side 
-    ! length radius, centered on the hutch containing  the point (px, py, pz),
-    ! using the hutch array.  Useful for calculating G(r).  Returns 1 in istat
-    ! if memory allocation fails and -1 if no atoms are found.
-    CALL hutch_list_3D(m, m%xx(moved_atom),m%yy(moved_atom),m%zz(moved_atom), radius, atoms, istat, nlist)
-
-    IF (istat .EQ. 1) THEN
-       PRINT *, 'memory allocation fails!'
-       RETURN
-    ENDIF
-    
-    IF (istat .EQ. -1) THEN
-       PRINT *, 'No atom is found'
-       check_cutoffs = .TRUE. 
-       RETURN
-    ENDIF
-
-  !Begin to calculate pair distance
-  !Note, there are (nlist-1) atoms in total
-
-  !First, determine the type of moved_atom 
-    DO i=1, m%nelements
-       IF(m%znum(moved_atom) .EQ. m%atom_type(i)) THEN
-          num1 = i
-          EXIT
-       ENDIF
-    ENDDO
-    
-    DO i=1, (nlist-1)
-        !Do not count the pair distance to itself
-        IF (atoms(i) .NE. moved_atom) THEN
-            DO j=1, m%nelements
-                IF(m%atom_type(j) .EQ. m%znum(atoms(i))) THEN
-                    num2 = j
-                EXIT
-                ENDIF
-            ENDDO !j=1, m%nelements
-          
-            !ENDIF  !032409 - jwh
-           
-            !Calculate the atomic distance
-            !Compare with cutoff_r
-            temp_x = abs(m%xx(moved_atom) - m%xx(atoms(i)))  !pbc added - JWH 04/14/2009
-            temp_y = abs(m%yy(moved_atom) - m%yy(atoms(i)))
-            temp_z = abs(m%zz(moved_atom) - m%zz(atoms(i)))
-
-            !write(*,*)"abs=", temp_x, temp_y, temp_z
-            
-            temp_x = temp_x - m%lx*anint(temp_x/m%lx)
-            temp_y = temp_y - m%ly*anint(temp_y/m%ly)
-            temp_z = temp_z - m%lz*anint(temp_z/m%lz)
+        !first, determine the type of moved_atom 
+        do i=1, m%nelements
+            if(m%znum(moved_atom) .eq. m%atom_type(i)) then
+                num1 = i
+                exit
+            endif
+        enddo
+        
+        do i=1, (nlist-1)
+            !do not count the pair distance to itself
+            ! The below if statement should be irrelevant. moved_atom isn't put
+            ! in atoms by hutch_list_3d as far as i know.
+            if (atoms(i) .ne. moved_atom) then
+                do j=1, m%nelements
+                    if(m%atom_type(j) .eq. m%znum(atoms(i))) then
+                        num2 = j
+                        exit
+                    endif
+                enddo !j=1, m%nelements
               
-            dist_pair = temp_x**2 + temp_y**2 + temp_z**2
-            dist_pair = SQRT(dist_pair)
+                !endif  !032409 - jwh
                
-            IF (dist_pair  .LT. cutoff_r(num1, num2)) THEN
-            !write(*,*)dist_pair  , cutoff_r(num1, num2) !debug - jwh 032409
-                check_cutoffs=.FALSE.
-                EXIT
-            else
-                check_cutoffs = .TRUE.  !jwh 032409
-                 ENDIF
+                !calculate the atomic distance
+                !compare with cutoff_r
+                temp_x = abs(m%xx(moved_atom) - m%xx(atoms(i)))  !pbc added - jwh 04/14/2009
+                temp_y = abs(m%yy(moved_atom) - m%yy(atoms(i)))
+                temp_z = abs(m%zz(moved_atom) - m%zz(atoms(i)))
 
-            ENDIF !032409 - jwh
-        ENDDO !i=1, (nlist-1)
+                !write(*,*)"abs=", temp_x, temp_y, temp_z
+                
+                temp_x = temp_x - m%lx*anint(temp_x/m%lx)
+                temp_y = temp_y - m%ly*anint(temp_y/m%ly)
+                temp_z = temp_z - m%lz*anint(temp_z/m%lz)
+                  
+                dist_pair = temp_x**2 + temp_y**2 + temp_z**2
+                dist_pair = sqrt(dist_pair)
+                   
+                if (dist_pair  .lt. cutoff_r(num1, num2)) then
+                    !write(*,*)dist_pair  , cutoff_r(num1, num2) !debug - jwh 032409
+                    check_cutoffs=.false.
+                    exit
+                else
+                    check_cutoffs = .true.  !jwh 032409
+                endif
+            endif !032409 - jwh
+        enddo !i=1, (nlist-1)
 
-    !if (associated(atoms)) deallocate(atoms) ! pmv 4/17/09
-    if (nlist .GT. 1) deallocate(atoms) ! FY 4/17/09
+        !if (associated(atoms)) deallocate(atoms) ! pmv 4/17/09
+        if (nlist .gt. 1) deallocate(atoms) ! fy 4/17/09
     
-  END FUNCTION check_cutoffs
+    end function check_cutoffs
   
 
 

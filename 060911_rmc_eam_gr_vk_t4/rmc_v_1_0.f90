@@ -100,6 +100,7 @@ program rmc
     iseed2 = 104756
 
     square_pixel = .TRUE.
+    !square_pixel = .FALSE.
     use_femsim = .FALSE.
 
     call read_eam(m)   
@@ -177,11 +178,14 @@ program rmc
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
         end do
 
+        write(*,*) "Updating eam and gr data..."
         ! Update hutches, data for chi2, and chi2/del_chi
         call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
         call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
         call gr_hutch_mc(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new,used_data_sets,istat)
+        write(*,*) "Updating FEM data..."
         call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+        write(*,*) "Updating data complete."
         
         chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err,&
             gr_e_sim_new, gr_n_sim_new, gr_x_sim_new, vk, scale_fac,&
@@ -200,6 +204,7 @@ program rmc
         ! temporary variables can be for the "new" or the "old" data. What I
         ! mean is, if we accept more than we reject, then optimize the data
         ! storage that way and vice versa.
+        write(*,*) "Accepting or rejecting move."
         randnum = ran2(iseed2)
         ! Test if the move should be accepted or rejected based on del_chi
         if(del_chi <0.0)then
@@ -211,7 +216,7 @@ program rmc
                 write(*,*)i, chi2_gr, chi2_vk, te2, temperature
             endif
             chi2_old = chi2_new
-            write(*,*) "MC move accepted."
+            write(*,*) "MC move accepted outright."
         else
             ! Based on the random number above, even if del_chi is negative, decide
             ! whether to move or not (statistically).
@@ -224,7 +229,7 @@ program rmc
                     write(*,*)i, chi2_gr, chi2_vk, te2, temperature
                 endif
                 chi2_old = chi2_new
-                write(*,*) "MC move accepted."
+                write(*,*) "MC move accepted due to probability."
             else
                 ! Reject move
                 e2 = e1

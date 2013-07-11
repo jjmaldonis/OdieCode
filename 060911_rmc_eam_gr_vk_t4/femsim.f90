@@ -94,7 +94,6 @@ program femsim
   allocate(cutoff_r(m%nelements,m%nelements),stat=istat)
   call read_inputs(param_filename,temperature, max_move, cutoff_r, used_data_sets, weights, gr_e, r_e, gr_e_err,     gr_n, r_n, gr_x, r_x, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, scale_fac, Q, fem_algorithm, pixel_distance, total_steps, rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
 
-  
   ! Added by jason so that I didn't have to input these. The new read_inputs
   ! reads in most of this.
   res = 0.61/Q
@@ -104,6 +103,7 @@ program femsim
   use_femsim = .TRUE.
   outbase = "jason-test_femsim"
   ! Set-up parameters and arrays for fem_initialize
+
   res = 0.5*res  ! fem_initialize wants pixel radius
 
   allocate(vk(size(vk_exp)), i_k(nk),stat=istat)
