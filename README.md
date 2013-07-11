@@ -1,4 +1,5 @@
 #OdieCode
+=========
 
 Below I will detail how to install ROCKS 6.1.
 
@@ -14,16 +15,16 @@ Using the hardware RAID controller, configure the RAID (Alt+3 during boot) to RA
 Since we still have the 2 other hard drives in the other slots which are connected to the motherboard, there will be four drives seen in 'parted' now. During the previous parted setup, sda was the RAID 5 250GB disk, sdb was the remainder of the RAID 5 config (5.7TB), and sdc and sdd were the other two hard drives. However, when I booted using ROCKS 6.1, sda and sdb were the two 2TB hard drives connected to the motherboard and the others were the RAID config with the boot as sdc and the rest as sdd. Just be careful and know which one you are messing with.
 
 Boot using a rescue cd with parted on it.  
-For /dev/sdb:
-parted /dev/sdb
-(parted) mklabel gpt
-(parted) mkpart primary 0 -0 ****** The 0 -0 arguments mean start at sector 0 and go until sector -0, i.e. the end. ******
-quit
-mkfs.xfs /dev/sdb1
+For /dev/sdb:  
+parted /dev/sdb  
+(parted) mklabel gpt  
+(parted) mkpart primary 0 -0 ****** The 0 -0 arguments mean start at sector 0 and go until sector -0, i.e. the end. ******  
+quit  
+mkfs.xfs /dev/sdb1  
 
-For /dev/sda:
-parted /dev/sda
-mklabel msdos
+For /dev/sda:  
+parted /dev/sda  
+mklabel msdos  
 quit
 
 reboot
