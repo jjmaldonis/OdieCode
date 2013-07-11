@@ -80,7 +80,7 @@ I got the error:
 > libstdc++ (including libstdc++6)  
 > glibc  
 > libgcc  
-Without these libraries, the compiler will not function properly. Please refer to Release Notes for more information."  
+<Without these libraries, the compiler will not function properly. Please refer to Release Notes for more information."  
 at one point so I installed these libraries.  
 I searched for them using yum search <name> and then installed all the *.i686 ones with yum install <full_name> as taken from the yum search.  
 I then rechecked the installation dependencies and that problem was solved.  
@@ -92,11 +92,11 @@ source /share/apps/intel/intel-original-2013-x84-mv0.0/vtune_amplifier_xe_2013/a
 source /share/apps/intel/intel-original-2013-x84-mv0.0/inspector_xe_2013/inspxe-vars.sh  
 source /share/apps/intel/intel-original-2013-x84-mv0.0/advisor_xe_2013/advixe-vars.sh  
 source /share/apps/intel/intel-original-2013-x84-mv0.0/bin/compilervars.sh intel64  
-Your compilers are now:  
-    For C++: icpc  
-    For C: icc  
-    For Fortran: ifort  
-Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).  
+<Your compilers are now:  
+>    For C++: icpc  
+>    For C: icc  
+>    For Fortran: ifort  
+<Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).  
 First however, I would skip below and set the environmental variables for these Intel compilers. You then need to reload those env vars - just logout and log back in, thats the easiest way.
 
 ###Installing OpenMPI
@@ -143,7 +143,7 @@ Create a file named intel_<date>.sh and paste the following contents into the fi
 >    source /share/apps/intel_20130618/advisor_xe_2013/advixe-vars.sh >/dev/null  
 >    source /share/apps/intel_20130618/bin/compilervars.sh intel64 >/dev/null  
 >fi  
-If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
+<If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
 If you are using Samba then create a new file called samba_<date>.sh and paste in the following line:  
 > export PATH=$PATH:/usr/local/samba/sbin  
 Make sure this is actually where samba is located though.
