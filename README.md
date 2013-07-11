@@ -151,6 +151,8 @@ Make sure this is actually where samba is located though.
 You shouldnt have to do anything to set LD_LIBRARY_PATH.  
 Mine is currently the following: /opt/gridengine/lib/linux-x64:/share/apps/openmpi_intel_20130618/lib:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mpirt/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/ipp/../compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/ipp/lib/intel64:/opt/intel/mic/coi/host-linux-release/lib:/opt/intel/mic/myo/lib:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mkl/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/tbb/lib/intel64/gcc4.4
 
+You also need to set the MPIHOME variable correctly. Do this in /usr/share/Modules/modulefiles/rocks-openmpi. Change the mpiHome to /share/apps/openmpi_intel_<date> and you should be set.
+
 ##Install compute nodes
 Install the compute nodes with "insert-ethers" following the ROCKS installation guide. Our ethernet switch didnt connect last time.  
 To reboot the compute nodes if you have installed them already:  
