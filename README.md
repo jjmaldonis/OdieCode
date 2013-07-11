@@ -15,7 +15,7 @@ Using the hardware RAID controller, configure the RAID (Alt+3 during boot) to RA
 Since we still have the 2 other hard drives in the other slots which are connected to the motherboard, there will be four drives seen in 'parted' now. During the previous parted setup, sda was the RAID 5 250GB disk, sdb was the remainder of the RAID 5 config (5.7TB), and sdc and sdd were the other two hard drives. However, when I booted using ROCKS 6.1, sda and sdb were the two 2TB hard drives connected to the motherboard and the others were the RAID config with the boot as sdc and the rest as sdd. Just be careful and know which one you are messing with.
 
 Boot using a rescue cd with parted on it.  
-For /dev/sdb:  
+For `/dev/sdb`:  
 
     parted /dev/sdb  
     (parted) mklabel gpt  
@@ -23,7 +23,7 @@ For /dev/sdb:
     quit  
     mkfs.xfs /dev/sdb1  
 
-For /dev/sda:  
+For `/dev/sda`:  
 
     parted /dev/sda  
     mklabel msdos  
@@ -57,7 +57,7 @@ Login using 'root' as the username and the password you specified during install
 
 
 ##Post installation  
-(If all the nodes need to be able to access what you are installing then you need to install the program in /export/apps/<name> - on the compute nodes this will be /share/apps/<name>. Or is it that I install in /share/apps/<name>??? I dont know now, but I suppose I should trust what I had written first. If you can ask someone, do so. It probably doesnt matter too much either way, but it might save you a few errors.)
+*If all the nodes need to be able to access what you are installing then you need to install the program in /export/apps/<name> - on the compute nodes this will be /share/apps/<name>. Or is it that I install in /share/apps/<name>??? I dont know now, but I suppose I should trust what I had written first. If you can ask someone, do so. It probably doesnt matter too much either way, but it might save you a few errors.*
 
 ###Installing Yum
 To install yum (only need to install on the head node):  
@@ -80,7 +80,7 @@ Below is a general outline of what I did.
     cd into directory that was created  
     ./install.sh 2>&1 | tee intel_install_<date>.out  
 
-Follow the prompts. Set the install directory to: /share/apps/intel_<date>  
+Follow the prompts. Set the install directory to: `/share/apps/intel_<date>`  
 I got the error:  
 >32-bit libraries not found on this system. This product release requires the presence of 32-bit compatibility libraries when running on Intel(R) 64 architecture systems. One or more of these libraries could not be found:  
 >    libstdc++ (including libstdc++6)  
@@ -127,7 +127,8 @@ To add users (besides for root) do:
     passwd <user_name> (then enter your password)  
     rocks sync users    (this takes a while)  
 
-   *** IMPORTANT NOTE: "rocks sync users" seems to push the user data onto the compute nodes (once they login and only if they ssh into the compute node I think) which makes sense, but it also seems to push the /share/apps as well. This is important and not exactly intuitive. I dont know then if each user needs to ssh into each compute node???? That doesnt make sense...***  
+   *IMPORTANT NOTE: "rocks sync users" seems to push the user data onto the compute nodes (once they login and only if they ssh into the compute node I think) which makes sense, but it also seems to push the /share/apps as well. This is important and not exactly intuitive. I dont know then if each user needs to ssh into each compute node???? That doesnt make sense...*  
+
 You also need to create the group "voylesgroup" and add all users to it:  
 
     groupadd voylesgroup  
@@ -147,7 +148,7 @@ Note that you can override or append/prepend to any env var in your `~/.bashrc`.
 Also note that whatever env vars are set when you submit a job are linked to the job - or something like that.  
 You can check to see if a specific executable is found in the correct spot with `which <executable>`.
 
-We will start with PATH.  
+We will start with `PATH`.  
 `cd` into `/etc/profile.d`  
 Create a file named `intel_<date>.sh` and paste the following contents into the file:  
 
@@ -178,7 +179,8 @@ You also need to set the MPIHOME variable correctly. Do this in `/usr/share/Modu
 ##Install compute nodes
 Install the compute nodes with "insert-ethers" following the ROCKS installation guide. Our ethernet switch didnt connect last time.  
 To reboot the compute nodes if you have installed them already:  
-*** Read about this command first. ***  
+
+*Read about this command first.*  
 
     rocks run host compute  
 
