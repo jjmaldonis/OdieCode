@@ -29,7 +29,6 @@ For /dev/sda:
     mklabel msdos  
     quit  
 
-
     reboot
 
 ###Install ROCKS 6.1
@@ -163,7 +162,7 @@ Create a file named intel_<date>.sh and paste the following contents into the fi
         source /share/apps/intel_20130618/bin/compilervars.sh intel64 >/dev/null  
     fi  
     
-/pre>
+</pre>
 
 If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
 If you are using Samba then create a new file called samba_<date>.sh and paste in the following line:  
