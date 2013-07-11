@@ -134,3 +134,6 @@ rocks run host compute
 ***Note*** that /share seems empty on the compute nodes but the directory apps/ it is actually in there. You can check by cd /share/apps followed by ls to see the contents of /share/apps/.
 
 You now need to set up the queue. Talk to Xing about this if you are having problems - otherwise just use google and look at out past scripts.
+
+Feng had this in his setup as well, but I haven't gotten there yet:
+Parallel jobs:  qsub .pe mpich # of cores submit.sh
