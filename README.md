@@ -103,16 +103,16 @@ It finished successfully. I then executed the "source" commands that the output 
     source /share/apps/intel/intel-original-2013-x84-mv0.0/bin/compilervars.sh intel64  
 
 Your compilers are now:  
-*    For C++:     icpc  
-*    For C:       icc  
-*    For Fortran: ifort  
+*    For C++:     `icpc`  
+*    For C:       `icc`  
+*    For Fortran: `ifort`  
 
 Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).  
 First however, I would skip below and set the environmental variables for these Intel compilers. You then need to reload those env vars - just logout and log back in, thats the easiest way.
 
 ###Installing OpenMPI
 To install OpenMPI:  
-You should note here the ROCKS installed its own version of openmpi, this is probably in /opt/openmpi. Also, the Intel package installs its own mpi software (a few I think actually). We dont want to use those, we want to use our version of openmpi that we are about to install with the Intel compilers. This creates some trouble with setting our environment variables so we need to be careful (PATH and LD_LIBRARY_PATH specifically). Also note that $MPIHOME is where the main mpi environment variable is set. This is done in /usr/share/Modules/modulefiles/rocks-openmpi. I changed that file - see below.  
+You should note here the ROCKS installed its own version of openmpi, this is probably in `/opt/openmpi`. Also, the Intel package installs its own mpi software (a few I think actually). We dont want to use those, we want to use our version of openmpi that we are about to install with the Intel compilers. This creates some trouble with setting our environment variables so we need to be careful (`PATH` and `LD_LIBRARY_PATH` specifically). Also note that `MPIHOME` is where the main mpi environment variable is set. This is done in `/usr/share/Modules/modulefiles/rocks-openmpi`. I changed that file - see below.  
 Download from http://www.open-mpi.org/software/ompi/v1.6/ (the .gz one) 
 
     tar xvfz openmpi-1.6.4.tar.gz  
@@ -141,15 +141,15 @@ You also need to create the group "voylesgroup" and add all users to it:
 ###Setting Environment Variables
 Now set up your environment variables so that everything runs. There are a lot of steps to this.  
 Note that I may not remember every step, so you may have to figure some things out yourself.  
-The PATH variable is primarily set in /etc/profile and /etc/profile.d/ .sh bash scripts. However, you wont be doing anything in /etc/profile.
-The LD_LIBRARY_PATH variable is primarily set in /etc/ld.so.conf and /etc/ld.so.conf.d/ .sh bash scripts.  
-Note that you can override or append/prepend to any env var in your ~/.bashrc.  
+The `PATH` variable is primarily set in `/etc/profile` and `/etc/profile.d/` .sh bash scripts. However, you wont be doing anything in /etc/profile.
+The `LD_LIBRARY_PATH` variable is primarily set in `/etc/ld.so.conf` and `/etc/ld.so.conf.d/` .sh bash scripts.  
+Note that you can override or append/prepend to any env var in your `~/.bashrc`.  
 Also note that whatever env vars are set when you submit a job are linked to the job - or something like that.  
-You can check to see if a specific executable is found in the correct spot with "which <executable>".
+You can check to see if a specific executable is found in the correct spot with `which <executable>`.
 
 We will start with PATH.  
-cd into /etc/profile.d  
-Create a file named intel_<date>.sh and paste the following contents into the file:  
+`cd` into `/etc/profile.d`  
+Create a file named `intel_<date>.sh` and paste the following contents into the file:  
 
 <pre>
     if echo $PATH | grep "/vtune_amplifier_xe_2013" 1>/dev/null  
@@ -161,7 +161,6 @@ Create a file named intel_<date>.sh and paste the following contents into the fi
         source /share/apps/intel_20130618/advisor_xe_2013/advixe-vars.sh >/dev/null  
         source /share/apps/intel_20130618/bin/compilervars.sh intel64 >/dev/null  
     fi  
-    
 </pre>
 
 If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
@@ -172,9 +171,9 @@ If you are using Samba then create a new file called samba_<date>.sh and paste i
 Make sure this is actually where samba is located though.
 
 You shouldnt have to do anything to set LD_LIBRARY_PATH.  
-Mine is currently the following: /opt/gridengine/lib/linux-x64:/share/apps/openmpi_intel_20130618/lib:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mpirt/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/ipp/../compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/ipp/lib/intel64:/opt/intel/mic/coi/host-linux-release/lib:/opt/intel/mic/myo/lib:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mkl/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/tbb/lib/intel64/gcc4.4
+Mine is currently the following: `/opt/gridengine/lib/linux-x64:/share/apps/openmpi_intel_20130618/lib:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mpirt/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/ipp/../compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/ipp/lib/intel64:/opt/intel/mic/coi/host-linux-release/lib:/opt/intel/mic/myo/lib:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mkl/lib/intel64:/state/partition1/apps/intel_20130618/composer_xe_2013.3.163/tbb/lib/intel64/gcc4.4`
 
-You also need to set the MPIHOME variable correctly. Do this in /usr/share/Modules/modulefiles/rocks-openmpi. Change the mpiHome to /share/apps/openmpi_intel_<date> and you should be set.
+You also need to set the MPIHOME variable correctly. Do this in `/usr/share/Modules/modulefiles/rocks-openmpi`. Change the `mpiHome` to `/share/apps/openmpi_intel_<date>` and you should be set.
 
 ##Install compute nodes
 Install the compute nodes with "insert-ethers" following the ROCKS installation guide. Our ethernet switch didnt connect last time.  
@@ -184,9 +183,9 @@ To reboot the compute nodes if you have installed them already:
     rocks run host compute  
 
 ##Other Notes
-Note that /share seems empty on the compute nodes but the directory apps/ it is actually in there. You can check by cd /share/apps followed by ls to see the contents of /share/apps/.
+Note that /share seems empty on the compute nodes but the directory apps/ it is actually in there. You can check by `cd /share/apps` followed by `ls` to see the contents of `/share/apps/`.
 
 You now need to set up the queue. Talk to Xing about this if you are having problems - otherwise just use google and look at out past scripts.
 
 Feng had this in his setup as well, but I havent gotten there yet:  
-Parallel jobs:  qsub .pe mpich # of cores submit.sh
+Parallel jobs:  `qsub .pe mpich # of cores submit.sh`
