@@ -4,7 +4,7 @@
 #$ -cwd
 #$ -S /bin/bash
 #$ -m be
-# -M jhwang3@wisc.edu
+# -M maldonis@wisc.edu
 #$ -e standard_error.err
 # -i standard_input.input
 #$ -o rmc_060911_t4.out
