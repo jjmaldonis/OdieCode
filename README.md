@@ -101,7 +101,7 @@ Your compilers are now:
     For C++: icpc
     For C: icc
     For Fortran: ifort
- Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).
+Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).
 
 To install OpenMPI:
 Download from http://www.open-mpi.org/software/ompi/v1.6/ (the .gz one)
@@ -115,8 +115,15 @@ adduser <user_name>
 passwd <user_name> (then enter your password)
 rocks sync users    (this takes a while)
    *** IMPORTANT NOTE: "rocks sync users" seems to push the user data onto the compute nodes (once they login and only if they ssh into the compute node I think) which makes sense, but it also seems to push the /share/apps as well. This is important and not exactly intuitive. I don't know then if each user needs to ssh into each compute node???? That doesn't make sense...***
+You also need to create the group "voylesgroup" and add all users to it:
+groupadd voylesgroup
+chown -R root.voylesgroup /export/home/group
+gpasswd -a <username> voylesgroup
+chmod 2775 /export/home/group
+rocks sync users
+rocks sync config
 
-Set up your environment variables so that everything runs.
+Now set up your environment variables so that everything runs. Not sure exactly how to do this for everybody yet.
 
 Install the compute nodes with "insert-ethers" following the ROCKS installation guide. Our ethernet switch didn't connect last time.
 To reboot the compute nodes if you have installed them already:
@@ -124,4 +131,6 @@ To reboot the compute nodes if you have installed them already:
 rocks run host compute
 
 
-***Note*** that /share seems empty on the compute nodes but apps/ it is actually in there. You can check by cd /share/apps followed by ls to see the contents of /share/apps/.
+***Note*** that /share seems empty on the compute nodes but the directory apps/ it is actually in there. You can check by cd /share/apps followed by ls to see the contents of /share/apps/.
+
+You now need to set up the queue. Talk to Xing about this if you are having problems - otherwise just use google and look at out past scripts.
