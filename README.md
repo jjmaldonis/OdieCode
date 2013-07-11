@@ -16,7 +16,7 @@ Since we still have the 2 other hard drives in the other slots which are connect
 
 Boot using a rescue cd with parted on it.  
 For /dev/sdb:  
-    parted /dev/sdb  
+        parted /dev/sdb  
     (parted) mklabel gpt  
     (parted) mkpart primary 0 -0 ****** The 0 -0 arguments mean start at sector 0 and go until sector -0, i.e. the end. ******  
     quit  
