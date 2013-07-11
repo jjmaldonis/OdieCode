@@ -57,17 +57,17 @@ Login using 'root' as the username and the password you specified during install
 ##Post installation  
 (If all the nodes need to be able to access what you are installing then you need to install the program in /export/apps/<name> - on the compute nodes this will be /share/apps/<name>. Or is it that I install in /share/apps/<name>??? I dont know now, but I suppose I should trust what I had written first. If you can ask someone, do so. It probably doesnt matter too much either way, but it might save you a few errors.)
 
-######Installing Yum
+###Installing Yum
 To install yum (only need to install on the head node):  
 wget yum-3.2.29-40.el6.centos.noarch.rpm    (link taken from http://mirror.stanford.edu/yum/pub/centos/6/os/x86_64/Packages/ -- Ctrl+F "yum" to find a similar one)  
 rpm -Uvh yum-3.2.29-40.el6.centos.noarch.rpm
 
-######Installing tw_cli
+###Installing tw_cli
 To install tw_cli (only need to install on the head node):  
 wget http://dl.atrpms.net/el5-x86_64/atrpms/stable/tw_cli-2.00.03.018-7.x86_64.rpm  
 rpm -Uvh tw_cli-2.00.03.018-7.x86_64.rpm
 
-######Installing the Intel compilers
+###Installing the Intel compilers
 To install the Intel compilers, winSCP the .tgz file over and follow this guide:  
 http://software.intel.com/sites/default/files/article/251099/release-notes-studio-xe-2013-l.pdf  
 Below is a general outline of what I did.  
@@ -77,9 +77,9 @@ cd into directory that was created
 Follow the prompts. Set the install directory to: /share/apps/intel_<date>  
 I got the error:  
 "32-bit libraries not found on this system. This product release requires the presence of 32-bit compatibility libraries when running on Intel(R) 64 architecture systems. One or more of these libraries could not be found:  
-* libstdc++ (including libstdc++6)  
-* glibc  
-* libgcc  
+> libstdc++ (including libstdc++6)  
+> glibc  
+> libgcc  
 Without these libraries, the compiler will not function properly. Please refer to Release Notes for more information."  
 at one point so I installed these libraries.  
 I searched for them using yum search <name> and then installed all the *.i686 ones with yum install <full_name> as taken from the yum search.  
@@ -99,7 +99,7 @@ Your compilers are now:
 Now you need to make sure to install all other software that will run on the nodes with the Intel compilers (i.e. OpenMPI).  
 First however, I would skip below and set the environmental variables for these Intel compilers. You then need to reload those env vars - just logout and log back in, thats the easiest way.
 
-######Installing OpenMPI
+###Installing OpenMPI
 To install OpenMPI:  
 You should note here the ROCKS installed its own version of openmpi, this is probably in /opt/openmpi. Also, the Intel package installs its own mpi software (a few I think actually). We dont want to use those, we want to use our version of openmpi that we are about to install with the Intel compilers. This creates some trouble with setting our environment variables so we need to be careful (PATH and LD_LIBRARY_PATH specifically). Also note that $MPIHOME is where the main mpi environment variable is set. This is done in /usr/share/Modules/modulefiles/rocks-openmpi. I changed that file - see below.
 Download from http://www.open-mpi.org/software/ompi/v1.6/ (the .gz one)  
@@ -108,7 +108,7 @@ cd openmpi-1.6.4
 ./configure --prefix=/export/apps/openmpi_intel_20130618/ CC=icc CXX=icpc F77=ifort FC=ifort --with-sge 2>&1 | tee -a openmpi-intel_configure_20130618.log  
 make all install 2>&1 | tee -a openmpi-intel_make_20130618.log
  
-######Adding Users
+###Adding Users
 To add users (besides for root) do:  
 adduser <user_name>  
 passwd <user_name> (then enter your password)  
@@ -122,7 +122,7 @@ chmod 2775 /export/home/group
 rocks sync users  
 rocks sync config
 
-######Setting Environment Variables
+###Setting Environment Variables
 Now set up your environment variables so that everything runs. There are a lot of steps to this.  
 Note that I may not remember every step, so you may have to figure some things out yourself.  
 The PATH variable is primarily set in /etc/profile and /etc/profile.d/ .sh bash scripts. However, you wont be doing anything in /etc/profile.
@@ -134,15 +134,15 @@ You can check to see if a specific executable is found in the correct spot with 
 We will start with PATH.  
 cd into /etc/profile.d  
 Create a file named intel_<date>.sh and paste the following contents into the file:  
->if echo $PATH | grep "/vtune_amplifier_xe_2013" 1>/dev/null
->  then echo "Intel variables are already set." 1>/dev/null
->  else
->    #echo "Setting Intel variables now."
->    source /share/apps/intel_20130618/vtune_amplifier_xe_2013/amplxe-vars.sh >/dev/null
->    source /share/apps/intel_20130618/inspector_xe_2013/inspxe-vars.sh >/dev/null
->    source /share/apps/intel_20130618/advisor_xe_2013/advixe-vars.sh >/dev/null
->    source /share/apps/intel_20130618/bin/compilervars.sh intel64 >/dev/null
->fi
+>if echo $PATH | grep "/vtune_amplifier_xe_2013" 1>/dev/null  
+>  then echo "Intel variables are already set." 1>/dev/null  
+>  else  
+>    #echo "Setting Intel variables now."  
+>    source /share/apps/intel_20130618/vtune_amplifier_xe_2013/amplxe-vars.sh >/dev/null  
+>    source /share/apps/intel_20130618/inspector_xe_2013/inspxe-vars.sh >/dev/null  
+>    source /share/apps/intel_20130618/advisor_xe_2013/advixe-vars.sh >/dev/null  
+>    source /share/apps/intel_20130618/bin/compilervars.sh intel64 >/dev/null  
+>fi  
 If you want, you can look in the above 4 files to see what they are doing. You can modify them if you need to. I changed all /export/... to /share/... because I installed the Intel package in the /export/... directory. I dont know if this makes any difference, but the compute nodes dont see /export, they only see /share or /state/partition1. At least this is my understanding.  
 If you are using Samba then create a new file called samba_<date>.sh and paste in the following line:  
 > export PATH=$PATH:/usr/local/samba/sbin  
