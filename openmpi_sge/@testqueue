@@ -1,0 +1,6 @@
+# Version: 2011.11p1
+# 
+# DO NOT MODIFY THIS FILE MANUALLY!
+# 
+group_name @testqueue
+hostlist compute-0-0.local compute-0-2.local compute-0-1.local compute-0-3.local compute-0-4.local compute-0-5.local compute-0-6.local compute-0-7.local compute-0-8.local compute-0-9.local compute-0-10.local compute-0-11.local compute-0-12.local compute-0-13.local compute-0-14.local compute-0-15.local
