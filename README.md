@@ -1,20 +1,19 @@
-OdieCode
-========
+#OdieCode
 
 Below I will detail how to install ROCKS 6.1.
 
-Base installation of ROCKS 6.1
+##Base installation of ROCKS 6.1
 
 Currently our RAID card can only handle four drives - they are connected to the card. We can buy a new RAID card to support more drives - talk to Dan at ACE (daniel@acecomputers.com).
 
-Partitioning:
+###Partitioning:
 We have four 2TB hard drives that we are making into RAID 5.
 
 Using the hardware RAID controller, configure the RAID (Alt+3 during boot) to RAID 5, set the stripe to 256kb, and make the boot disk 250 (GB). The rest will be made into another partition (5.7TB). Note: 256kb striping is the maximum. We can also do 64kb striping which may be better if we have smaller file sizes. If our files are usually over 256kb then the 256kb is what we want. However, it may only be a minor speed improvement, I don't know.
 
 Since we still have the 2 other hard drives in the other slots which are connected to the motherboard, there will be four drives seen in 'parted' now. During the previous parted setup, sda was the RAID 5 250GB disk, sdb was the remainder of the RAID 5 config (5.7TB), and sdc and sdd were the other two hard drives. However, when I booted using ROCKS 6.1, sda and sdb were the two 2TB hard drives connected to the motherboard and the others were the RAID config with the boot as sdc and the rest as sdd. Just be careful and know which one you are messing with.
 
-Boot using a rescue cd with parted on it.
+Boot using a rescue cd with parted on it.  
 For /dev/sdb:
 parted /dev/sdb
 (parted) mklabel gpt
@@ -29,7 +28,7 @@ quit
 
 reboot
 
-Install ROCKS 6.1
+###Install ROCKS 6.1
 Put in the ROCKS 6.1 install DVD will all the rolls on it. Enter the following information when prompted:
 Select the following rolls:
 base, hpc, kernel, os, sge, ganglia, web-server, area51
@@ -54,9 +53,7 @@ You now how a functional CentOS 6.3 installation with ROCKS 6.1!
 Login using 'root' as the username and the password you specified during installation.
 
 
-
-
-Post installation (need to install in /export/apps/<name> for all the nodes to access - on the nodes, this will be /share/apps/<name>).
+###Post installation (need to install in /export/apps/<name> for all the nodes to access - on the nodes, this will be /share/apps/<name>).
 
 To install yum (only need to install on the head node): 
 wget yum-3.2.29-40.el6.centos.noarch.rpm    (link taken from http://mirror.stanford.edu/yum/pub/centos/6/os/x86_64/Packages/ -- Ctrl+F "yum" to find a similar one)
@@ -123,7 +120,7 @@ chmod 2775 /export/home/group
 rocks sync users
 rocks sync config
 
-Now set up your environment variables so that everything runs. Not sure exactly how to do this for everybody yet.
+Now set up your environment variables so that everything runs. There are a lot of steps to this.
 
 Install the compute nodes with "insert-ethers" following the ROCKS installation guide. Our ethernet switch didn't connect last time.
 To reboot the compute nodes if you have installed them already:
