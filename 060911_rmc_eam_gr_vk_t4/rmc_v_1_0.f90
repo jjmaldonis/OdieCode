@@ -85,6 +85,8 @@ program rmc
     ! Read input model
     call read_model(model_filename, comment, m, istat)
     call check_model(m, istat)
+    ! recenter_model is called in read_model so it doesnt need to be called
+    ! agian I dont think. Its small though.
     call recenter_model(0.0, 0.0, 0.0, m)
 
     ! Read input parameters

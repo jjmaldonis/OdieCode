@@ -16,8 +16,8 @@ module fem_mod
     public :: write_intensities
     !public :: print_image1, print_image2
     type pos_list
-    integer :: nat
-    real, pointer, dimension(:,:) :: pos
+        integer :: nat
+        real, pointer, dimension(:,:) :: pos
     end type pos_list
     integer, save :: nk, npix, nrot  ! number of k points, pixels, and rotations
     real, save, dimension(:,:), pointer :: pix ! npix x 2 list of pixel positions
@@ -108,8 +108,8 @@ contains
             !npix_x=int(m%lx/dr)
             !npix_y=int(m%ly/dr)
             !separated just by dr = res
-            !dr = res
-            dr = 2.0 *res
+            dr = res
+            !dr = 2.0 *res
             npix_x=aint(m%lx/dr)
             npix_y=aint(m%ly/dr)
             !******************************
@@ -124,6 +124,9 @@ contains
             !dr = m%lx/npix_x 
         ENDIF
 
+        ! Added by Jason on 07/12/2013
+        !if(npix_x == 0) npix_x = 1
+        !if(npix_y == 0) npix_y = 1
 
         nk = nki
         npix = npix_x*npix_y
@@ -279,7 +282,7 @@ contains
     ! rotation array rot. The rot_temp variable is probably unnecessary.
         integer, intent(in) :: ntheta, nphi, npsi
         integer, intent(out) :: istat
-        integer :: i,j, k, jj, ii
+        integer :: i,j, k, jj
         real,dimension(3) :: step_size
         integer :: ntheta_w(nphi*npsi)
         integer, intent(out) :: num_rot
@@ -354,6 +357,8 @@ contains
         integer :: i, j, k
         logical :: pixel_square
 
+        write(*,*) "npix = ", npix
+
         allocate(pix(npix, 2), stat=istat)
         if (istat /= 0) then
            write (*,*) 'Cannot allocate pixel position array.'
@@ -373,7 +378,6 @@ contains
                 DO j=1, npix_y
                     pix(k,1) = (i-1)*dr+(dr/2.0)-(m%lx/2.0)
                     pix(k,2) = (j-1)*dr+(dr/2.0)-(m%ly/2.0)
-                    !WRITE(*,*) k, pix(k,1), pix(k,2) !debug
                     k = k + 1
                 ENDDO
             ENDDO
@@ -459,9 +463,8 @@ contains
         logical pixel_square !added by FY on 06/04/2009
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq  !mpi
         integer :: comm
-        integer :: i, j, i1, j1
+        integer :: i, j
         integer begin_rot, end_rot
-        real test1
 
         if( present(square_pixel)) then
             pixel_square = square_pixel
@@ -797,7 +800,6 @@ contains
         real :: sqrt1_2_res
         integer :: old_mrot_roti_nat
         logical :: no_int_recal
-        real :: time
         istat = 0
 
         if( present(square_pixel)) then
@@ -853,9 +855,9 @@ contains
 ! 2,2 means the atom was duplicated???
 ! 0,0 means the atom rotated out of the model.
 ! Not equal values means something funny happened???
-if((rot_atom%natoms /= 1) .or. (mrot(i)%rot_i(atom)%nat /= 1)) then
-write(*,*) "HERE", rot_atom%natoms, "=?", mrot(i)%rot_i(atom)%nat
-endif
+!if((rot_atom%natoms /= 1) .or. (mrot(i)%rot_i(atom)%nat /= 1)) then
+!write(*,*) "HERE", rot_atom%natoms, "=?", mrot(i)%rot_i(atom)%nat
+!endif
             if( (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0) ) goto 100   !JWH - 04/14/2009
             ! the rotated atom has left the model, so there is no structural
             ! change - skip the rest of the loop
@@ -866,7 +868,7 @@ endif
             ! have to think about that.)
             ! TODO
             if(mrot(i)%rot_i(atom)%nat /= rot_atom%natoms) then
-                write(*,*)"scratch", mrot(i)%rot_i(atom)%nat, rot_atom%natoms
+                !write(*,*)"scratch", mrot(i)%rot_i(atom)%nat, rot_atom%natoms
                 ! store the original index and position in old_index and old_pos
                 if(mrot(i)%rot_i(atom)%nat /= 0) then
                     do j=1, mrot(i)%rot_i(atom)%nat
