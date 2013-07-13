@@ -57,7 +57,7 @@ Login using 'root' as the username and the password you specified during install
 
 
 ##Post installation  
-*If all the nodes need to be able to access what you are installing then you need to install the program in /export/apps/<name> - on the compute nodes this will be /share/apps/<name>. Or is it that I install in /share/apps/<name>??? I dont know now, but I suppose I should trust what I had written first. If you can ask someone, do so. It probably doesnt matter too much either way, but it might save you a few errors.*
+*If all the nodes need to be able to access what you are installing then you need to install the program in `/share/apps/<name>`.*
 
 ###Installing Yum
 To install yum (only need to install on the head node):  
@@ -114,11 +114,12 @@ First however, I would skip below and set the environmental variables for these 
 To install OpenMPI:  
 You should note here the ROCKS installed its own version of openmpi, this is probably in `/opt/openmpi`. Also, the Intel package installs its own mpi software (a few I think actually). We dont want to use those, we want to use our version of openmpi that we are about to install with the Intel compilers. This creates some trouble with setting our environment variables so we need to be careful (`PATH` and `LD_LIBRARY_PATH` specifically). Also note that `MPIHOME` is where the main mpi environment variable is set. This is done in `/usr/share/Modules/modulefiles/rocks-openmpi`. I changed that file - see below.  
 Download from http://www.open-mpi.org/software/ompi/v1.6/ (the .gz one) 
+Make sure to change <date> to todays date to keep things straight. That way if you need to reinstall you dont have to delete the old stuff, you can just put the new stuff in a new directory and re-point your environment variables there.
 
     tar xvfz openmpi-1.6.4.tar.gz  
     cd openmpi-1.6.4  
-    ./configure --prefix=/export/apps/openmpi_intel_20130618/ CC=icc CXX=icpc F77=ifort FC=ifort --with-sge 2>&1 | tee -a openmpi-intel_configure_20130618.log  
-    make all install 2>&1 | tee -a openmpi-intel_make_20130618.log
+    ./configure --prefix=/share/apps/openmpi_intel_<date>/ CC=icc CXX=icpc F77=ifort FC=ifort --with-sge 2>&1 | tee -a openmpi-intel_configure_20130618.log  
+    make all install 2>&1 | tee -a openmpi-intel_make_<date>.log
  
 ###Adding Users
 To add users (besides for root) do:  
