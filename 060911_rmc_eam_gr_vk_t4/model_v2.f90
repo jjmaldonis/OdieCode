@@ -446,7 +446,7 @@ contains
     end subroutine check_model
 
     subroutine rotate_model(phi, psi, theta, min, mrot, istat)
-        ! rotates model min by angles phi, psi, theta and puts the results in mrot 
+        ! rotates model min by angles phi, psi, theta and puts the results in mrot. min is unchanged.
         real, intent(in) :: theta, phi, psi
         type(model), intent(in) :: min
         type(model), intent(out) :: mrot 
@@ -480,7 +480,7 @@ contains
                 write(*,*) 'wrong here', i, orig_indices(i)
             endif
         enddo
-        !orig_indices = (/ (mod(i,min%natoms)+1, i=1,mt%natoms) /)
+        orig_indices = (/ (mod(i,min%natoms)+1, i=1,mt%natoms) /)
 
         ! generate the members of a 3x3 rotation matrix.  Use the Goldstein "x-convention"
         ! and Euler angles phi theta, psi.
@@ -502,6 +502,13 @@ contains
         r(3,2) = -stheta*cpsi
         r(3,3) = ctheta
 
+!do i=1,mt%natoms
+!    if(mt%xx(i) == min%xx(1) .and. mt%yy(i) == min%yy(1) .and. mt%zz(i) == min%zz(1)) then
+!    write(*,*) i, "HERE1"
+!    call sleep(1)
+!    endif
+!enddo
+
         ! Rotate the position vectors in mt (the temporary 3x3x3 model).
         do i=1,mt%natoms
             if(abs(mt%xx(i)).le.1.2*sqrt(2.0)*min%lx/2)then
@@ -519,29 +526,22 @@ contains
             endif
         end do
 
-        ! Cut the temporary model back to the original box size
-        ! First count the atoms in the box
-        ! If I am doing my calculations right then you are losing a maximum of
-        ! 4.2% of your atoms by rotating and then excluding the ones that were
-        ! rotated outside the original box. Ehhh that's not true - I did the
-        ! calculations for a square, not a cube...
-        ! We could consider doing something about that though???
-        ! If we do fix this then we can remove the composition_model function below.
+        ! Cut the temporary model back to the original box size.
+        ! First count the atoms in the box.
         mrot%natoms = 0
         lx2 = min%lx / 2.0
         ly2 = min%ly / 2.0
         lz2 = min%lz / 2.0
         do i=1, mt%natoms
-           if (mt%xx(i) <= lx2 .AND. mt%xx(i) >= -1.0*lx2) then
-              if (mt%yy(i) <= ly2 .AND. mt%yy(i) >= -1.0*ly2) then
-                 if (mt%zz(i) <= lz2 .AND. mt%zz(i) >= -1.0*lz2) then
-                    mrot%natoms = mrot%natoms + 1
-                 endif
-              endif
-           endif
+            if((mt%xx(i) <= lx2 .AND. mt%xx(i) >= -1.0*lx2) .and. &
+               (mt%yy(i) <= ly2 .AND. mt%yy(i) >= -1.0*ly2) .and. &
+               (mt%zz(i) <= lz2 .AND. mt%zz(i) >= -1.0*lz2)) then
+                mrot%natoms = mrot%natoms + 1
+            !else
+                !if(min%natoms /= 1425) write(*,*) "Atom outside world."
+            endif
         enddo
-
-        ! allocate memory for the new atoms
+        ! Allocate memory for the new atoms.
         mrot%unrot_natoms = min%natoms
         allocate(mrot%xx(mrot%natoms), mrot%yy(mrot%natoms), mrot%zz(mrot%natoms), &
             mrot%znum(mrot%natoms),  mrot%rot_i(mrot%unrot_natoms), mrot%znum_r(mrot%natoms), stat=istat) !add mrot%znum_r here by Feng Yi on 03/19/2009
@@ -568,7 +568,10 @@ contains
                         mrot%znum(j) = mt%znum(i)
                         mrot%znum_r(j) = mt%znum_r(i) !Added by Feng Yi on 03/19/2009   !Bug fixed : j to i -JWH 09/03/09
                         !write(*,*)"here",i, mt%znum_r(i), mt%xx(i),mt%yy(i),mt%zz(i)
-                        ! add_index is basically just the general "append(list, element)" function.
+                        ! add_index is basically just the general 
+                        ! "append(list, element)" function except 
+                        ! it takes a type object containing the list 
+                        ! and an int equal to its size.
                         call add_index(mrot%rot_i(orig_indices(i)), j)
                         j = j+1
                     endif
@@ -580,6 +583,7 @@ contains
         !call destroy_model(mt)   ! pmv 04/17/09
         deallocate(mt%atom_type, mt%composition)
         deallocate(mt%znum,mt%znum_r, mt%xx, mt%yy, mt%zz)
+        ! TODO I think we need to destroy mt like pmv did above?
 
         ! set the rest of of the rotated model paramters
         mrot%lx = min%lx
@@ -597,7 +601,27 @@ contains
         if(allocated(orig_indices)) then !added by feng yi on 3/14/2009
             deallocate(orig_indices)
         endif
-
+if ( (min%natoms /= 1425) ) then !debug
+    write(*,*) "min=", min%natoms, "mrot=", mrot%natoms
+    if( min%natoms < mrot%natoms ) then
+        write(*,*) mrot%natoms-min%natoms, "atoms appeared."
+    elseif( mrot%natoms < min%natoms ) then
+        write(*,*) min%natoms-mrot%natoms, "atoms disappeared."
+        do i=1, min%natoms
+            write(*,*) "before rot: (", min%xx(i), min%yy(i), min%zz(i), ")"
+            write(*,*) "after  rot: (", min%xx(i)*r(1,1) + min%yy(i)*r(1,2) + min%zz(i)*r(1,3), &
+            min%xx(i)*r(2,1) + min%yy(i)*r(2,2) + min%zz(i)*r(2,3), &
+            min%xx(i)*r(3,1) + min%yy(i)*r(3,2) + min%zz(i)*r(3,3), ")"
+        enddo
+        do i=1, min%natoms
+            if((min%xx(i)*r(1,1) + min%yy(i)*r(1,2) + min%zz(i)*r(1,3) >= lx2 .OR. min%xx(i)*r(1,1) + min%yy(i)*r(1,2) + min%zz(i)*r(1,3) <= -1.0*lx2) .OR. &
+               (min%xx(i)*r(2,1) + min%yy(i)*r(2,2) + min%zz(i)*r(2,3) >= ly2 .OR. min%xx(i)*r(2,1) + min%yy(i)*r(2,2) + min%zz(i)*r(2,3) <= -1.0*ly2) .OR. &
+               (min%xx(i)*r(3,1) + min%yy(i)*r(3,2) + min%zz(i)*r(3,3) >= lz2 .OR. min%xx(i)*r(3,1) + min%yy(i)*r(3,2) + min%zz(i)*r(3,3) <= -1.0*lz2) ) then
+                write(*,*) "DISAPPEARED!!! i=", i
+            endif
+        enddo
+    endif
+endif
     end subroutine rotate_model
 
     subroutine destroy_model(m)
@@ -770,8 +794,6 @@ contains
             end do
         endif
 
-
-write(*,*) nlist
         allocate(atoms(nlist-1), stat=istat)
         if (istat /= 0) then
             write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
@@ -797,10 +819,8 @@ write(*,*) nlist
     ! This must be called after the subroutine pre_calc_2D_hutch is called.
     ! It returns the indices of the hutch that encompasses position (xx, yy,
     ! zz) in the hutch_array in the integers (hx, hy, hz).  It assumes that the
-    ! model
-    ! extends from -lx/2 to lx/2, -ly/2 to ly/2 and -lz/2 to lz/2 and does no
-    ! error checking.
-    ! It also return relative position of point (xx, yy, zz) in the hutch
+    ! model extends from -lx/2 to lx/2, -ly/2 to ly/2 and -lz/2 to lz/2 and does no
+    ! error checking. It also return relative position of point (xx, yy, zz) in the hutch
     ! in 2D and 3D cases the hutch is divided into equal 8 parts 2*2*2
         type(model), intent(in) :: m
         real, intent(in) :: xx, yy, zz
@@ -996,6 +1016,27 @@ write(*,*) nlist
         endif
     end subroutine add_index
 
+
+    subroutine remove_element(il, elem)
+        type(index_list), intent(inout) :: il
+        integer, intent(in) :: elem
+        integer, dimension(:), allocatable :: scratch
+        integer :: i
+        allocate(scratch(il%nat-1))
+        do i=1,il%nat
+            if(il%ind(i) == elem) then
+                scratch(1:i-1) = il%ind(1:i-1)
+                scratch(i:il%nat-1) = il%ind(i+1:il%nat)
+                exit
+            endif
+        enddo
+        deallocate(il%ind)
+        allocate(il%ind( il%nat-1 ))
+        il%ind = scratch
+        deallocate(scratch)
+        il%nat = il%nat - 1
+    end subroutine remove_element
+
     subroutine composition_model(m)
     ! Calculates the composition of the model and fills in nelements, atom_type,
     ! and composition.
@@ -1122,6 +1163,8 @@ write(*,*) nlist
     ! position (px,py,pz) in the list 'atoms'. Stores in nlist the number of
     ! atoms in this radius (i.e. size(atoms)+1 because of the original atom).
 
+    ! TODO Check this to make it doesnt return too many like the others.
+
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, pz
         real, intent(in) :: radius
@@ -1138,6 +1181,7 @@ write(*,*) nlist
         integer p_relative_3d, p_relative_2d
         integer ratio_position
         real ratio1
+        logical :: use_new_alg
         !integer i2, j2, k2 !consider the hutch across the box boundary
 
         ha => m%ha
@@ -1156,56 +1200,95 @@ write(*,*) nlist
             call pre_calc_3d_hutch(m)
         endif
 
+        use_new_alg = .FALSE.
         do i=1, list_1_3d%size_ratio
             if(i .eq. 1) then
                 if((ratio1 .ge. 0) .and. (ratio1 .le.  list_1_3d%ratio_radius_hutch(i))) then
                     ratio_position = i
+                    use_new_alg = .TRUE.
                     exit
                 endif
             else
                 if((ratio1 .ge. list_1_3d%ratio_radius_hutch(i-1)) .and. (ratio1 .le.  list_1_3d%ratio_radius_hutch(i))) then
                     ratio_position = i
+                    use_new_alg = .TRUE.
                     exit
                 endif
             endif
         enddo
 
-        ! Using new algorithm.
-        nlist = 1
-        do k1=1, list_1_3d%list_3d(p_relative_3d, ratio_position)%size_d
-            k = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_z(k1)
-            k = hz + k
-            if (k > ha%nhutch_z) then
-                hk = k - ha%nhutch_z
-            else if (k < 1) then
-                hk = k + ha%nhutch_z
-            else
-                hk = k
-            end if
-            j = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_y(k1)
-            j = hy + j
-            if (j > ha%nhutch_y) then
-                hj = j - ha%nhutch_y
-            else if (j < 1) then
-                hj = j+ ha%nhutch_y
-            else
-                hj = j
-            end if
-            i = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_x(k1)
-            i = hx + i
-            !Periodic boundary condition
-            if (i > ha%nhutch_x) then
-                hi = i - ha%nhutch_x
-            else if (i < 1) then
-                hi = i + ha%nhutch_x
-            else
-                hi = i
-            end if
-            if (ha%h(hi, hj, hk)%nat > 0) then
-                temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
-                nlist = nlist+ha%h(hi,hj,hk)%nat
-            endif
-        enddo !k1
+        if(use_new_alg) then
+            ! Using new algorithm.
+            nlist = 1
+            do k1=1, list_1_3d%list_3d(p_relative_3d, ratio_position)%size_d
+                k = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_z(k1)
+                k = hz + k
+                if (k > ha%nhutch_z) then
+                    hk = k - ha%nhutch_z
+                else if (k < 1) then
+                    hk = k + ha%nhutch_z
+                else
+                    hk = k
+                end if
+                j = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_y(k1)
+                j = hy + j
+                if (j > ha%nhutch_y) then
+                    hj = j - ha%nhutch_y
+                else if (j < 1) then
+                    hj = j+ ha%nhutch_y
+                else
+                    hj = j
+                end if
+                i = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_x(k1)
+                i = hx + i
+                !Periodic boundary condition
+                if (i > ha%nhutch_x) then
+                    hi = i - ha%nhutch_x
+                else if (i < 1) then
+                    hi = i + ha%nhutch_x
+                else
+                    hi = i
+                end if
+                if (ha%h(hi, hj, hk)%nat > 0) then
+                    temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
+                    nlist = nlist+ha%h(hi,hj,hk)%nat
+                endif
+            enddo !k1
+        else
+            nlist = 1
+            do k = (hz-nh), (hz+nh)
+                if (k > ha%nhutch_z) then
+                    hk = k - ha%nhutch_z
+                else if (k < 1) then
+                    hk = k + ha%nhutch_z
+                else
+                    hk = k
+                end if
+                do j = (hy-nh), (hy+nh)
+                    if (j > ha%nhutch_y) then
+                        hj = j - ha%nhutch_y
+                    else if (j < 1) then
+                        hj = j+ ha%nhutch_y
+                    else
+                        hj = j
+                    end if
+                    do i = (hx-nh), (hx+nh)
+                        if (i > ha%nhutch_x) then !Periodic boundary condition
+                            hi = i - ha%nhutch_x
+                        else if (i < 1) then
+                            hi = i + ha%nhutch_x
+                        else
+                            hi = i
+                        end if
+                        if (ha%h(hi, hj, hk)%nat > 0) then
+                            !PRINT *, 'nlist+ha%h(hi,hj,hk)%nat-1 is: ', !nlist+ha%h(hi,hj,hk)%nat-1 !for debug
+                            temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
+                            nlist = nlist+ha%h(hi,hj,hk)%nat
+                        endif
+                    end do
+                end do
+            end do
+        endif ! use_new_alg
 
         allocate(atoms(nlist-1), stat=istat)
         if (istat /= 0) then
@@ -1228,11 +1311,10 @@ write(*,*) nlist
     end subroutine hutch_list_3d
 
     subroutine hutch_list_pixel_sq(m, px, py, diameter, atoms, istat)
-    ! Currently stores into atoms the index of every atom from 1 to m%natoms.
-    ! TODO That probably isn't what we want.
-    ! I deleted a lot of commented lines in here that may be useful later.
-    ! -Jason
-    !! I rewrote this pretty much entirely. It now
+    ! I rewrote this pretty much entirely. It now returns all the atoms in any
+    ! hutches that are partly within diameter/2.0 of px, py (in a cylinder going
+    ! through the z direction - so all the hutches in the z direction are
+    ! added if they satisfy the px, py range). -Jason
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms
@@ -1250,13 +1332,6 @@ write(*,*) nlist
             write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel'
             return
         end if
-
-        !call hutch_position(m, px, py, 0.0, hx, hy, hz)
-
-        !nh = ceiling( (diameter/2.) / m%ha%hutch_size)
-        !nh = ceiling( (diameter) / m%ha%hutch_size)      !res=radius - JWH 062509
-        !nh = ceiling( (diameter/sqrt(2.0)) / m%ha%hutch_size)      !modified for sqaure pix - JWH 062509  .. wrong jwh 032311
-        !nh = ceiling( (12.0) / m%ha%hutch_size)   !debug
 
         ! Jason 20130712
         nh = 0
@@ -1280,11 +1355,11 @@ write(*,*) nlist
                         (hj + m%ha%hutch_size/2.0 .ge. py - diameter/2.0) ) ) ) then
                         call hutch_position(m, hi, hj, hk, hx, hy, hz)
                         !if(hz == 1) then ! debug
-                        !write(*,*) hx,hy
-                        !write(*,*) "x-pixel:", px - diameter/2.0, px + diameter/2.0
-                        !write(*,*) "x-hutch:", hi - m%ha%hutch_size/2.0, hi + m%ha%hutch_size/2.0
-                        !write(*,*) "y-pixel:", py - diameter/2.0, py + diameter/2.0
-                        !write(*,*) "y-hutch:", hj - m%ha%hutch_size/2.0, hj + m%ha%hutch_size/2.0
+                            !write(*,*) hx,hy
+                            !write(*,*) "x-pixel:", px - diameter/2.0, px + diameter/2.0
+                            !write(*,*) "x-hutch:", hi - m%ha%hutch_size/2.0, hi + m%ha%hutch_size/2.0
+                            !write(*,*) "y-pixel:", py - diameter/2.0, py + diameter/2.0
+                            !write(*,*) "y-hutch:", hj - m%ha%hutch_size/2.0, hj + m%ha%hutch_size/2.0
                         !endif
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
                             temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
@@ -1296,23 +1371,22 @@ write(*,*) nlist
             enddo
         enddo
 
-        !nlist = m%natoms
-        allocate(atoms(nlist-1), stat=istat)
-        if (istat /= 0) then
-            write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
-            return
+        ! Assign atoms to the subset of temp_atoms that was filled in.
+        if( nlist > 1 ) then
+            allocate(atoms(nlist-1), stat=istat)
+            if (istat /= 0) then
+                write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
+                return
+            endif
+            atoms = temp_atoms
+        else
+            nullify(atoms)
+            istat = -1
         endif
-        atoms = temp_atoms
-write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, "hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
-        ! assign atoms to the subset of temp_atoms that was filled in
-        !if (nlist > 1) then
-            !do i=1, nlist
-                !atoms(i) = i
-            !enddo
-        !else
-            !nullify(atoms)
-            !istat = -1
-        !endif
+
+        !write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, &
+            !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
+
         if(allocated(temp_atoms)) deallocate(temp_atoms)
     end subroutine hutch_list_pixel_sq
 
