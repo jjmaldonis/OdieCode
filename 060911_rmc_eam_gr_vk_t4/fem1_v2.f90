@@ -885,6 +885,7 @@ contains
 write(*,*) "DEBUG 1"
 write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natoms, "mrot(i)%nat=", mrot(i)%natoms
 
+                ! Overwrite update_pix array to all false.
                 update_pix = .FALSE.
 
                 ! Store the original index and position in old_index and old_pos
@@ -899,8 +900,10 @@ write(*,*) "old_pos%nat = ", old_pos(i)%nat
                 ! each pixel. If so, that intensity must be recalculated.
                 do m=1, npix
                     do n=1, mrot(i)%rot_i(atom)%nat !CHECK if this is the correct bound.
-                    ! Not only that, but I dont think that this is correct
-                    ! anyways. TODO
+                    ! This is not the upper bound that Paul had, I dont know why
+                    ! his worked but this one makes sense to me based on the
+                    ! previous do loop. TODO. Also note that old_pos is
+                    ! nullified in fem_reject / fem_accept.
                         temp1 = old_pos(i)%pos(n,1) - pix(m,1)
                         temp2 = old_pos(i)%pos(n,2) - pix(m,2)
                         temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
@@ -992,6 +995,7 @@ write(*,*) "DEBUG 3"
                         mrot(i)%znum_r(mrot(i)%natoms + 1) = rot_atom%znum_r(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
                         mrot(i)%natoms = mrot(i)%natoms + 1
                     enddo
+
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
                 ! The number of times the atom appears in the rotated model went down.
                 write(*,*) "An atom ran away!"
@@ -1001,7 +1005,9 @@ write(*,*) "DEBUG 3"
                     ! model (prioritize higher indices for speed).
                     do m=1, (mrot(i)%rot_i(atom)%nat - rot_atom%natoms)
                         ! Find the highest index in mrot(i)%rot_i(atom)%ind to
-                        ! remove because its fastest. Order doesnt matter.???
+                        ! remove because its fastest. Order doesnt matter in any
+                        ! of the arrays in a model (as long as they are
+                        ! correctly associated with each other) right???
                         highest = 0
                         do j=1, mrot(i)%rot_i(atom)%nat
                             if( mrot(i)%rot_i(atom)%ind(j) > highest ) then
