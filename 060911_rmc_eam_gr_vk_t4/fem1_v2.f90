@@ -800,6 +800,7 @@ contains
         logical, dimension(:), allocatable :: update_pix
         real, dimension(:), allocatable :: scratch_real
         integer, dimension(:), allocatable :: scratch_int
+        integer :: old_mrot_natoms ! temp variable
         istat = 0
 
         allocate(update_pix(npix)) !TODO add error message
@@ -882,8 +883,7 @@ contains
             ! If that is true, the rotated atom left the model previously and
             ! did not reenter so there is no structural change - we can skip to
             ! the end of the rotations do loop.
-write(*,*) "DEBUG 1"
-write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natoms, "mrot(i)%nat=", mrot(i)%natoms
+!write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natoms, "mrot(i)%rot_i(atom)%nat=", mrot(i)%rot_i(atom)%nat
 
                 ! Overwrite update_pix array to all false.
                 update_pix = .FALSE.
@@ -895,7 +895,6 @@ write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natom
                         mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), &
                         mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
                 enddo
-write(*,*) "old_pos%nat = ", old_pos(i)%nat
                 ! Now check if the original position of the moved atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
                 do m=1, npix
@@ -922,7 +921,6 @@ write(*,*) "old_pos%nat = ", old_pos(i)%nat
                         endif
                     enddo
                 enddo
-write(*,*) "DEBUG 2"
 
                 ! STARTING: Update the rotated positions in mrot(i).
                 ! As far as we can or should, we will update positions in the rotated model.
@@ -934,7 +932,6 @@ write(*,*) "DEBUG 2"
                     j = j + 1
                 enddo
 
-write(*,*) "DEBUG 3"
                 ! Check to see if the number of times the atom appears in the
                 ! rotated model has changed. If it has, update the model appropriately.
                 if( mrot(i)%rot_i(atom)%nat .lt. rot_atom%natoms ) then
@@ -1017,10 +1014,12 @@ write(*,*) "DEBUG 3"
                         call remove_element(mrot(i)%rot_i(atom), highest)
                         ! Remove highest from model. The model will still have to be
                         ! resized after this.
-                        do j=1, mrot(i)%natoms
+                        old_mrot_natoms = mrot(i)%natoms
+                        do j=1, old_mrot_natoms
                             if( j == highest) then
                                 ! Array deletion.
-                                do n=highest, mrot(i)%natoms - 1
+                                mrot(i)%natoms = mrot(i)%natoms - 1
+                                do n=highest, old_mrot_natoms - 1
                                     mrot(i)%xx(n) = mrot(i)%xx(n+1)
                                     mrot(i)%yy(n) = mrot(i)%yy(n+1)
                                     mrot(i)%zz(n) = mrot(i)%zz(n+1)
@@ -1031,8 +1030,6 @@ write(*,*) "DEBUG 3"
                             endif
                         enddo
                     enddo
-                    ! Resize mrot(i)%xx, etc.
-                    mrot(i)%natoms = mrot(i)%natoms-(mrot(i)%rot_i(atom)%nat-rot_atom%natoms)
 
                     allocate(scratch_real( mrot(i)%natoms ))
                     allocate(scratch_int( mrot(i)%natoms ))
@@ -1070,7 +1067,6 @@ write(*,*) "DEBUG 3"
                     deallocate(scratch_real)
                     deallocate(scratch_int)
                 endif
-write(*,*) "DEBUG 4"
                 ! You can probably figure out how to update the hutches instead of
                 ! completely destroying them and then remaking them.
                 call destroy_hutch(mrot(i)%ha)
@@ -1128,7 +1124,6 @@ write(*,*) "DEBUG 4"
             enddo
             deallocate(rot_atom%xx, rot_atom%yy, rot_atom%zz, rot_atom%znum, &
                 rot_atom%rot_i, rot_atom%znum_r, stat=istat)
-write(*,*) "DEBUG 5"
 
 !-------------------------------- End Jason
 
@@ -1320,7 +1315,6 @@ write(*,*) "DEBUG 5"
 
         enddo rotations
         write(*,*) "Rotating models in fem_update complete."
-write(*,*) "DEBUG 7"
 
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)

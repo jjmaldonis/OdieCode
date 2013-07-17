@@ -502,13 +502,6 @@ contains
         r(3,2) = -stheta*cpsi
         r(3,3) = ctheta
 
-!do i=1,mt%natoms
-!    if(mt%xx(i) == min%xx(1) .and. mt%yy(i) == min%yy(1) .and. mt%zz(i) == min%zz(1)) then
-!    write(*,*) i, "HERE1"
-!    call sleep(1)
-!    endif
-!enddo
-
         ! Rotate the position vectors in mt (the temporary 3x3x3 model).
         do i=1,mt%natoms
             if(abs(mt%xx(i)).le.1.2*sqrt(2.0)*min%lx/2)then
@@ -601,27 +594,6 @@ contains
         if(allocated(orig_indices)) then !added by feng yi on 3/14/2009
             deallocate(orig_indices)
         endif
-if ( (min%natoms /= 1425) ) then !debug
-    write(*,*) "min=", min%natoms, "mrot=", mrot%natoms
-    if( min%natoms < mrot%natoms ) then
-        write(*,*) mrot%natoms-min%natoms, "atoms appeared."
-    elseif( mrot%natoms < min%natoms ) then
-        write(*,*) min%natoms-mrot%natoms, "atoms disappeared."
-        do i=1, min%natoms
-            write(*,*) "before rot: (", min%xx(i), min%yy(i), min%zz(i), ")"
-            write(*,*) "after  rot: (", min%xx(i)*r(1,1) + min%yy(i)*r(1,2) + min%zz(i)*r(1,3), &
-            min%xx(i)*r(2,1) + min%yy(i)*r(2,2) + min%zz(i)*r(2,3), &
-            min%xx(i)*r(3,1) + min%yy(i)*r(3,2) + min%zz(i)*r(3,3), ")"
-        enddo
-        do i=1, min%natoms
-            if((min%xx(i)*r(1,1) + min%yy(i)*r(1,2) + min%zz(i)*r(1,3) >= lx2 .OR. min%xx(i)*r(1,1) + min%yy(i)*r(1,2) + min%zz(i)*r(1,3) <= -1.0*lx2) .OR. &
-               (min%xx(i)*r(2,1) + min%yy(i)*r(2,2) + min%zz(i)*r(2,3) >= ly2 .OR. min%xx(i)*r(2,1) + min%yy(i)*r(2,2) + min%zz(i)*r(2,3) <= -1.0*ly2) .OR. &
-               (min%xx(i)*r(3,1) + min%yy(i)*r(3,2) + min%zz(i)*r(3,3) >= lz2 .OR. min%xx(i)*r(3,1) + min%yy(i)*r(3,2) + min%zz(i)*r(3,3) <= -1.0*lz2) ) then
-                write(*,*) "DISAPPEARED!!! i=", i
-            endif
-        enddo
-    endif
-endif
     end subroutine rotate_model
 
     subroutine destroy_model(m)
@@ -683,8 +655,8 @@ endif
         integer ratio_position
         real ratio1
         logical :: use_new_alg
+        real, dimension(3) :: hcenter
 
-        ha => m%ha
         !write(*,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
 
         if (.not. hlist_2d_calc) then
@@ -700,99 +672,140 @@ endif
             return
         end if
 
-        ! Find which hutch the center of the pixel is in.
-        call hutch_position_eff(m, px, py, 0.0, hx, hy, hz, p_relative_3D, p_relative_2D)
+        ! I am going to do a slight approximation in this function, but it will
+        ! be dang close. Considering the hutches are currently so small and
+        ! contain only an atom or two, the additional hutches that will be
+        ! included are not detrimental.
+        ! The idea is to iterate through each hutch, calculate its center,
+        ! and compute the distance from its center to (px,py) in the x-y plane;
+        ! if this distance is <= diameter/2 + m%ha%hutch_size/sqrt(2.0) then we
+        ! include that hutchs atoms. The above sum is the sum of the radius of
+        ! the area we want to include + the "radius" (half diagonal) of the
+        ! hutch. The half diagonal of the hutch may be a bit of an
+        ! overapprximation, but it isnt much of one.
+        ! I dont think going through each hutch is a big deal, but it isnt much
+        ! faster than going through each atom either. I should check the time
+        ! scale. TODO
+        ! I feel like after the modifications I am making we might want to make
+        ! the hutches bigger. ???
 
-        !ratio1 = (diameter/2.) / ha%hutch_size
-        ratio1 = (diameter) / ha%hutch_size    !temporary, res=radius - Jinwoo Hwang
-        nh = ceiling( ratio1)
-
-        !write (*,*) 'hutch size is :', ha%hutch_size
-        !write (*,*) 'center top hutch is ', hx, hy, hz
-        !write (*,*) 'hutch radius is: ', nh
-        !first, find which ratio range
-        use_new_alg = .FALSE.
-        do i=1, list_1_2d%size_ratio
-            if(i .eq. 1) then
-                if((ratio1 .ge. 0) .and. (ratio1 .le.  list_1_2d%ratio_radius_square(i))) then
-                    ratio_position = i
-                    use_new_alg = .TRUE.
-                    exit
-                endif
-            else
-                if((ratio1 .ge. list_1_2d%ratio_radius_square(i-1)) .and.  (ratio1 .le. list_1_2d%ratio_radius_square(i))) then  !old way- i,i+1
-                    ratio_position = i
-                    use_new_alg = .TRUE.
-                    exit
-                endif
-            endif
+        nh = 0
+        nlist = 1
+        do i=1, m%ha%nhutch_x
+            do j=1, m%ha%nhutch_y
+                do k=1, m%ha%nhutch_z
+                    ! Calculate hutch centers.
+                    hcenter(1) = -m%lx/2.0 + m%ha%hutch_size/2.0 + i*m%ha%hutch_size
+                    hcenter(2) = -m%ly/2.0 + m%ha%hutch_size/2.0 + j*m%ha%hutch_size
+                    hcenter(3) = -m%lz/2.0 + m%ha%hutch_size/2.0 + k*m%ha%hutch_size
+                    ! Calculate distance.
+                    dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 )
+                    if( dist < diameter/2.0 + m%ha%hutch_size/sqrt(2.0) ) then
+                        call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
+                        if(m%ha%h(hx, hy, hz)%nat /= 0) then
+                            temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
+                            nlist = nlist + m%ha%h(hx, hy, hz)%nat
+                        endif
+                        nh = nh + 1
+                    endif
+                enddo
+            enddo
         enddo
 
-        if(use_new_alg) then
-            ! Using new algorithm.
-            ! Set nlist (the end of the list of atoms that we find) to 1.
-            nlist = 1
-            ! Iterate through all the hutches in the z direction.
-            do hk = 1, ha%nhutch_z
-                do k1=1, list_1_2d%list_2d(p_relative_2d, ratio_position)%size_d
-                    j = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_y(k1)
-                    j = hy + j
-                    ! Check for periodic boundary conditions and fix if necessary.
-                    if (j > ha%nhutch_y) then
-                        hj = j - ha%nhutch_y
-                    else if (j < 1) then
-                        hj = j+ ha%nhutch_y
-                    else
-                        hj = j
-                    end if
-                    i = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_x(k1)
-                    i = hx + i
-                    ! Check for periodic boundary conditions and fix if necessary.
-                    if (i > ha%nhutch_x) then !Periodic boundary condition
-                        hi = i - ha%nhutch_x
-                    else if (i < 1) then
-                        hi = i + ha%nhutch_x
-                    else
-                        hi = i
-                    end if
-                    ! If there are atoms in the hutch, add them to temp_atoms and
-                    ! increase nlist be the appropriate amount (correspond to the
-                    ! number of atoms we added).
-                    if (ha%h(hi, hj, hk)%nat > 0) then
-                        temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
-                        nlist = nlist+ha%h(hi,hj,hk)%nat
-                    endif
-                enddo !end k1
-            enddo !hk
-        else
-            !inefficient algorithm will be used 
-            WRITE(*, *) 'Inefficient pixel algorithm is used'
-            nlist = 1
-            do hk = 1, ha%nhutch_z
-                do j = (hy-nh), (hy+nh)
-                    if (j > ha%nhutch_y) then 
-                        hj = j - ha%nhutch_y
-                    else if (j < 1) then 
-                        hj = j + ha%nhutch_y
-                    else 
-                        hj = j
-                    end if
-                    do i = (hx-nh), (hx+nh)
-                        if (i > ha%nhutch_x) then 
-                            hi = i - ha%nhutch_x
-                        else if (i < 1) then 
-                            hi = i + ha%nhutch_x
-                        else 
-                            hi = i
-                        end if
-                        if (ha%h(hi, hj, hk)%nat > 0) then 
-                            temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
-                            nlist = nlist+ha%h(hi,hj,hk)%nat
-                        endif
-                    end do
-                end do
-            end do
-        endif
+        !! Find which hutch the center of the pixel is in.
+        !call hutch_position_eff(m, px, py, 0.0, hx, hy, hz, p_relative_3D, p_relative_2D)
+
+        !ha => m%ha
+        !!ratio1 = (diameter/2.) / ha%hutch_size
+        !ratio1 = (diameter) / ha%hutch_size    !temporary, res=radius - Jinwoo Hwang
+        !nh = ceiling( ratio1)
+
+        !!write (*,*) 'hutch size is :', ha%hutch_size
+        !!write (*,*) 'center top hutch is ', hx, hy, hz
+        !!write (*,*) 'hutch radius is: ', nh
+        !!first, find which ratio range
+        !use_new_alg = .FALSE.
+        !do i=1, list_1_2d%size_ratio
+        !    if(i .eq. 1) then
+        !        if((ratio1 .ge. 0) .and. (ratio1 .le.  list_1_2d%ratio_radius_square(i))) then
+        !            ratio_position = i
+        !            use_new_alg = .TRUE.
+        !            exit
+        !        endif
+        !    else
+        !        if((ratio1 .ge. list_1_2d%ratio_radius_square(i-1)) .and.  (ratio1 .le. list_1_2d%ratio_radius_square(i))) then  !old way- i,i+1
+        !            ratio_position = i
+        !            use_new_alg = .TRUE.
+        !            exit
+        !        endif
+        !    endif
+        !enddo
+
+        !if(use_new_alg) then
+        !    ! Using new algorithm.
+        !    ! Set nlist (the end of the list of atoms that we find) to 1.
+        !    nlist = 1
+        !    ! Iterate through all the hutches in the z direction.
+        !    do hk = 1, ha%nhutch_z
+        !        do k1=1, list_1_2d%list_2d(p_relative_2d, ratio_position)%size_d
+        !            j = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_y(k1)
+        !            j = hy + j
+        !            ! Check for periodic boundary conditions and fix if necessary.
+        !            if (j > ha%nhutch_y) then
+        !                hj = j - ha%nhutch_y
+        !            else if (j < 1) then
+        !                hj = j+ ha%nhutch_y
+        !            else
+        !                hj = j
+        !            end if
+        !            i = list_1_2D%list_2D(p_relative_2D, ratio_position)%list_x(k1)
+        !            i = hx + i
+        !            ! Check for periodic boundary conditions and fix if necessary.
+        !            if (i > ha%nhutch_x) then !Periodic boundary condition
+        !                hi = i - ha%nhutch_x
+        !            else if (i < 1) then
+        !                hi = i + ha%nhutch_x
+        !            else
+        !                hi = i
+        !            end if
+        !            ! If there are atoms in the hutch, add them to temp_atoms and
+        !            ! increase nlist be the appropriate amount (correspond to the
+        !            ! number of atoms we added).
+        !            if (ha%h(hi, hj, hk)%nat > 0) then
+        !                temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
+        !                nlist = nlist+ha%h(hi,hj,hk)%nat
+        !            endif
+        !        enddo !end k1
+        !    enddo !hk
+        !else
+        !    !inefficient algorithm will be used 
+        !    WRITE(*, *) 'Inefficient pixel algorithm is used'
+        !    nlist = 1
+        !    do hk = 1, ha%nhutch_z
+        !        do j = (hy-nh), (hy+nh)
+        !            if (j > ha%nhutch_y) then 
+        !                hj = j - ha%nhutch_y
+        !            else if (j < 1) then 
+        !                hj = j + ha%nhutch_y
+        !            else 
+        !                hj = j
+        !            end if
+        !            do i = (hx-nh), (hx+nh)
+        !                if (i > ha%nhutch_x) then 
+        !                    hi = i - ha%nhutch_x
+        !                else if (i < 1) then 
+        !                    hi = i + ha%nhutch_x
+        !                else 
+        !                    hi = i
+        !                end if
+        !                if (ha%h(hi, hj, hk)%nat > 0) then 
+        !                    temp_atoms(nlist:nlist+ha%h(hi,hj,hk)%nat-1) = ha%h(hi,hj,hk)%at
+        !                    nlist = nlist+ha%h(hi,hj,hk)%nat
+        !                endif
+        !            end do
+        !        end do
+        !    end do
+        !endif
 
         allocate(atoms(nlist-1), stat=istat)
         if (istat /= 0) then
@@ -810,9 +823,9 @@ endif
 
         deallocate(temp_atoms)
 
-        if(associated(ha)) then
-            nullify(ha) !added by feng yi on 03/19/2009
-        endif
+        !if(associated(ha)) then
+        !    nullify(ha) !added by feng yi on 03/19/2009
+        !endif
     end subroutine hutch_list_pixel
 
     subroutine hutch_position_eff(m, xx, yy, zz, hx, hy, hz,p_relative_3D, p_relative_2D)
@@ -1311,13 +1324,16 @@ endif
     end subroutine hutch_list_3d
 
     subroutine hutch_list_pixel_sq(m, px, py, diameter, atoms, istat)
-    ! I rewrote this pretty much entirely. It now returns all the atoms in any
-    ! hutches that are partly within diameter/2.0 of px, py (in a cylinder going
-    ! through the z direction - so all the hutches in the z direction are
-    ! added if they satisfy the px, py range). -Jason
+    ! Makes a list of atom indices (in atoms) of the atoms in a rectangular
+    ! prism with side length diameter in x and y, through the model thickness
+    ! in z, centered on the hutch containing the point (px, py). Useful for
+    ! calculating the FEM intensity at (px, py).  Returns 1 in istat if the
+    ! atoms array cannot be allocated.
+    ! Technically, if a hutch is partly within the region described above then
+    ! all its atoms are put in 'atoms'. Is this what we want???
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, diameter
-        integer, pointer, dimension(:) :: atoms
+        integer, pointer, dimension(:) :: atoms !output of atom indices
         integer, intent(out) :: istat
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
         integer :: nh           ! number of hutches corresponding to diameter
@@ -1342,7 +1358,7 @@ endif
                     hi = -m%lx/2.0 + m%ha%hutch_size/2.0 + i*m%ha%hutch_size
                     hj = -m%ly/2.0 + m%ha%hutch_size/2.0 + j*m%ha%hutch_size
                     hk = -m%lz/2.0 + m%ha%hutch_size/2.0 + k*m%ha%hutch_size
-                    ! Check if part of the hutch is within bounds.
+                    ! Check if part of the hutch is within bounds of the pixel.
                     ! If it is, add the atoms to temp_atoms and increment
                     ! important variables.
                     if( ( ( (hi - m%ha%hutch_size/2.0 .ge. px - diameter/2.0) .and. &
