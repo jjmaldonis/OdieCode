@@ -1367,21 +1367,9 @@ contains
         do i = i_start, i_end
             do j = j_start, j_end
                 do k = 1, m%ha%nhutch_z
-                    if( i == 0 ) then
-                        if(m%ha%h(i+1, j, k)%nat /= 0) then
-                            temp_atoms(nlist:nlist+m%ha%h(i+1, j, k)%nat-1) = m%ha%h(i+1, j, k)%at(1:m%ha%h(i+1, j, k)%nat)
-                            nlist = nlist + m%ha%h(i+1, j, k)%nat
-                        endif
-                    else if( j == 0 ) then
-                        if(m%ha%h(i, j+1, k)%nat /= 0) then
-                            temp_atoms(nlist:nlist+m%ha%h(i, j+1, k)%nat-1) = m%ha%h(i, j+1, k)%at(1:m%ha%h(i, j+1, k)%nat)
-                            nlist = nlist + m%ha%h(i, j+1, k)%nat
-                        endif
-                    else
-                        if(m%ha%h(i, j, k)%nat /= 0) then
-                            temp_atoms(nlist:nlist+m%ha%h(i, j, k)%nat-1) = m%ha%h(i, j, k)%at(1:m%ha%h(i, j, k)%nat)
-                            nlist = nlist + m%ha%h(i, j, k)%nat
-                        endif
+                    if(m%ha%h(i, j, k)%nat /= 0) then
+                        temp_atoms(nlist:nlist+m%ha%h(i, j, k)%nat-1) = m%ha%h(i, j, k)%at(1:m%ha%h(i, j, k)%nat)
+                        nlist = nlist + m%ha%h(i, j, k)%nat
                     endif
                 enddo
             enddo
