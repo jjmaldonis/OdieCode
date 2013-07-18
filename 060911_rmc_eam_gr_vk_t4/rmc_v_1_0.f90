@@ -198,14 +198,9 @@ program rmc
 
         call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
            
-        ! TODO Jason - I don't think this is being done as well as it could be.
+        ! TODO Jason - Check if this is being done as well as it could be.
         ! the accept and reject functions shouldn't both have the same do loops
-        ! in them. There should be a set of "new" variables that can be
-        ! constantly overwritten - they should not need to be reverted. Then if
-        ! we accept we just copy them into the actualy variables. However, these
-        ! temporary variables can be for the "new" or the "old" data. What I
-        ! mean is, if we accept more than we reject, then optimize the data
-        ! storage that way and vice versa.
+        ! in them.
         write(*,*) "Accepting or rejecting move."
         randnum = ran2(iseed2)
         ! Test if the move should be accepted or rejected based on del_chi
@@ -231,7 +226,7 @@ program rmc
                     write(*,*)i, chi2_gr, chi2_vk, te2, temperature
                 endif
                 chi2_old = chi2_new
-                write(*,*) "MC move accepted due to probability."
+                write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
             else
                 ! Reject move
                 e2 = e1
@@ -255,7 +250,9 @@ program rmc
             endif
         endif
 
-        ! Periodically save data
+        ! Periodically save data. Are we saving the energy here??? We should!
+        ! The energy will tell us if there is a steady decline, or if it
+        ! statistically jumped way up. We could also write del_chi (or instead).
         if(mod(i,1000)==0)then
             if(myid.eq.0)then
                 open(31,file='test_gr_update.txt',form='formatted',status='unknown')

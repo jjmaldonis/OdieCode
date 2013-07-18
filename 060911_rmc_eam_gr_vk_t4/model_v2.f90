@@ -647,7 +647,7 @@ contains
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
-        integer :: i, j, k1     ! counting variables
+        integer :: i, j, k1, k  ! counting variables
         integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
         integer, dimension(:), allocatable, target :: temp_atoms
         type(hutch_array), pointer :: ha
@@ -656,6 +656,7 @@ contains
         real ratio1
         logical :: use_new_alg
         real, dimension(3) :: hcenter
+        real :: dist
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
 
@@ -1341,6 +1342,7 @@ contains
         integer :: i, j, k      ! counting variables
         real:: hi, hj, hk   ! angstrom hutch positions
         integer, dimension(:), allocatable, target :: temp_atoms
+        integer :: i_start, i_end, j_start, j_end
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
         allocate(temp_atoms(m%natoms), stat=istat)
@@ -1350,38 +1352,26 @@ contains
         end if
 
         ! Jason 20130712
-        nh = 0
+        ! Precalcuate the hutches that are in range. This is mathematically
+        ! correct, but not intiutive, unfortunately for the reader.
+        i_start = floor( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        i_end =   floor( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        j_start = floor( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        j_end =   floor( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        if(i_start == 0) i_start = 1
+        if(i_end == 0) i_end = 1
+        if(j_start == 0) j_start = 1
+        if(j_end== 0) i_end = 1
+        nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
+
+        ! Fill in the list.
         nlist = 1
-        do i = 0, aint(m%lx/m%ha%hutch_size-1)
-            do j = 0, aint(m%ly/m%ha%hutch_size-1)
-                do k = 0, aint(m%lz/m%ha%hutch_size-1)
-                    hi = -m%lx/2.0 + m%ha%hutch_size/2.0 + i*m%ha%hutch_size
-                    hj = -m%ly/2.0 + m%ha%hutch_size/2.0 + j*m%ha%hutch_size
-                    hk = -m%lz/2.0 + m%ha%hutch_size/2.0 + k*m%ha%hutch_size
-                    ! Check if part of the hutch is within bounds of the pixel.
-                    ! If it is, add the atoms to temp_atoms and increment
-                    ! important variables.
-                    if( ( ( (hi - m%ha%hutch_size/2.0 .ge. px - diameter/2.0) .and. &
-                        (hi - m%ha%hutch_size/2.0 .le. px + diameter/2.0) ) .or. &
-                        ( (hi + m%ha%hutch_size/2.0 .ge. px - diameter/2.0) .and. &
-                        (hi + m%ha%hutch_size/2.0 .le. px + diameter/2.0) ) ).and. ( &
-                        ( (hj - m%ha%hutch_size/2.0 .le. py + diameter/2.0) .and. & 
-                        (hj - m%ha%hutch_size/2.0 .ge. py - diameter/2.0) ) .or. &
-                        ( (hj + m%ha%hutch_size/2.0 .le. py + diameter/2.0) .and. & 
-                        (hj + m%ha%hutch_size/2.0 .ge. py - diameter/2.0) ) ) ) then
-                        call hutch_position(m, hi, hj, hk, hx, hy, hz)
-                        !if(hz == 1) then ! debug
-                            !write(*,*) hx,hy
-                            !write(*,*) "x-pixel:", px - diameter/2.0, px + diameter/2.0
-                            !write(*,*) "x-hutch:", hi - m%ha%hutch_size/2.0, hi + m%ha%hutch_size/2.0
-                            !write(*,*) "y-pixel:", py - diameter/2.0, py + diameter/2.0
-                            !write(*,*) "y-hutch:", hj - m%ha%hutch_size/2.0, hj + m%ha%hutch_size/2.0
-                        !endif
-                        if(m%ha%h(hx, hy, hz)%nat /= 0) then
-                            temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
-                            nlist = nlist + m%ha%h(hx, hy, hz)%nat
-                        endif
-                        nh = nh + 1
+        do i = i_start, i_end
+            do j = j_start, j_end
+                do k = 1, m%ha%nhutch_z
+                    if(m%ha%h(i, j, k)%nat /= 0) then
+                        temp_atoms(nlist:nlist+m%ha%h(i, j, k)%nat-1) = m%ha%h(i, j, k)%at(1:m%ha%h(i, j, k)%nat)
+                        nlist = nlist + m%ha%h(i, j, k)%nat
                     endif
                 enddo
             enddo
