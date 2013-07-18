@@ -1342,7 +1342,7 @@ contains
         integer :: i, j, k      ! counting variables
         real:: hi, hj, hk   ! angstrom hutch positions
         integer, dimension(:), allocatable, target :: temp_atoms
-        integer :: i_start, i_end, j_start, j_end
+        real:: i_start, i_end, j_start, j_end
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
         allocate(temp_atoms(m%natoms), stat=istat)
@@ -1354,14 +1354,12 @@ contains
         ! Jason 20130712
         ! Precalcuate the hutches that are in range. This is mathematically
         ! correct, but not intiutive, unfortunately for the reader.
-        i_start = floor( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        i_end =   floor( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        j_start = floor( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        j_end =   floor( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        if(i_start == 0) i_start = 1
-        if(i_end == 0) i_end = 1
-        if(j_start == 0) j_start = 1
-        if(j_end== 0) i_end = 1
+        i_start = ceiling( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        i_end =   ceiling( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        j_start = ceiling( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        j_end =   ceiling( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        !write(*,*) "i_start, i_end=", i_start, i_end
+        !write(*,*) "j_start, j_end=", j_start, j_end
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
 
         ! Fill in the list.
@@ -1369,9 +1367,21 @@ contains
         do i = i_start, i_end
             do j = j_start, j_end
                 do k = 1, m%ha%nhutch_z
-                    if(m%ha%h(i, j, k)%nat /= 0) then
-                        temp_atoms(nlist:nlist+m%ha%h(i, j, k)%nat-1) = m%ha%h(i, j, k)%at(1:m%ha%h(i, j, k)%nat)
-                        nlist = nlist + m%ha%h(i, j, k)%nat
+                    if( i == 0 ) then
+                        if(m%ha%h(i+1, j, k)%nat /= 0) then
+                            temp_atoms(nlist:nlist+m%ha%h(i+1, j, k)%nat-1) = m%ha%h(i+1, j, k)%at(1:m%ha%h(i+1, j, k)%nat)
+                            nlist = nlist + m%ha%h(i+1, j, k)%nat
+                        endif
+                    else if( j == 0 ) then
+                        if(m%ha%h(i, j+1, k)%nat /= 0) then
+                            temp_atoms(nlist:nlist+m%ha%h(i, j+1, k)%nat-1) = m%ha%h(i, j+1, k)%at(1:m%ha%h(i, j+1, k)%nat)
+                            nlist = nlist + m%ha%h(i, j+1, k)%nat
+                        endif
+                    else
+                        if(m%ha%h(i, j, k)%nat /= 0) then
+                            temp_atoms(nlist:nlist+m%ha%h(i, j, k)%nat-1) = m%ha%h(i, j, k)%at(1:m%ha%h(i, j, k)%nat)
+                            nlist = nlist + m%ha%h(i, j, k)%nat
+                        endif
                     endif
                 enddo
             enddo
@@ -1391,7 +1401,7 @@ contains
         endif
 
         !write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, &
-            !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
+        !    "hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
 
         if(allocated(temp_atoms)) deallocate(temp_atoms)
     end subroutine hutch_list_pixel_sq
