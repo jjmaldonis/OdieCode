@@ -14,6 +14,7 @@ module fem_mod
     public :: fem_initialize, fem, I_average !femsim
     public:: fem_update, fem_accept_move, fem_reject_move !rmc
     public :: write_intensities
+    public :: write_time_in_int
     !public :: print_image1, print_image2
     type pos_list
         integer :: nat
@@ -30,7 +31,14 @@ module fem_mod
     type(index_list), save, dimension(:), pointer :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
 
+    real, save :: time_in_int = 0.0
+
 contains
+
+    subroutine write_time_in_int(x)
+        integer, intent(in) :: x
+        write(*,*) "Elapsed CPU time in Intensity:", time_in_int
+    end subroutine write_time_in_int
 
     subroutine fem_initialize(m, res, k, nki, ntheta, nphi, npsi, scatfact_e, istat, square_pixel)
         type(model), intent(in) :: m 
@@ -584,6 +592,8 @@ contains
 
             deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
         ENDIF !Femsim or RMC
+
+        time_in_int = 0.0
     end subroutine fem
 
     subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel)
@@ -606,6 +616,10 @@ contains
         real, allocatable, dimension(:) :: rr_x, rr_y
         real sqrt1_2_res
         real k_1
+        real :: timer1, timer2
+        real, dimension(:,:), allocatable :: pp_array
+
+        call cpu_time(timer1)
 
         if(present(square_pixel)) then
             pixel_square = square_pixel
@@ -632,8 +646,6 @@ contains
         if(pixel_square) then
             call hutch_list_pixel_sq(m_int, px, py, res, pix_atoms, istat) !small pixel inscribed in airy circle
         else
-            ! TODO Fix this function to only list the atoms in the hutches in
-            ! the pixel.
             call hutch_list_pixel(m_int, px, py, res, pix_atoms, istat)
         endif
 
@@ -746,7 +758,12 @@ contains
             enddo
         endif !pixel_square
 
-        ! Calculate int_i for output.
+        !allocate(pp_array(1:nk,0:bin_max)) !32 x 8001 size array....
+        !! Calculate int_i for output.
+        !forall( i=1:nk, j=0:bin_max, ii=1:m_int%nelements, jj=1:m_int%nelements)
+        !    pp_array(i,j) = const3*j*k(i)
+        !    int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp_array(i,j)))*gr_i(ii,jj,j)
+        !end forall
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
@@ -774,6 +791,12 @@ contains
         if(allocated(rr_x)) then
             deallocate(rr_x, rr_y)
         endif
+
+        call cpu_time(timer2)
+        time_in_int = time_in_int + timer2-timer1
+        write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
+        !write ( *, * ) 'Elapsed CPU time = ', timer2 - timer1
+
     end subroutine intensity
 
 
@@ -794,13 +817,14 @@ contains
         real :: res2, rot_dist_sq, orig_dist_sq, temp1, temp2
         REAL rr_x_old, rr_y_old, rr_x_new, rr_y_new
         LOGICAL pixel_square
-        real :: sqrt1_2_res
-        integer :: old_mrot_roti_nat
-        logical :: no_int_recal
+        !real :: sqrt1_2_res
+        !integer :: old_mrot_roti_nat
+        !logical :: no_int_recal
         logical, dimension(:), allocatable :: update_pix
         real, dimension(:), allocatable :: scratch_real
         integer, dimension(:), allocatable :: scratch_int
         integer :: old_mrot_natoms ! temp variable
+
         istat = 0
 
         allocate(update_pix(npix)) !TODO add error message
@@ -846,7 +870,7 @@ contains
         psum_int = 0.0
         psum_int_sq = 0.0
 
-        write(*,*) "Rotating ", nrot, " single atom models, etc in fem_update."
+        write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         rotations: do i=myid+1, nrot, numprocs
             do m=1, npix
                 old_int(1:nk, m, i) = int_i(1:nk, m, i)

@@ -647,14 +647,8 @@ contains
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
-        integer :: i, j, k1, k  ! counting variables
-        integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
+        integer :: i, j, k  ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
-        type(hutch_array), pointer :: ha
-        integer p_relative_3D, p_relative_2D
-        integer ratio_position
-        real ratio1
-        logical :: use_new_alg
         real, dimension(3) :: hcenter
         real :: dist
         integer :: i_start, i_end, j_start, j_end
@@ -1263,7 +1257,6 @@ contains
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
         integer :: i, j, k      ! counting variables
-        real:: hi, hj, hk   ! angstrom hutch positions
         integer, dimension(:), allocatable, target :: temp_atoms
         integer :: i_start, i_end, j_start, j_end
 
@@ -1315,6 +1308,7 @@ contains
         !    "hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
 
         if(allocated(temp_atoms)) deallocate(temp_atoms)
+
     end subroutine hutch_list_pixel_sq
 
 

@@ -40,7 +40,7 @@ program rmc
     character (len=256):: param_filename  
     character (len=512) comment
     logical, dimension(4) :: used_data_sets
-    logical :: not_too_short
+    !logical :: not_too_short
     real :: temperature
     real :: max_move
     real :: Q, res
@@ -70,6 +70,7 @@ program rmc
     real :: te1, te2
     logical :: square_pixel, use_femsim
     doubleprecision :: t0, t1
+    real :: timer1, timer2
 
     write(*,*)
     write(*,*) "This is the dev version of rmc!"
@@ -159,6 +160,8 @@ program rmc
     t0 = mpi_wtime()
     ! RMC step begins
 
+    call cpu_time(timer1)
+
     !*********update here*******************
     i=1315708
     !***************************************
@@ -237,6 +240,10 @@ program rmc
                 write(*,*) "MC move rejected."
             endif
         endif
+
+        call cpu_time(timer2)
+        write ( *, * ) 'Total elapsed CPU time in MC:', timer2 - timer1
+        call write_time_in_int(1)
 
         ! Every 50,000 steps lower the temp, max_move, and reset beta.
         if(mod(i,50000)==0)then
