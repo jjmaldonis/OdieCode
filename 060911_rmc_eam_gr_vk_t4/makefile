@@ -4,13 +4,15 @@
 #
 
 # application name
-APP = rmc_test
+APP = femsim
 
 # list of source files
-SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem1.f90 gr.f90 eam.f90 rmc_v_1_0.f90 
+#SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem1.f90 gr.f90 eam.f90 rmc_v_1_0.f90 
+SRC = ran2.f90 globals.f90 read_inputs.f90 model.f90 rmc_functions.f90 scattering_factors.f90 fem1.f90 gr.f90 eam.f90 femsim.f90
 
 # list of object files
-OBJ = ran2.o globals.o read_inputs.o model.o rmc_functions.o scattering_factors.o fem1.o gr.o eam.o rmc_v_1_0.o 
+#OBJ = ran2.o globals.o read_inputs.o model.o rmc_functions.o scattering_factors.o fem1.o gr.o eam.o rmc_v_1_0.o 
+OBJ = ran2.o globals.o read_inputs.o model.o rmc_functions.o scattering_factors.o fem1.o gr.o eam.o femsim.f90
 
 # define libraries needed by the linker
 #LIBS = -L/export/apps/openmpi_intel_20130618/lib -lmpi
@@ -43,4 +45,3 @@ opt: ${SRC}
 
 clean:
 	rm -f *.mod *.o ${APP}
-	ln -s /export/apps/openmpi_intel_20130618/lib/mpi.mod ./mpi.mod
