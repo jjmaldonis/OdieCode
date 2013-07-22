@@ -658,7 +658,7 @@ contains
         integer, dimension(:), allocatable, target :: temp_atoms
         real, dimension(3) :: hcenter
         real :: dist
-        integer :: i_start, i_end, j_start, j_end
+        integer :: i_start, i_end, j_start, j_end, trash
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
 
@@ -696,15 +696,9 @@ contains
         ! in a square, and we need to exclude the hutches not in the circle but
         ! still in the square.
 
-        ! Jason 20130712
-        ! Precalcuate the hutches that are in range of a square with side length
-        ! diameter. This is mathematically correct, but not intiutive, 
-        ! unfortunately for the reader. This is also identical to the bounds in
-        ! hutch_list_pixel_sq.
-        i_start = ceiling( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        i_end =   ceiling( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        j_start = ceiling( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        j_end =   ceiling( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        ! Jason 20130722 Made this part much better.
+        call hutch_position(m, px-diameter/2.0, py-diameter/2.0, 0.0, i_start, j_start, trash)
+        call hutch_position(m, px+diameter/2.0, py+diameter/2.0, 0.0, i_end, j_end, trash)
         !write(*,*) "i_start, i_end=", i_start, i_end
         !write(*,*) "j_start, j_end=", j_start, j_end
         !nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z) ! This wont work in the function.
@@ -1260,12 +1254,11 @@ contains
         real, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms !output of atom indices
         integer, intent(out) :: istat
-        integer :: hi, hj, hk, hx, hy, hz
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
         integer :: i, j, k      ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
-        integer :: i_start, i_end, j_start, j_end
+        integer :: i_start, i_end, j_start, j_end, trash
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
         allocate(temp_atoms(m%natoms), stat=istat)
@@ -1274,21 +1267,11 @@ contains
             return
         end if
 
-call hutch_position(m, px-diameter/2.0, py-diameter/2.0, 0.0, i_start, j_start, hz)
-call hutch_position(m, px+diameter/2.0, py+diameter/2.0, 0.0, i_end, j_end, hz)
-        ! Jason 20130712
-        ! Precalcuate the hutches that are in range. This is mathematically
-        ! correct, but not intiutive, unfortunately for the reader.
-        !i_start = ceiling( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
-        !i_end =   ceiling( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
-        !j_start = ceiling( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
-        !j_end =   ceiling( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
-        !i_start = ( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        !i_end =   ( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        !j_start = ( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        !j_end =   ( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        write(*,*) "i_start, i_end=", i_start, i_end
-        write(*,*) "j_start, j_end=", j_start, j_end
+        ! Jason 20130722 Made this part much better.
+        call hutch_position(m, px-diameter/2.0, py-diameter/2.0, 0.0, i_start, j_start, trash)
+        call hutch_position(m, px+diameter/2.0, py+diameter/2.0, 0.0, i_end, j_end, trash)
+        !write(*,*) "i_start, i_end=", i_start, i_end
+        !write(*,*) "j_start, j_end=", j_start, j_end
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
         
         ! Fill in the list.

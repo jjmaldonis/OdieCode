@@ -149,6 +149,7 @@ contains
 
         call init_rot(ntheta, nphi, npsi, nrot, istat)
         !if (istat /= 0) return
+        call init_pix(m, res, istat, pixel_square)
 
         allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
         int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
@@ -158,7 +159,6 @@ contains
             return
         endif
 
-        call init_pix(m, res, istat, pixel_square)
         !if (istat /= 0) return
         if( mod(m%lx,res) /= 0 ) then
             write(*,*) "WARNING! Your world size should be an integer multiple of the resolution. Res = 0.61/Q = ", res, ". World size = ", m%lx
@@ -575,7 +575,7 @@ contains
             write(*,*) "Calculating intensities over the models: nrot = ", nrot, ", numprocs = ", numprocs
             do i=myid+1, nrot, numprocs
                 do j=1, pa%npix
-                    write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
+                    !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
                     call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
                     int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                     psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
@@ -667,10 +667,7 @@ contains
         enddo
 
         gr_i = 0.0
-write(*,*) "size int_i=", size(int_i)
-        do i = 1, size(int_i)
-            int_i(i) = 0.0
-        enddo
+        int_i = 0.0
         x1 = 0.0
         y1 = 0.0
         rr_a = 0.0
