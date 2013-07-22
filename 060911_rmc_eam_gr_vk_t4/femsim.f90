@@ -98,10 +98,9 @@ program femsim
   ! reads in most of this.
   res = 0.61/Q
   nk = size(k)
-  square_pixel = .TRUE.
-  !square_pixel = .FALSE.
+  square_pixel = .FALSE. ! Femsim uses round pixels.
   use_femsim = .TRUE.
-  outbase = "jason-test_femsim"
+  outbase = model_filename(1:size(model_filename)-4)
   ! Set-up parameters and arrays for fem_initialize
 
   res = 0.5*res  ! fem_initialize wants pixel radius

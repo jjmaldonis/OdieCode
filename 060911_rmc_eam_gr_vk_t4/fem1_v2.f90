@@ -1,6 +1,7 @@
 !
-!This model was written by Jason Maldonis from the old fem1.f90 file on
-!06/29/13.
+! This model was written by Jason Maldonis from the old fem1.f90 file on
+! 06/29/13.
+! See commit notes on Github for details. Username is refreshx2.
 !
 
 
@@ -14,14 +15,19 @@ module fem_mod
     public :: fem_initialize, fem, I_average !femsim
     public:: fem_update, fem_accept_move, fem_reject_move !rmc
     public :: write_intensities
-    public :: write_time_in_int
+    public :: write_time_in_int, print_sampled_map
     !public :: print_image1, print_image2
     type pos_list
         integer :: nat
         real, pointer, dimension(:,:) :: pos ! 3xnat array containing positions of atoms
     end type pos_list
-    integer, save :: nk, npix, nrot  ! number of k points, pixels, and rotations
-    real, save, dimension(:,:), pointer :: pix ! npix x 2 list of pixel positions
+    integer, save :: nk, nrot  ! number of k points, pixels, and rotations
+    type pix_array
+        real, dimension(:,:), pointer :: pix ! npix x 2 list of pixel positions
+        integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
+        real :: phys_diam
+        real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge.
+    end type pix_array
     real, save, dimension(:,:), pointer :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
     real, save, dimension(:,:,:), pointer :: int_i, int_sq  ! nk x npix x nrot.  int_sq == int_i**2
     real, save, dimension(:,:,:), pointer :: old_int, old_int_sq
@@ -30,6 +36,7 @@ module fem_mod
     type(model), save, dimension(:), pointer :: mrot  ! array of rotated models
     type(index_list), save, dimension(:), pointer :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
+    type(pix_array), save :: pa
 
     real, save :: time_in_int = 0.0
 
@@ -48,9 +55,9 @@ contains
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
-        real dr      !Distance between pixels
+        !real :: dr ! Distance between pixels
         real r_max, const1, const2, const3
-        integer npix_x, npix_y , bin_max
+        integer bin_max
         integer i, j 
         integer const4 
         double precision b_x, b_j0 , b_j1 
@@ -94,65 +101,68 @@ contains
         a1(0)=1.0
         j0(0)=1.0
 
-        IF(pixel_square) THEN
-            !dr = res ! condition 1, shift by res
-            !npix_x=CEILING(m%lx/dr) 
-            !npix_y=CEILING(m%ly/dr)  !integer of pixel number, shifted by dr
-            !dr = m%lx/npix_x !changed by Feng Yi, fractional number of pixel
-            !**********************
-            !dr = res * 2.0  !no overlap between pixels
-            !npix_x = ANINT(m%lx/dr)
-            !npix_y = ANINT(m%ly/dr)
-            !***********************
-            dr = SQRT(2.0) * res !small pixel, inscribed in the Airy circle
-            npix_x = ANINT(m%lx/dr)
-            npix_y = ANINT(m%ly/dr)
-            !dr = SQRT(2.0) * res/2.0 !small pixel, inscribed in the Airy
-            !circle,shifted by half pixel size
-            !npix_x = ANINT(m%lx/dr)
-            !npix_y = ANINT(m%ly/dr)
-        ELSE
-            !dr=2*res/1.414214   !resolution=pixel radius. dr=pixel spacing
-            !npix_x=int(m%lx/dr)
-            !npix_y=int(m%ly/dr)
-            !separated just by dr = res
-            dr = res
-            !dr = 2.0 *res
-            npix_x=aint(m%lx/dr)
-            npix_y=aint(m%ly/dr)
-            !******************************
-            !npix_x=CEILING(m%lx/dr) + 1 !changed by Feng Yi on 06/02/2009,
-            !condition 1
-            !npix_y=CEILING(m%ly/dr) + 1
-            !dr = m%lx/(npix_x - 1.0) 
-            !***************************************************************
-            !npix_x=CEILING(m%lx/dr) ! changed by Feng Yi on 06/02/2009,
-            !condition 2
-            !npix_y=CEILING(m%ly/dr)
-            !dr = m%lx/npix_x 
-        ENDIF
-
-        ! Added by Jason on 07/12/2013
-        !if(npix_x == 0) npix_x = 1
-        !if(npix_y == 0) npix_y = 1
+        ! Jason 20130722 Whether we are using square or round pixels, I think we
+        ! still want the centers to be in the same spot and therefore the number
+        ! of pixels the same. I am going to do this all in init_pix instead.
+        !IF(pixel_square) THEN
+        !    !dr = res ! condition 1, shift by res
+        !    !npix_x=CEILING(m%lx/dr) 
+        !    !npix_y=CEILING(m%ly/dr)  !integer of pixel number, shifted by dr
+        !    !dr = m%lx/npix_x !changed by Feng Yi, fractional number of pixel
+        !    !**********************
+        !    !dr = res * 2.0  !no overlap between pixels
+        !    !npix_x = ANINT(m%lx/dr)
+        !    !npix_y = ANINT(m%ly/dr)
+        !    !***********************
+        !    !dr = SQRT(2.0) * res !small pixel, inscribed in the Airy circle
+        !    dr = res ! Jason 20130722
+        !    pa%npix_1D = ANINT(m%lx/dr)
+        !    !pa%npix_y = ANINT(m%ly/dr)
+        !    !dr = SQRT(2.0) * res/2.0 !small pixel, inscribed in the Airy
+        !    !circle,shifted by half pixel size
+        !    !npix_x = ANINT(m%lx/dr)
+        !    !npix_y = ANINT(m%ly/dr)
+        !ELSE
+        !    !dr=2*res/1.414214   !resolution=pixel radius. dr=pixel spacing
+        !    !npix_x=int(m%lx/dr)
+        !    !npix_y=int(m%ly/dr)
+        !    !separated just by dr = res
+        !    dr = res
+        !    !dr = 2.0 *res
+        !    pa%npix_1D=aint(m%lx/dr)
+        !    !pa%npix_y=aint(m%ly/dr)
+        !    !******************************
+        !    !npix_x=CEILING(m%lx/dr) + 1 !changed by Feng Yi on 06/02/2009,
+        !    !condition 1
+        !    !npix_y=CEILING(m%ly/dr) + 1
+        !    !dr = m%lx/(npix_x - 1.0) 
+        !    !***************************************************************
+        !    !npix_x=CEILING(m%lx/dr) ! changed by Feng Yi on 06/02/2009,
+        !    !condition 2
+        !    !npix_y=CEILING(m%ly/dr)
+        !    !dr = m%lx/npix_x 
+        !ENDIF
 
         nk = nki
-        npix = npix_x*npix_y
+        !pa%npix = pa%npix_1D*pa%npix_1D ! Jason commented on 20130722
         !nrot = ntheta*nphi*npsi
 
         call init_rot(ntheta, nphi, npsi, nrot, istat)
         !if (istat /= 0) return
 
-        allocate(int_i(nk, npix, nrot), old_int(nk, npix, nrot), old_int_sq(nk, npix, nrot), &
-        int_sq(nk, npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
+        allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
+        int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
         nullify(old_index, old_pos)
         if (istat /= 0) then
             write (*,*) 'Cannot allocate memory in fem_initialize.'
             return
         endif
 
-        call init_pix(m,npix_x, npix_y, dr, istat, pixel_square)
+        call init_pix(m, res, istat, pixel_square)
         !if (istat /= 0) return
+        if( mod(m%lx,res) /= 0 ) then
+            write(*,*) "WARNING! Your world size should be an integer multiple of the resolution. Res = 0.61/Q = ", res, ". World size = ", m%lx
+        endif
 
         call read_f_e
         allocate(scatfact_e(m%nelements,nk), stat=istat)
@@ -355,22 +365,13 @@ contains
         deallocate(rot_temp)
     end subroutine init_rot
 
-    subroutine init_pix(m, npix_x, npix_y, dr, istat, square_pixel)
+    subroutine init_pix(m, res, istat, square_pixel)
         type(model), intent(in) :: m
-        integer, intent(in) :: npix_x, npix_y
-        real :: dr
+        real, intent(in) :: res ! Pixel width.
         integer, intent(out) :: istat
         logical, optional, intent(in) :: square_pixel
         integer :: i, j, k
         logical :: pixel_square
-
-        write(*,*) "npix = ", npix
-
-        allocate(pix(npix, 2), stat=istat)
-        if (istat /= 0) then
-           write (*,*) 'Cannot allocate pixel position array.'
-           return
-        endif
 
         if(present(square_pixel)) then
             pixel_square = square_pixel
@@ -378,36 +379,38 @@ contains
             pixel_square = .FALSE.
         endif
 
-        k=1
+        pa%npix_1D = floor( m%lx / res )
+        pa%npix = pa%npix_1D**2
+
         if(pixel_square) then
-            do i=1, npix_x
-                do j=1, npix_y
-                    pix(k,1) = (i-1)*dr+(dr/2.0)-(m%lx/2.0)
-                    pix(k,2) = (j-1)*dr+(dr/2.0)-(m%ly/2.0)
-                    k = k + 1
-                enddo
-            enddo
+            pa%phys_diam = res
         else
-            do i=1, npix_x
-                do j=1, npix_y
-                    pix(k,1) = (i-1)*dr+(dr/2.0)-(m%lx/2.0) !condition 2
-                    pix(k,2) = (j-1)*dr+(dr/2.0)-(m%ly/2.0)
-                    !*************************************
-                    !pix(k,1) = (i-1)*dr-(m%lx/2.0)
-                    !pix(k,2) = (j-1)*dr-(m%ly/2.0)  !changed by FY on 06/02/2009, condition 1
-                    !write(*,*)pix(k,1),pix(k,2)
-                    k = k+1
-                enddo
-            enddo
+            pa%phys_diam = res * sqrt(2.0)
+        endif
+        pa%dr = m%lx/pa%npix_1D - res
+
+        allocate(pa%pix(pa%npix, 2), stat=istat)
+        if (istat /= 0) then
+           write (*,*) 'Cannot allocate pixel position array.'
+           return
         endif
 
+        k=1
+        do i=1, pa%npix_1D
+            do j=1, pa%npix_1D
+                pa%pix(k,1) = -m%lx/2.0 + (pa%phys_diam+pa%dr)/2.0 + (pa%phys_diam+pa%dr)*(i-1)
+                pa%pix(k,2) = -m%ly/2.0 + (pa%phys_diam+pa%dr)/2.0 + (pa%phys_diam+pa%dr)*(j-1)
+                k = k + 1
+            enddo
+        enddo
+
         if(myid.eq.0)then
-            write(*,*)"pixels=", npix_x, "by", npix_y
+            write(*,*)"pixels=", pa%npix_1D, "by", pa%npix_1D
             write(*,*) "They are centered at:"
             k=1
-            do i=1, npix_x
-                do j=1, npix_y
-                    write(*,*)"(", pix(k,1), ",", pix(k,2), ")"
+            do i=1, pa%npix_1D
+                do j=1, pa%npix_1D
+                    write(*,*)"(", pa%pix(k,1), ",", pa%pix(k,2), ")"
                     k=k+1
                 enddo
             enddo
@@ -431,9 +434,9 @@ contains
             write (314,*) 'k =',k(ik)
             write (314,*) 'theta  phi   psi  pix_x   pix_y  intensity'
             do irot=1, nrot 
-                do ipix=1, npix 
+                do ipix=1, pa%npix 
                    write (314,'(G16.8,G16.8,G16.8,G16.8,G16.8,G16.8)') rot(irot, 1), rot(irot, 2), & 
-                   rot(irot, 3), pix(ipix, 1), pix(ipix, 2), int_i(ik, ipix, irot)
+                   rot(irot, 3), pa%pix(ipix, 1), pa%pix(ipix, 2), int_i(ik, ipix, irot)
                 enddo
             enddo
         enddo
@@ -447,7 +450,7 @@ contains
 
         i_k = 0.0
         do i=1, nk
-            i_k(i) = sum(int_i(i,1:npix,1:nrot))/(npix * nrot)
+            i_k(i) = sum(int_i(i,1:pa%npix,1:nrot))/(pa%npix * nrot)
         enddo
     end subroutine i_average
 
@@ -512,8 +515,8 @@ contains
                 endif
 
                 ! Calculate intensities and store them in int_i(1:nk, j, i).
-                do j=1, npix
-                    call intensity(mrot(1), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+                do j=1, pa%npix
+                    call intensity(mrot(1), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
                 enddo
                 call destroy_model(mrot(1)) !memory leak
                 deallocate(mrot) !memory leak
@@ -522,8 +525,8 @@ contains
 
             int_sq = int_i*int_i
             do i=1, nk
-                Vk(i) = (sum(int_sq(i,1:npix,1:nrot)/(npix*nrot))/(sum(int_i(i,1:npix,1:nrot)/(npix*nrot))**2) ) - 1.0 !tempporally added by Feng Yi just for femsim
-                !write(*,*) k(i), Vk(i), sum(int_i(i,1:npix,1:nrot)/(npix*nrot))
+                Vk(i) = (sum(int_sq(i,1:pa%npix,1:nrot)/(pa%npix*nrot))/(sum(int_i(i,1:pa%npix,1:nrot)/(pa%npix*nrot))**2) ) - 1.0 !tempporally added by Feng Yi just for femsim
+                !write(*,*) k(i), Vk(i), sum(int_i(i,1:pa%npix,1:nrot)/(pa%npix*nrot))
             enddo
 
         !***********************************************************
@@ -571,9 +574,9 @@ contains
             ! Calculate intensities for every single pixel in every single model. This is very expensive.
             write(*,*) "Calculating intensities over the models: nrot = ", nrot, ", numprocs = ", numprocs
             do i=myid+1, nrot, numprocs
-                do j=1, npix
-                    !write(*,*) "Calling intensity on pixel (", pix(j,1), ",",pix(j,2), ") in rotated model ", i
-                    call intensity(mrot(i), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+                do j=1, pa%npix
+                    write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
+                    call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
                     int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                     psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                     psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
@@ -585,7 +588,7 @@ contains
 
             if(myid.eq.0)then
                 do i=1, nk
-                    Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
+                    Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                     Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
                 end do
             endif
@@ -617,7 +620,7 @@ contains
         real sqrt1_2_res
         real k_1
         real :: timer1, timer2
-        real, dimension(:,:), allocatable :: pp_array
+        !real, dimension(:,:), allocatable :: pp_array
 
         call cpu_time(timer1)
 
@@ -644,9 +647,9 @@ contains
         bin_max = int(r_max/fem_bin_width)+1
 
         if(pixel_square) then
-            call hutch_list_pixel_sq(m_int, px, py, res, pix_atoms, istat) !small pixel inscribed in airy circle
+            call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         else
-            call hutch_list_pixel(m_int, px, py, res, pix_atoms, istat)
+            call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         endif
 
         allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
@@ -664,7 +667,10 @@ contains
         enddo
 
         gr_i = 0.0
-        int_i = 0.0
+write(*,*) "size int_i=", size(int_i)
+        do i = 1, size(int_i)
+            int_i(i) = 0.0
+        enddo
         x1 = 0.0
         y1 = 0.0
         rr_a = 0.0
@@ -827,7 +833,7 @@ contains
 
         istat = 0
 
-        allocate(update_pix(npix)) !TODO add error message
+        allocate(update_pix(pa%npix)) !TODO add error message
 
         if( present(square_pixel)) then
             pixel_square = square_pixel
@@ -872,7 +878,7 @@ contains
 
         write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         rotations: do i=myid+1, nrot, numprocs
-            do m=1, npix
+            do m=1, pa%npix
                 old_int(1:nk, m, i) = int_i(1:nk, m, i)
                 old_int_sq(1:nk, m, i) = int_sq(1:nk, m, i)
             enddo
@@ -921,14 +927,14 @@ contains
                 enddo
                 ! Now check if the original position of the moved atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
-                do m=1, npix
+                do m=1, pa%npix
                     do n=1, mrot(i)%rot_i(atom)%nat !CHECK if this is the correct bound.
                     ! This is not the upper bound that Paul had, I dont know why
                     ! his worked but this one makes sense to me based on the
                     ! previous do loop. TODO. Also note that old_pos is
                     ! nullified in fem_reject / fem_accept.
-                        temp1 = old_pos(i)%pos(n,1) - pix(m,1)
-                        temp2 = old_pos(i)%pos(n,2) - pix(m,2)
+                        temp1 = old_pos(i)%pos(n,1) - pa%pix(m,1)
+                        temp2 = old_pos(i)%pos(n,2) - pa%pix(m,2)
                         temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
                         temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
                         if(pixel_square) then
@@ -1103,10 +1109,10 @@ contains
 
                 ! Now check if the position of the rotated atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
-                do m=1, npix
+                do m=1, pa%npix
                     do n=1, rot_atom%natoms
-                        temp1 = rot_atom%xx(n) - pix(m,1)
-                        temp2 = rot_atom%yy(n) - pix(m,2)
+                        temp1 = rot_atom%xx(n) - pa%pix(m,1)
+                        temp2 = rot_atom%yy(n) - pa%pix(m,2)
                         temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx) !PBC I think
                         temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly) !PBC I think
                         if(pixel_square) then
@@ -1125,9 +1131,9 @@ contains
                 enddo
 
                 ! Update pixels if necessary.
-                do m=1, npix
+                do m=1, pa%npix
                     if(update_pix(m)) then
-                        call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, &
+                        call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
                             int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     endif
                 enddo
@@ -1135,7 +1141,7 @@ contains
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
 
             ! Set psum_int and psum_int_sq.
-            do m=1, npix
+            do m=1, pa%npix
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, m, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)
             enddo
@@ -1346,7 +1352,7 @@ contains
         ! recalculate the variance
         if(myid.eq.0)then
             do i=1, nk
-                Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
+                Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                 Vk(i) = Vk(i) - v_background(i)   !background subtraction 052210 JWH
             end do
         endif
@@ -1407,7 +1413,7 @@ contains
 
             !The saved intensity values must return to their old values - JWH
             !03/05/09
-            do j=1, npix
+            do j=1, pa%npix
                 int_i(1:nk, j, i) = old_int(1:nk, j, i)
                 int_sq(1:nk, j, i) = old_int_sq(1:nk, j, i)
             enddo
@@ -1446,7 +1452,44 @@ contains
         if (allocated(scratch)) then
             deallocate(scratch)  ! added 3/18/09 pmv 
         endif
-      end subroutine add_pos
+    end subroutine add_pos
+
+
+    subroutine print_sampled_map(m, res, square_pixel)
+    ! Prints a "map" of the model with the numbers pertaining to the number of
+    ! times atom i will be sampled in the femsim algorithm over the entire
+    ! model (using pixels). Ideally, all numbers will be 1. A 0 means that atom
+    ! is not included in the simulation at all, and a 2 means an atoms is
+    ! sampled twice as much as an atom with a 1.
+        type(model), intent(in) :: m
+        real, intent(in) :: res
+        integer, dimension(:), allocatable :: sampled_atoms ! This array is of size natoms,
+        ! is initialized to 0, and position i is incremented every time atom i is used
+        ! in the intensity calcuation. This is to see which parts of the model are
+        ! lacking / overused in the simulation.
+        logical, intent(in) :: square_pixel
+        integer, pointer, dimension(:):: pix_atoms
+        integer :: i, j, istat
+
+        allocate(sampled_atoms(m%natoms))
+        sampled_atoms = 0
+
+        do i=1, pa%npix
+            if(square_pixel) then
+                call hutch_list_pixel_sq(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
+            else
+                call hutch_list_pixel(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
+            endif
+            do j=1, size(pix_atoms)
+                sampled_atoms(j) = sampled_atoms(j) + 1
+            enddo
+        enddo
+
+        do i=1, m%natoms
+            !write(*,'(I0)',advance='no') sampled_atoms(i)
+            write(*,*) sampled_atoms(i), m%xx(i), m%yy(i), m%zz(i)
+        enddo
+    end subroutine print_sampled_map
 
 
 end module fem_mod

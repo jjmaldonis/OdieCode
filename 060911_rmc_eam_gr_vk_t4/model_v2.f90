@@ -117,10 +117,12 @@ module model_mod
         INTEGER size_ratio
     END TYPE hutch_3D_array
 
+    ! Global variables
     TYPE(hutch_2D_array),PRIVATE :: list_1_2D
     TYPE(hutch_3D_array),PRIVATE :: list_1_3D
     LOGICAL, PRIVATE, SAVE :: hlist_2D_calc = .FALSE.
     LOGICAL, PRIVATE, SAVE :: hlist_3D_calc = .FALSE.
+
 
 contains
 
@@ -354,14 +356,14 @@ contains
         real, intent(in) :: xx, yy, zz
         integer, intent(out) :: hx, hy, hz
 
-        ! This makes the range of hx, hy, and hz from 0 to hutch_size+1, however
+        ! This makes the range of hx, hy, and hz from 0 to nhutch_i, however
         ! the only time one of them will be 0 is if the position is exactly on
-        ! the left edge. The same idea is true for hutch_size+1. Thats what the
-        ! next two sets of if statements are for: If they are on an edge just
-        ! wrap them over. Technically you can get statistically more in hutches
-        ! on the 3 "left" edges but it will happen extremely rarely so it wont
-        ! matter. By the time we are done hx,hy, and hz are restrained from 1 to
-        ! hutch_size so we can convienently put them in an array.
+        ! the left edge. Thats what the next set of if statements is for: If 
+        ! they are on an edge just move them a little bit over. Technically you 
+        ! can get statistically more atoms in hutches on the 3 "left" edges but 
+        ! it will happen extremely rarely so it wont matter. By the time we 
+        ! are done hx, hy, and hz are restrained from 1 to nhutch_i so we can 
+        ! convienently put them in an array.
         hx = ceiling( (xx + 0.5*m%lx) / m%ha%hutch_size )
         hy = ceiling( (yy + 0.5*m%ly) / m%ha%hutch_size )
         hz = ceiling( (zz + 0.5*m%lz) / m%ha%hutch_size )
@@ -370,9 +372,14 @@ contains
         if (hy == 0) hy = 1
         if (hz == 0) hz = 1
 
-        if(xx .ge. m%lx/2.0) hx = 1
-        if(yy .ge. m%ly/2.0) hy = 1
-        if(zz .ge. m%lz/2.0) hz = 1
+        ! Jason 20130722 I commented this out because I think I was wrong above.
+        ! I dont think these are necessary. I want to find out why someone
+        ! thought they were too. I could definitely be wrong here.
+        ! Maybe due to rounding errors if an atom is on the far right edge.
+        ! But if thats the case, then hx = m%ha%nhutch_x not hx = 1, etc.
+        !if(xx .ge. m%lx/2.0) hx = 1
+        !if(yy .ge. m%ly/2.0) hy = 1
+        !if(zz .ge. m%lz/2.0) hz = 1
     end subroutine hutch_position
 
 
@@ -1253,7 +1260,7 @@ contains
         real, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms !output of atom indices
         integer, intent(out) :: istat
-        integer :: hx, hy, hz   ! hutch of position (px, py, pz)
+        integer :: hi, hj, hk, hx, hy, hz
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
         integer :: i, j, k      ! counting variables
@@ -1267,17 +1274,23 @@ contains
             return
         end if
 
+call hutch_position(m, px-diameter/2.0, py-diameter/2.0, 0.0, i_start, j_start, hz)
+call hutch_position(m, px+diameter/2.0, py+diameter/2.0, 0.0, i_end, j_end, hz)
         ! Jason 20130712
         ! Precalcuate the hutches that are in range. This is mathematically
         ! correct, but not intiutive, unfortunately for the reader.
-        i_start = ceiling( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        i_end =   ceiling( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        j_start = ceiling( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        j_end =   ceiling( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
-        !write(*,*) "i_start, i_end=", i_start, i_end
-        !write(*,*) "j_start, j_end=", j_start, j_end
+        !i_start = ceiling( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
+        !i_end =   ceiling( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
+        !j_start = ceiling( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
+        !j_end =   ceiling( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size + 1 )
+        !i_start = ( ( px - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        !i_end =   ( ( px + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        !j_start = ( ( py - diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        !j_end =   ( ( py + diameter/2.0 + m%lx/2.0 ) / m%ha%hutch_size )
+        write(*,*) "i_start, i_end=", i_start, i_end
+        write(*,*) "j_start, j_end=", j_start, j_end
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)
-
+        
         ! Fill in the list.
         nlist = 1
         do i = i_start, i_end
@@ -1304,8 +1317,8 @@ contains
             istat = -1
         endif
 
-        !write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, &
-        !    "hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
+        write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, &
+            "hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
 
         if(allocated(temp_atoms)) deallocate(temp_atoms)
 
@@ -1538,5 +1551,6 @@ contains
             ha%h(hx,hy, hz)%nat = 0
         endif
     end subroutine hutch_remove_atom
+
 
 end module model_mod
