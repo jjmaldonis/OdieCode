@@ -19,6 +19,6 @@ fem_exp_jwh.txt
 3.0	 !weight of fem
 28.637     !scaling factor for exp Vk
 1 40 20 	 !# of rotations(nphi, npsi, ntheta)
-0.0305	 !Q (inverse angstrom)
+0.04  !Q (inverse angstrom)
 1	 !fem algorithm
 13.0	 !pixel distance
