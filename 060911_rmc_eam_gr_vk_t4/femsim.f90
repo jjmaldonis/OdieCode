@@ -103,8 +103,6 @@ program femsim
   outbase = model_filename(1:size(model_filename)-4)
   ! Set-up parameters and arrays for fem_initialize
 
-  res = 0.5*res  ! fem_initialize wants pixel radius
-
   allocate(vk(size(vk_exp)), i_k(nk),stat=istat)
   if( istat /= 0) then
      write (*,*) 'Cannot allcoate memory for V(k) in top level program.'
