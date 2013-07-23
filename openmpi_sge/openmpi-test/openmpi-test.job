@@ -1,0 +1,8 @@
+#!/bin/bash
+#$ -N openmpi-test
+#$ -pe orte 5
+#$ -cwd
+#$ -j y
+
+/opt/openmpi/bin/mpirun -n $NSLOTS mpi-ring
+exit 0

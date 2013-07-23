@@ -1,0 +1,2 @@
+To build mpi-ring.c do the following
+mpicc mpi-ring.c -o mpi-ring
