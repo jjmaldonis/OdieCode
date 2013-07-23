@@ -38,6 +38,7 @@ program rmc
     type(model) :: m
     character (len=256) :: model_filename
     character (len=256) :: param_filename  
+    character (len=256) :: outbase
     character (len=512) :: comment
     logical, dimension(4) :: used_data_sets
     !logical :: not_too_short
@@ -69,8 +70,7 @@ program rmc
     real :: randnum
     real :: te1, te2
     logical :: square_pixel, use_femsim
-    doubleprecision :: t0, t1
-    !real :: timer1, timer2 !timers
+    doubleprecision :: t0, t1 !timers
 
     write(*,*)
     write(*,*) "This is the dev version of rmc!"
@@ -82,6 +82,7 @@ program rmc
 
     model_filename = 'model_1.xyz'
     param_filename = 'param_file.in'
+    outbase = "output/"//model_filename(1:size(model_filename)-4)//"_rmc"
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -128,14 +129,14 @@ program rmc
 
     if(myid.eq.0)then
         ! Write initial gr
-        open(unit=51,file="test_gr_initial.txt",form='formatted',status='unknown')
+        open(unit=51,file=outbase//"_gr_initial.txt",form='formatted',status='unknown')
             do i=1, mbin_x
                 R = del_r_x*(i)-del_r_x
                 write(51,*)R, gr_x_sim_cur(i)
             enddo
         close(51)
         ! Write initial vk 
-        open(unit=52,file="test_vk_initial.txt",form='formatted',status='unknown')
+        open(unit=52,file=outbase//"vk_initial.txt",form='formatted',status='unknown')
             do i=1, nk
                 !write (*,*) k(i),vk(i)
                 write(52,*)k(i),vk(i)
@@ -160,8 +161,6 @@ program rmc
     write(*,*)"Initialization complete. Starting Monte Carlo."
     t0 = mpi_wtime()
     ! RMC step begins
-
-    !call cpu_time(timer1)
 
     !*********update here*******************
     i=1315708
@@ -240,10 +239,6 @@ program rmc
             endif
         endif
 
-        !call cpu_time(timer2)
-        !write ( *, * ) 'Total elapsed CPU time in MC:', timer2 - timer1
-        !call write_time_in_int(1)
-
         ! Every 50,000 steps lower the temp, max_move, and reset beta.
         if(mod(i,50000)==0)then
             temperature = temperature * sqrt(0.7)
@@ -261,10 +256,11 @@ program rmc
         ! statistically jumped way up. We could also write del_chi (or instead).
         if(mod(i,1000)==0)then
             if(myid.eq.0)then
-                open(31,file='test_gr_update.txt',form='formatted',status='unknown')
-                open(32,file='test_vk_update.txt',form='formatted',status='unknown')
-                open(33,file='test_model_update.txt',form='formatted',status='unknown')
-                open(34,file='energy_function.txt',form='formatted', status='unknown')
+                open(31,file=outbase//'_gr_update.txt',form='formatted',status='unknown')
+                open(32,file=outbase//'_vk_update.txt',form='formatted',status='unknown')
+                open(33,file=outbase//'_model_update.txt',form='formatted',status='unknown')
+                open(34,file=outbase//'_energy_function.txt',form='formatted',status='unknown')
+                open(35,file=outbase//'_time_elapsed.txt',form='formatted',status='unkown')
                 ! Write to gr_update        
                 do j=1, mbin_x
                     R = del_r_x*(j)-del_r_x
@@ -282,12 +278,16 @@ program rmc
                 enddo
                 write(33,*)"-1"
                 ! Write to energy_function
-                write(34,*) te1, i
+                write(34,*) i, te1
+                ! Write to time_elapsed
+                t1 = mpi_wtime()
+                write (34,*) i, t1-t0
                 ! Close files
                 close(31)
                 close(32)
                 close(33)
                 close(34)
+                close(35)
             endif
         endif
     ENDDO
@@ -299,7 +299,7 @@ program rmc
         write(*,*)t1, t0
 
         ! Write final gr
-        open(unit=53,file="test_gr_update_final.txt",form='formatted',status='unknown')
+        open(unit=53,file=outbase//"_gr_update_final.txt",form='formatted',status='unknown')
         do i=1, mbin_e
             R = del_r_e*(i)-del_r_e
             write(53,*)R, gr_e_sim_new(i)
@@ -307,14 +307,14 @@ program rmc
         close(53)
         
         ! Write final vk
-        open(unit=54,file="test_vk_update_final.txt",form='formatted',status='unknown')
+        open(unit=54,file=outbase//"_vk_update_final.txt",form='formatted',status='unknown')
         do i=1, nk
             write(54,*)k(i),vk(i)
         enddo
         close(54)
         
         ! Write final model
-        open(unit=55,file="test_model_update_final.txt",form='formatted',status='unknown')
+        open(unit=55,file=outbase//"_model_update_final.txt",form='formatted',status='unknown')
         write(55,*)"updated model"
         write(55,*)m%lx,m%ly,m%lz
         do i=1,m%natoms
@@ -323,9 +323,14 @@ program rmc
         write(55,*)"-1"
         close(55)
         ! Write final energy.
-        open(56,file='energy_function.txt',form='formatted', status='unknown')
+        open(56,file=outbase//'_energy_function.txt',form='formatted', status='unknown')
         write(56,*) te1, i
         close(56)
+        ! Write final time spent.
+        open(57,file=outbase//'_time_elapsed.txt',form='formatted',status='unkown')
+        t1 = mpi_wtime()
+        write (34,*) i, t1-t0
+        close(57)
     endif
     call mpi_finalize(mpierr)
 

@@ -100,7 +100,7 @@ program femsim
   nk = size(k)
   square_pixel = .FALSE. ! Femsim uses round pixels.
   use_femsim = .TRUE.
-  outbase = model_filename(1:size(model_filename)-4)
+  outbase = "output/"//model_filename(1:size(model_filename)-4)//"_femsim"
   ! Set-up parameters and arrays for fem_initialize
 
   ! This line was here in the original. It was not in the rmc.f90 though...
