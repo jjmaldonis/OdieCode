@@ -2,6 +2,9 @@
 *.o
 *.tif
 spec/andy_test_code_20130618/test/Si110_im*
-060911_rmc_eam_gr_vk_t4/femsim_test
-060911_rmc_eam_gr_vk_t4/rmc_test
+060911_rmc_eam_gr_vk_t4/femsim
+060911_rmc_eam_gr_vk_t4/rmc
 060911_rmc_eam_gr_vk_t4/temp.f90
+060911_rmc_eam_gr_vk_t4/ran2__genmod.f90
+060911_rmc_eam_gr_vk_t4/makefile
+testing_dir/
