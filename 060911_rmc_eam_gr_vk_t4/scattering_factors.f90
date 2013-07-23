@@ -64,9 +64,9 @@ CONTAINS
 !    REAL, INTENT(OUT), DIMENSION(103,3):: a_e, b_e, c_e, d_e
     
     !Local variables
-    CHARACTER (LEN=100) comment1
-    INTEGER status1
-    INTEGER i,j
+    !CHARACTER (LEN=100) comment1
+    !INTEGER status1
+    !INTEGER i,j
     
 
 
@@ -1382,10 +1382,10 @@ SUBROUTINE read_f_x
   !REAL, INTENT(OUT), DIMENSION(98,4) :: a_x, b_x
   !REAL, INTENT(OUT), DIMENSION(98) :: c_x
 
-  INTEGER status1
-  CHARACTER (LEN=200) comment1
-  INTEGER i,j
-  INTEGER num_data
+  !INTEGER status1
+  !CHARACTER (LEN=200) comment1
+  !INTEGER i,j
+  !INTEGER num_data
 
    a_x(           1,1) =   0.4899180    
  b_x(           1,1) =    20.65930    

@@ -18,7 +18,7 @@ module model_mod
     ! of the atoms in this hutch.  nat is the number of atoms in
     ! this hutch
     type hutch
-        integer, dimension(:), allocatable:: at
+        integer, dimension(:), pointer :: at
         integer :: nat
     end type hutch
 
@@ -26,19 +26,19 @@ module model_mod
     ! plus supporting information
     type hutch_array
         ! array of hutch objects
-        type(hutch), dimension(:,:,:), allocatable :: h
+        type(hutch), dimension(:,:,:), pointer :: h
         ! number of hutches in x, y, and z
         integer :: nhutch_x, nhutch_y, nhutch_z
         ! physical size of a hutch in Angstroms
         real :: hutch_size
         ! list of the hutch indices for every atom
-        integer, allocatable, dimension(:,:) :: atom_hutch
+        integer, pointer, dimension(:,:) :: atom_hutch
     end type hutch_array
 
     ! adjustable-size list of atom indices
     type index_list
         integer :: nat
-        integer, allocatable, dimension(:) :: ind
+        integer, pointer, dimension(:) :: ind
     end type index_list
 
 
@@ -50,16 +50,16 @@ module model_mod
     ! Defined type for a structural model with atoms positions and a bunch of metadata
     type model
         integer :: natoms                              ! number of atoms in the model
-        real, allocatable, dimension(:) :: xx, yy, zz      ! atom positions in Angstroms
-        integer, allocatable, dimension(:) :: znum, znum_r         ! atom atomic numbers, and reduced z numbners
+        real, pointer, dimension(:) :: xx, yy, zz      ! atom positions in Angstroms
+        integer, pointer, dimension(:) :: znum, znum_r         ! atom atomic numbers, and reduced z numbners
         real :: lx, ly, lz                             ! box size, in Angstroms
         integer :: nelements                           ! # of elements in the model
-        integer, allocatable, dimension(:) :: atom_type    ! array listing atomic numbers present
-        real, allocatable, dimension(:) :: composition     ! fractional composition in the order of atom_type
+        integer, pointer, dimension(:) :: atom_type    ! array listing atomic numbers present
+        real, pointer, dimension(:) :: composition     ! fractional composition in the order of atom_type
         type(hutch_array) :: ha                        ! hutch data structure
         logical :: rotated                             ! TRUE if model has been rotated, FALSE otherwise
         integer :: unrot_natoms
-        type(index_list), dimension(:), allocatable:: rot_i ! list of which atoms in the rotated model correspond
+        type(index_list), dimension(:), pointer :: rot_i ! list of which atoms in the rotated model correspond
         ! to the index i in the unrotated model
     end type model
 
@@ -67,8 +67,8 @@ module model_mod
     ! list the relative x, and y position of squre to the center square
     ! for the atom at a certain position in a squre
     ! with certain ratio of radius to the square size
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), ALLOCATABLE:: list_x
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), ALLOCATABLE:: list_y
+        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_x
+        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_y
         INTEGER size_d !number of elements in x, y dimension
     END TYPE hutch_2D_list
 
@@ -77,7 +77,7 @@ module model_mod
     ! divide the square into equal 4 parts
     ! the ratio of radius to the square size range from 0 to 10.5, can be changed
     ! depending on calculation needed
-        TYPE(hutch_2D_list), DIMENSION(:,:), ALLOCATABLE:: list_2D
+        TYPE(hutch_2D_list), DIMENSION(:,:), POINTER :: list_2D
         !first index refers to relative position of a point in a square
         !second index refers to ratio of radius to square size
         !position=relative position of a point in a square
@@ -85,7 +85,7 @@ module model_mod
         !point is in
         !i refers to which x position the point is in
         INTEGER size_position
-        REAL, DIMENSION(:), ALLOCATABLE:: ratio_radius_square
+        REAL, DIMENSION(:), POINTER :: ratio_radius_square
         INTEGER size_ratio
     END TYPE hutch_2D_array
 
@@ -93,16 +93,18 @@ module model_mod
     ! list the relative x, y and Z position of squre to the center hutch
     ! for the atom at a certain position in a hutch
     ! with certain ratio of radius to the hutch size
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), ALLOCATABLE:: list_x
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), ALLOCATABLE:: list_y
-        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), ALLOCATABLE:: list_z
+        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_x
+        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_y
+        INTEGER(SELECTED_INT_KIND(3)), DIMENSION(:), POINTER :: list_z
         INTEGER size_d !number of elements in x, y and z dimension
     END TYPE hutch_3D_list
+
     TYPE hutch_3D_array
-    ! list the relative x, and y position of hutch to the center square ! divide the square into equal 8 parts
+    ! list the relative x, and y position of hutch to the center square
+    ! divide the square into equal 8 parts
     ! the ratio of radius to the hutch size range from 0 to 10.5, can be changed
     ! depending on calculation needed
-        TYPE(hutch_3D_list), DIMENSION(:, :), ALLOCATABLE:: list_3D
+        TYPE(hutch_3D_list), DIMENSION(:, :), POINTER :: list_3D
         !first index refers to relative position of a point in a hutch
         !second index refers to ratio of radius to hutch size
         !position=relative position of a point in a hutch
@@ -111,7 +113,7 @@ module model_mod
         !j refers to which y position the point is in
         !i refers to which x position the point is in
         INTEGER size_position
-        REAL, DIMENSION(:), ALLOCATABLE:: ratio_radius_hutch
+        REAL, DIMENSION(:), POINTER :: ratio_radius_hutch
         INTEGER size_ratio
     END TYPE hutch_3D_array
 
@@ -332,7 +334,7 @@ contains
             do hy = 1, m%ha%nhutch_y
                 do hz = 1, m%ha%nhutch_z
                     ! I don't think we need the line below.
-                    !nullify(m%ha%h(hx, hy, hz)%at) ! Jason 20130722 commented.
+                    nullify(m%ha%h(hx, hy, hz)%at)
                     m%ha%h(hx, hy, hz)%nat = 0
                 end do
             end do
@@ -387,25 +389,27 @@ contains
         integer, intent(in) :: atom, hx, hy, hz
         integer :: nat
         integer, dimension(m%ha%h(hx, hy, hz)%nat+1) :: scratch_atoms
+        type(hutch_array), pointer :: ha
+        ha => m%ha
         ! ha%h(hx,hy,hz)%nat is set to 0 in a do loop in model_init_hutches,
         ! slightly before this function is called for each atom.
-        nat = m%ha%h(hx,hy,hz)%nat
+        nat = ha%h(hx,hy,hz)%nat
         if(nat > 0) then
-            scratch_atoms(1:nat) = m%ha%h(hx, hy, hz)%at
+            scratch_atoms(1:nat) = ha%h(hx, hy, hz)%at
             scratch_atoms(nat+1) = atom
             ! Reallocate with new size
-            deallocate(m%ha%h(hx,hy,hz)%at)
-            allocate(m%ha%h(hx,hy,hz)%at(1:nat+1)) ! +1 for extra atom
-            m%ha%h(hx,hy,hz)%at = scratch_atoms
+            deallocate(ha%h(hx,hy,hz)%at)
+            allocate(ha%h(hx,hy,hz)%at(1:nat+1)) ! +1 for extra atom
+            ha%h(hx,hy,hz)%at = scratch_atoms
         else
-            allocate(m%ha%h(hx,hy,hz)%at(1:1))
-            m%ha%h(hx,hy,hz)%at(1) = atom
+            allocate(ha%h(hx,hy,hz)%at(1:1))
+            ha%h(hx,hy,hz)%at(1) = atom
         end if
 
-        m%ha%h(hx,hy,hz)%nat = nat+1
-        m%ha%atom_hutch(atom, 1) = hx
-        m%ha%atom_hutch(atom, 2) = hy
-        m%ha%atom_hutch(atom, 3) = hz
+        ha%h(hx,hy,hz)%nat = nat+1
+        ha%atom_hutch(atom, 1) = hx
+        ha%atom_hutch(atom, 2) = hy
+        ha%atom_hutch(atom, 3) = hz
     end subroutine hutch_add_atom
 
     subroutine check_model(m, istat)
@@ -548,8 +552,7 @@ contains
 
         do i=1,mrot%unrot_natoms
            mrot%rot_i(i)%nat = 0
-           !nullify(mrot%rot_i(i)%ind)
-           deallocate(mrot%rot_i(i)%ind)
+           nullify(mrot%rot_i(i)%ind)
         enddo
 
         ! now copy just the atoms inside the original box size 
@@ -613,7 +616,7 @@ contains
     ! of destroy_model.
         type(hutch_array), intent(inout) :: ha
         integer i, j, k
-        if(allocated(ha%h)) then
+        if(associated(ha%h)) then
             do i=1, ha%nhutch_x
                 do j=1, ha%nhutch_y
                     do k=1, ha%nhutch_z
@@ -631,14 +634,14 @@ contains
     ! deallocates all of the allocatable arrays and sub-arrays in an index list.
     ! used by destroy_model
         integer, intent(in) :: unrot_natoms
-        type(index_list), allocatable, dimension(:) :: ri
+        type(index_list), pointer, dimension(:) :: ri
         integer i
         do i=1, unrot_natoms
             if(ri(i)%nat .gt. 0) then  !added by feng yi
                 deallocate(ri(i)%ind)
             endif
         enddo
-        if(allocated(ri))then   !JWH - 042109
+        if(associated(ri))then   !JWH - 042109
           deallocate(ri)
         endif
     end subroutine destroy_rot_indices
@@ -646,7 +649,7 @@ contains
     subroutine hutch_list_pixel(m, px, py, diameter, atoms, istat)
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, diameter
-        integer, allocatable, dimension(:) :: atoms
+        integer, pointer, dimension(:) :: atoms
         integer, intent(out) :: istat
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
         integer :: nh           ! number of hutches corresponding to diameter
@@ -733,7 +736,7 @@ contains
             endif
             atoms = temp_atoms(1:nlist-1)
         else
-            deallocate(atoms)
+            nullify(atoms)
             istat = -1
         endif
 
@@ -1097,7 +1100,8 @@ contains
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, pz
         real, intent(in) :: radius
-        integer,  dimension(:), allocatable, intent(out) :: atoms
+        !integer,  dimension(:), pointer, intent(out) :: atoms
+        integer,  dimension(:), pointer :: atoms
         integer, intent(out) :: nlist        ! number of atoms in list
         integer, intent(out) :: istat
         integer :: hx, hy, hz   ! hutch of position (px, py, pz)
@@ -1105,12 +1109,14 @@ contains
         integer :: i, j, k, k1    ! counting variables
         integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
         integer, allocatable, dimension(:), target :: temp_atoms  ! temporary atoms list
+        type(hutch_array), pointer :: ha
         integer p_relative_3d, p_relative_2d
         integer ratio_position
         real ratio1
         logical :: use_new_alg
         !integer i2, j2, k2 !consider the hutch across the box boundary
 
+        ha => m%ha
         allocate(temp_atoms(m%natoms), stat=istat)
         if (istat /= 0) then
             write (*,*) 'Cannot allocate index list in hutch_list_3D.'
@@ -1119,7 +1125,7 @@ contains
 
         call hutch_position_eff(m, px, py, pz, hx, hy, hz,p_relative_3D, p_relative_2D)
 
-        ratio1 = radius / m%ha%hutch_size
+        ratio1 = radius / ha%hutch_size
         nh = ceiling(ratio1)
 
         if(.not. hlist_3d_calc) then
@@ -1149,86 +1155,90 @@ contains
             do k1=1, list_1_3d%list_3d(p_relative_3d, ratio_position)%size_d
                 k = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_z(k1)
                 k = hz + k
-                if (k > m%ha%nhutch_z) then
-                    hk = k - m%ha%nhutch_z
+                if (k > ha%nhutch_z) then
+                    hk = k - ha%nhutch_z
                 else if (k < 1) then
-                    hk = k + m%ha%nhutch_z
+                    hk = k + ha%nhutch_z
                 else
                     hk = k
                 end if
                 j = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_y(k1)
                 j = hy + j
-                if (j > m%ha%nhutch_y) then
-                    hj = j - m%ha%nhutch_y
+                if (j > ha%nhutch_y) then
+                    hj = j - ha%nhutch_y
                 else if (j < 1) then
-                    hj = j+ m%ha%nhutch_y
+                    hj = j+ ha%nhutch_y
                 else
                     hj = j
                 end if
                 i = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_x(k1)
                 i = hx + i
                 !Periodic boundary condition
-                if (i > m%ha%nhutch_x) then
-                    hi = i - m%ha%nhutch_x
+                if (i > ha%nhutch_x) then
+                    hi = i - ha%nhutch_x
                 else if (i < 1) then
-                    hi = i + m%ha%nhutch_x
+                    hi = i + ha%nhutch_x
                 else
                     hi = i
                 end if
-                if (m%ha%h(hi, hj, hk)%nat > 0) then
-                    temp_atoms(nlist:(nlist+m%ha%h(hi,hj,hk)%nat-1)) = m%ha%h(hi,hj,hk)%at
-                    nlist = nlist+m%ha%h(hi,hj,hk)%nat
+                if (ha%h(hi, hj, hk)%nat > 0) then
+                    temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
+                    nlist = nlist+ha%h(hi,hj,hk)%nat
                 endif
             enddo !k1
         else
             nlist = 1
             do k = (hz-nh), (hz+nh)
-                if (k > m%ha%nhutch_z) then
-                    hk = k - m%ha%nhutch_z
+                if (k > ha%nhutch_z) then
+                    hk = k - ha%nhutch_z
                 else if (k < 1) then
-                    hk = k + m%ha%nhutch_z
+                    hk = k + ha%nhutch_z
                 else
                     hk = k
                 end if
                 do j = (hy-nh), (hy+nh)
-                    if (j > m%ha%nhutch_y) then
-                        hj = j - m%ha%nhutch_y
+                    if (j > ha%nhutch_y) then
+                        hj = j - ha%nhutch_y
                     else if (j < 1) then
-                        hj = j+ m%ha%nhutch_y
+                        hj = j+ ha%nhutch_y
                     else
                         hj = j
                     end if
                     do i = (hx-nh), (hx+nh)
-                        if (i > m%ha%nhutch_x) then !Periodic boundary condition
-                            hi = i - m%ha%nhutch_x
+                        if (i > ha%nhutch_x) then !Periodic boundary condition
+                            hi = i - ha%nhutch_x
                         else if (i < 1) then
-                            hi = i + m%ha%nhutch_x
+                            hi = i + ha%nhutch_x
                         else
                             hi = i
                         end if
-                        if (m%ha%h(hi, hj, hk)%nat > 0) then
-                            !PRINT *, 'nlist+m%ha%h(hi,hj,hk)%nat-1 is: ', !nlist+m%ha%h(hi,hj,hk)%nat-1 !for debug
-                            temp_atoms(nlist:(nlist+m%ha%h(hi,hj,hk)%nat-1)) = m%ha%h(hi,hj,hk)%at
-                            nlist = nlist+m%ha%h(hi,hj,hk)%nat
+                        if (ha%h(hi, hj, hk)%nat > 0) then
+                            !PRINT *, 'nlist+ha%h(hi,hj,hk)%nat-1 is: ', !nlist+ha%h(hi,hj,hk)%nat-1 !for debug
+                            temp_atoms(nlist:(nlist+ha%h(hi,hj,hk)%nat-1)) = ha%h(hi,hj,hk)%at
+                            nlist = nlist+ha%h(hi,hj,hk)%nat
                         endif
                     end do
                 end do
             end do
         endif ! use_new_alg
 
+        allocate(atoms(nlist-1), stat=istat)
+        if (istat /= 0) then
+            write (*,*) 'Unable to allocate memory for atom indices in hutch_list_3D.'
+            return
+        endif
+
         !assign atoms to the subset of temp_atoms that was filled in
         if (nlist > 1) then
-            allocate(atoms(nlist-1), stat=istat)
-            if (istat /= 0) then
-                write (*,*) 'Unable to allocate memory for atom indices in hutch_list_3D.'
-                return
-            endif
             atoms = temp_atoms(1:nlist-1)
         else
-            deallocate(atoms)
+            nullify(atoms)
             istat = -1
         endif
 
+        if(associated(ha)) then
+            nullify(ha)
+        endif
         deallocate(temp_atoms) !added by feng yi on 03/03/2009
     end subroutine hutch_list_3d
 
@@ -1242,7 +1252,7 @@ contains
     ! all its atoms are put in 'atoms'. Is this what we want???
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, diameter
-        integer, allocatable, dimension(:) :: atoms !output of atom indices
+        integer, pointer, dimension(:) :: atoms !output of atom indices
         integer, intent(out) :: istat
         integer :: nh           ! number of hutches corresponding to diameter
         integer :: nlist        ! number of atoms in list
@@ -1286,7 +1296,7 @@ contains
             endif
             atoms = temp_atoms
         else
-            deallocate(atoms)
+            nullify(atoms)
             istat = -1
         endif
 
@@ -1466,12 +1476,14 @@ contains
         integer, intent(in) :: atom
         real, intent(in) :: xx, yy, zz
         integer :: hx, hy, hz
+        type(hutch_array), pointer :: ha
+        ha => m%ha
         call hutch_remove_atom(m, atom)
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
         call hutch_add_atom(m, atom, hx, hy, hz)
-        m%ha%atom_hutch(atom, 1) = hx
-        m%ha%atom_hutch(atom, 2) = hy
-        m%ha%atom_hutch(atom, 3) = hz
+        ha%atom_hutch(atom, 1) = hx
+        ha%atom_hutch(atom, 2) = hy
+        ha%atom_hutch(atom, 3) = hz
     end subroutine hutch_move_atom
 
 
@@ -1494,30 +1506,32 @@ contains
         integer, intent(in) :: atom
         integer, dimension(m%ha%h(m%ha%atom_hutch(atom,1),m%ha%atom_hutch(atom,2),m%ha%atom_hutch(atom,3))%nat) :: scratch_atoms
         integer :: hx, hy, hz, i, j
+        type(hutch_array), pointer :: ha
+        ha => m%ha
 
-        hx = m%ha%atom_hutch(atom,1)
-        hy = m%ha%atom_hutch(atom,2)
-        hz = m%ha%atom_hutch(atom,3)
+        hx = ha%atom_hutch(atom,1)
+        hy = ha%atom_hutch(atom,2)
+        hz = ha%atom_hutch(atom,3)
 
-        scratch_atoms = m%ha%h(hx,hy,hz)%at
-        deallocate(m%ha%h(hx,hy,hz)%at)
+        scratch_atoms = ha%h(hx,hy,hz)%at
+        deallocate(ha%h(hx,hy,hz)%at)
 
-        if(m%ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
-            allocate(m%ha%h(hx,hy,hz)%at(m%ha%h(hx,hy,hz)%nat-1))
+        if(ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
+            allocate(ha%h(hx,hy,hz)%at(ha%h(hx,hy,hz)%nat-1))
             j=1
-            do i=1, m%ha%h(hx,hy,hz)%nat
+            do i=1, ha%h(hx,hy,hz)%nat
                 if (scratch_atoms(i) /= atom) then
-                    m%ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
+                    ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
                     j=j+1
                 end if
             enddo
 
-            m%ha%h(hx,hy,hz)%nat = m%ha%h(hx,hy,hz)%nat-1
-            m%ha%atom_hutch(atom,1) = 0
-            m%ha%atom_hutch(atom,2) = 0
-            m%ha%atom_hutch(atom,3) = 0
+            ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
+            ha%atom_hutch(atom,1) = 0
+            ha%atom_hutch(atom,2) = 0
+            ha%atom_hutch(atom,3) = 0
         else
-            m%ha%h(hx,hy, hz)%nat = 0
+            ha%h(hx,hy, hz)%nat = 0
         endif
     end subroutine hutch_remove_atom
 

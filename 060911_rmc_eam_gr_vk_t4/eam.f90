@@ -203,7 +203,7 @@ contains
 
 
     ! Calculates initial energy of model using eam potential
-    ! Only called once in rmc.
+    ! Only called once in rmc. Not used in Femsim of course.
     subroutine eam_initial(m, te1)
         implicit none
         type(model), intent(in) :: m

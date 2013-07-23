@@ -36,9 +36,9 @@ program rmc
     implicit none
     include 'mpif.h'
     type(model) :: m
-    character (len=256) model_filename
-    character (len=256):: param_filename  
-    character (len=512) comment
+    character (len=256) :: model_filename
+    character (len=256) :: param_filename  
+    character (len=512) :: comment
     logical, dimension(4) :: used_data_sets
     !logical :: not_too_short
     real :: temperature
@@ -70,7 +70,7 @@ program rmc
     real :: te1, te2
     logical :: square_pixel, use_femsim
     doubleprecision :: t0, t1
-    real :: timer1, timer2
+    !real :: timer1, timer2 !timers
 
     write(*,*)
     write(*,*) "This is the dev version of rmc!"
@@ -102,8 +102,7 @@ program rmc
 
     iseed2 = 104756
 
-    square_pixel = .TRUE.
-    !square_pixel = .FALSE.
+    square_pixel = .TRUE. ! RMC uses square pixels, not round.
     use_femsim = .FALSE.
 
     call read_eam(m)   
@@ -120,6 +119,8 @@ program rmc
 
     ! Initialize and calculate initial vk
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
+
+    !call print_sampled_map(m, res, square_pixel)
 
     allocate(vk(size(vk_exp)))
 
@@ -160,7 +161,7 @@ program rmc
     t0 = mpi_wtime()
     ! RMC step begins
 
-    call cpu_time(timer1)
+    !call cpu_time(timer1)
 
     !*********update here*******************
     i=1315708
@@ -183,14 +184,12 @@ program rmc
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
         end do
 
-        write(*,*) "Updating eam and gr data..."
         ! Update hutches, data for chi2, and chi2/del_chi
         call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
         call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
         call gr_hutch_mc(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new,used_data_sets,istat)
-        write(*,*) "Updating FEM data..."
         call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
-        write(*,*) "Updating data complete."
+        write(*,*) "Finished updating eam, gr, and fem data."
         
         chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err,&
             gr_e_sim_new, gr_n_sim_new, gr_x_sim_new, vk, scale_fac,&
@@ -204,7 +203,7 @@ program rmc
         ! TODO Jason - Check if this is being done as well as it could be.
         ! the accept and reject functions shouldn't both have the same do loops
         ! in them.
-        write(*,*) "Accepting or rejecting move."
+        !write(*,*) "Accepting or rejecting move."
         randnum = ran2(iseed2)
         ! Test if the move should be accepted or rejected based on del_chi
         if(del_chi <0.0)then
@@ -241,9 +240,9 @@ program rmc
             endif
         endif
 
-        call cpu_time(timer2)
-        write ( *, * ) 'Total elapsed CPU time in MC:', timer2 - timer1
-        call write_time_in_int(1)
+        !call cpu_time(timer2)
+        !write ( *, * ) 'Total elapsed CPU time in MC:', timer2 - timer1
+        !call write_time_in_int(1)
 
         ! Every 50,000 steps lower the temp, max_move, and reset beta.
         if(mod(i,50000)==0)then
@@ -265,6 +264,7 @@ program rmc
                 open(31,file='test_gr_update.txt',form='formatted',status='unknown')
                 open(32,file='test_vk_update.txt',form='formatted',status='unknown')
                 open(33,file='test_model_update.txt',form='formatted',status='unknown')
+                open(34,file='energy_function.txt',form='formatted', status='unknown')
                 ! Write to gr_update        
                 do j=1, mbin_x
                     R = del_r_x*(j)-del_r_x
@@ -281,35 +281,37 @@ program rmc
                     write(33,*)m%znum(j), m%xx(j), m%yy(j), m%zz(j)
                 enddo
                 write(33,*)"-1"
+                ! Write to energy_function
+                write(34,*) te1, i
                 ! Close files
                 close(31)
                 close(32)
                 close(33)
+                close(34)
             endif
         endif
     ENDDO
-    !close(56)
 
-
+    ! The rmc loop finished. Write final data.
     if(myid.eq.0)then
         t1 = mpi_wtime()
         write(*,*)"time=", t1-t0, "sec"
         write(*,*)t1, t0
 
-    !	! Write final gr
-    !	open(unit=53,file="test_gr_update_final.txt",form='formatted',status='unknown')
-    !	do i=1, mbin_e
-    !		R = del_r_e*(i)-del_r_e
-    !		write(53,*)R, gr_e_sim_new(i)
-    !	enddo
-    !	close(53)
+        ! Write final gr
+        open(unit=53,file="test_gr_update_final.txt",form='formatted',status='unknown')
+        do i=1, mbin_e
+            R = del_r_e*(i)-del_r_e
+            write(53,*)R, gr_e_sim_new(i)
+        enddo
+        close(53)
         
-    !	! Write final vk
-    !	open(unit=54,file="test_vk_update_final.txt",form='formatted',status='unknown')
-    !	do i=1, nk
-    !		write(54,*)k(i),vk(i)
-    !	enddo
-    !	close(54)
+        ! Write final vk
+        open(unit=54,file="test_vk_update_final.txt",form='formatted',status='unknown')
+        do i=1, nk
+            write(54,*)k(i),vk(i)
+        enddo
+        close(54)
         
         ! Write final model
         open(unit=55,file="test_model_update_final.txt",form='formatted',status='unknown')
@@ -320,6 +322,10 @@ program rmc
         enddo
         write(55,*)"-1"
         close(55)
+        ! Write final energy.
+        open(56,file='energy_function.txt',form='formatted', status='unknown')
+        write(56,*) te1, i
+        close(56)
     endif
     call mpi_finalize(mpierr)
 

@@ -1367,16 +1367,16 @@ contains
     end subroutine fem_accept_move
 
     subroutine fem_reset_old(comm)
-    use mpi
-    integer :: i, comm
-    do i=myid+1, nrot, numprocs
-        if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
+        use mpi
+        integer :: i, comm
+        do i=myid+1, nrot, numprocs
+            if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
             nullify(old_index(i)%ind)
-        old_index(i)%nat = 0
-        if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
+            old_index(i)%nat = 0
+            if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
             nullify(old_pos(i)%pos)
-        old_pos(i)%nat = 0
-    enddo
+            old_pos(i)%nat = 0
+        enddo
     end subroutine fem_reset_old
 
     subroutine fem_reject_move(m, comm)
@@ -1452,14 +1452,13 @@ contains
     end subroutine add_pos
 
 
-    subroutine print_sampled_map(m, res, square_pixel)
+    subroutine print_sampled_map(m, square_pixel)
     ! Prints a "map" of the model with the numbers pertaining to the number of
     ! times atom i will be sampled in the femsim algorithm over the entire
     ! model (using pixels). Ideally, all numbers will be 1. A 0 means that atom
     ! is not included in the simulation at all, and a 2 means an atoms is
     ! sampled twice as much as an atom with a 1.
         type(model), intent(in) :: m
-        real, intent(in) :: res
         integer, dimension(:), allocatable :: sampled_atoms ! This array is of size natoms,
         ! is initialized to 0, and position i is incremented every time atom i is used
         ! in the intensity calcuation. This is to see which parts of the model are
