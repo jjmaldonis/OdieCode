@@ -1,7 +1,7 @@
 #!/bin/bash
 rm ssh-compute-nodes.log
 date >> ssh-compute-nodes.log
-SHOULD_EMAIL=0
+SHOULD_EMAIL=1
 #echo "Checking compute node status..."
 for i in {0..15}
 do
@@ -14,3 +14,5 @@ done
 if [ $SHOULD_EMAIL -eq 1 ]
 	then cat /home/jjmaldonis/OdieCode/odie_testing/ssh-compute-nodes.log | mail -s "ssh-compute-nodes.log" -a "/home/jjmaldonis/OdieCode/odie_testing/ssh-compute-nodes.log" jjmaldonis@gmail.com
 fi
+
+# I linked this file to /etc/cron.daily so that it runs every day. I cant figure out how I added it for a user like I did last time.
