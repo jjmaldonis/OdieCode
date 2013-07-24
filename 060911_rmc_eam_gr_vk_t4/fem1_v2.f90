@@ -26,7 +26,7 @@ module fem_mod
         real, dimension(:,:), pointer :: pix ! npix x 2 list of pixel positions
         integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
         real :: phys_diam
-        real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge.
+        real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge. This is NOT the distance between the pixel centers. This is the distance between the edges of two different pixels. dr + phys_diam is the distance between the pixel centers!
     end type pix_array
     real, save, dimension(:,:), pointer :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
     real, save, dimension(:,:,:), pointer :: int_i, int_sq  ! nk x npix x nrot.  int_sq == int_i**2
@@ -127,8 +127,8 @@ contains
         !    !npix_x=int(m%lx/dr)
         !    !npix_y=int(m%ly/dr)
         !    !separated just by dr = res
-        !    dr = res
-        !    !dr = 2.0 *res
+        !    dr = res ! USE THIS ONE IF res = 0.5*res IS NOT IN FEMSIM.F90
+        !    !dr = 2.0 *res ! USE THIS ONE IF res = 0.5*res IS IN FEMSIM.F90
         !    pa%npix_1D=aint(m%lx/dr)
         !    !pa%npix_y=aint(m%ly/dr)
         !    !******************************
@@ -797,7 +797,7 @@ contains
 
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
-        write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
+        !write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
         !write ( *, * ) 'Elapsed CPU time = ', timer2 - timer1
 
     end subroutine intensity
@@ -816,21 +816,23 @@ contains
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq    !mpi
         integer :: comm
         type(model) :: moved_atom, rot_atom
-        integer :: i, j, m, n, highest
+        integer :: i, j, m, n, highest, ntpix
         real :: res2, rot_dist_sq, orig_dist_sq, temp1, temp2
         REAL rr_x_old, rr_y_old, rr_x_new, rr_y_new
         LOGICAL pixel_square
         !real :: sqrt1_2_res
         !integer :: old_mrot_roti_nat
         !logical :: no_int_recal
-        logical, dimension(:), allocatable :: update_pix
+        logical, dimension(:,:), allocatable :: update_pix
         real, dimension(:), allocatable :: scratch_real
         integer, dimension(:), allocatable :: scratch_int
         integer :: old_mrot_natoms ! temp variable
 
         istat = 0
 
-        allocate(update_pix(pa%npix)) !TODO add error message
+        allocate(update_pix(nrot,pa%npix)) !TODO add error message
+        update_pix = .FALSE.
+
 
         if( present(square_pixel)) then
             pixel_square = square_pixel
@@ -912,9 +914,6 @@ contains
             ! the end of the rotations do loop.
 !write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natoms, "mrot(i)%rot_i(atom)%nat=", mrot(i)%rot_i(atom)%nat
 
-                ! Overwrite update_pix array to all false.
-                update_pix = .FALSE.
-
                 ! Store the original index and position in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
                     call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
@@ -938,12 +937,12 @@ contains
                             rr_x_old = ABS(temp1) ! For square pixel
                             rr_y_old = ABS(temp2) ! For square pixel
                             if( (rr_x_old .LE. res) .AND. (rr_y_old .LE. res) ) then
-                                update_pix(m) = .TRUE.
+                                update_pix(i,m) = .TRUE.
                             endif
                         else
                             orig_dist_sq = (temp1)**2 + (temp2)**2 ! For round pixel
                             if(orig_dist_sq <= res2) then
-                                update_pix(m) = .TRUE.
+                                update_pix(i,m) = .TRUE.
                             endif
                         endif
                     enddo
@@ -965,7 +964,7 @@ contains
                 ! The number of times the atom appears went up (duplication).
                 ! We need to update xx, yy, zz, znum, znum_r, ha, natoms, and
                 ! composition. We need to check nelements and atom_type as well.
-                write(*,*) "A wild atom appeared!"
+                !write(*,*) "A wild atom appeared!"
 
                     ! Reallocate xx, yy, zz, znum, and znum_r bigger (leaving the
                     ! end empty for the new atoms to fit into).
@@ -1022,7 +1021,7 @@ contains
 
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
                 ! The number of times the atom appears in the rotated model went down.
-                write(*,*) "An atom ran away!"
+                !write(*,*) "An atom ran away!"
                     
                     ! Resize mrot(i)%rot_i(atom)%ind to the correct size and remove
                     ! each atom that we removed from mrot(i)%rot_i(atom)%ind from the
@@ -1116,23 +1115,15 @@ contains
                             rr_x_new = ABS(temp1) ! For square pixel
                             rr_y_new = ABS(temp2) ! For square pixel
                             if( (rr_x_new .LE. res) .AND. (rr_y_new .LE. res) ) then
-                                update_pix(m) = .TRUE.
+                                update_pix(i,m) = .TRUE.
                             endif
                         else
                             rot_dist_sq = (temp1)**2 + (temp2)**2 ! For round pixel
                             if( rot_dist_sq <= res2 ) then
-                                update_pix(m) = .TRUE.
+                                update_pix(i,m) = .TRUE.
                             endif
                         endif
                     enddo
-                enddo
-
-                ! Update pixels if necessary.
-                do m=1, pa%npix
-                    if(update_pix(m)) then
-                        call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                            int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
-                    endif
                 enddo
 
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
@@ -1342,6 +1333,25 @@ contains
 
         enddo rotations
         write(*,*) "Rotating models in fem_update complete."
+
+        ntpix = 0
+        do i=1, nrot
+            do m=1, pa%npix
+                if(update_pix(i,m)) then
+                    ntpix = ntpix + 1
+                endif
+            enddo
+        enddo
+        write(*,*) "Calling Intensity on ", ntpix, " pixels."
+        ! Update pixels if necessary.
+        do i=myid+1, nrot, numprocs
+            do m=1, pa%npix
+                if(update_pix(i,m)) then
+                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                endif
+            enddo
+        enddo
 
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
