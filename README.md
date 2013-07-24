@@ -185,6 +185,10 @@ To reboot the compute nodes if you have installed them already:
 
     rocks run host compute  
 
+##Environment Variables on Compute Nodes
+I had to set the env vars on the compute nodes independently. You may not have to. If 'which ifort' and 'which mpiexec' return the correct paths then you don't need to do this.
+However, these failed to return the correct path for me. I made a script in this repo (openmpi_sge/init_env_vars.sh) that updated my compute nodes' /etc/bashrc correctly. You will have to modify it appropriately and run it. Make sure you read it very carefully.
+
 ##Other Notes
 Note that /share seems empty on the compute nodes but the directory apps/ it is actually in there. You can check by `cd /share/apps` followed by `ls` to see the contents of `/share/apps/`.
 
