@@ -379,6 +379,16 @@ contains
             pixel_square = .FALSE.
         endif
 
+        ! Paul's version.
+        !if(pixel_square) then
+        !    pa%dr = sqrt(2.0) * res
+        !else
+        !    pa%dr = res
+        !endif
+        !pa%npix_1D = anint(m%lx/pa%dr)
+        !pa%npix = pa%npix_1D**2
+
+
         pa%npix_1D = floor( m%lx / res )
         pa%npix = pa%npix_1D**2
 
@@ -394,6 +404,16 @@ contains
            write (*,*) 'Cannot allocate pixel position array.'
            return
         endif
+
+        ! Paul's version.
+        !k=1
+        !do i=1, pa%npix_1D
+        !    do j=1, pa%npix_1D
+        !        pa%pix(k,1) = -m%lx/2.0 + (pa%dr)/2.0 + (pa%dr)*(i-1)
+        !        pa%pix(k,2) = -m%ly/2.0 + (pa%dr)/2.0 + (pa%dr)*(j-1)
+        !        k = k + 1
+        !    enddo
+        !enddo
 
         k=1
         do i=1, pa%npix_1D
