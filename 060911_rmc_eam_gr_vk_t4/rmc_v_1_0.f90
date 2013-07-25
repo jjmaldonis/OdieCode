@@ -82,7 +82,7 @@ program rmc
 
     model_filename = 'model_1.xyz'
     param_filename = 'param_file.in'
-    outbase = "output/"//model_filename(1:size(model_filename)-4)//"_rmc"
+    outbase = ""
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -260,7 +260,7 @@ program rmc
                 open(32,file=outbase//'_vk_update.txt',form='formatted',status='unknown')
                 open(33,file=outbase//'_model_update.txt',form='formatted',status='unknown')
                 open(34,file=outbase//'_energy_function.txt',form='formatted',status='unknown')
-                open(35,file=outbase//'_time_elapsed.txt',form='formatted',status='unkown')
+                open(35,file=outbase//'_time_elapsed.txt',form='formatted',status='unknown')
                 ! Write to gr_update        
                 do j=1, mbin_x
                     R = del_r_x*(j)-del_r_x
@@ -327,7 +327,7 @@ program rmc
         write(56,*) te1, i
         close(56)
         ! Write final time spent.
-        open(57,file=outbase//'_time_elapsed.txt',form='formatted',status='unkown')
+        open(57,file=outbase//'_time_elapsed.txt',form='formatted',status='unknown')
         t1 = mpi_wtime()
         write (34,*) i, t1-t0
         close(57)
