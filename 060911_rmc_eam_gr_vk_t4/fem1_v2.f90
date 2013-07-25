@@ -610,6 +610,7 @@ contains
                 do i=1, nk
                     Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                     Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
+                    write(*,*) "Vk(i), sum_int(i)=", vk(i), sum_int(i)
                 end do
             endif
 

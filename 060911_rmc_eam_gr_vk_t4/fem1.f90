@@ -565,6 +565,7 @@ contains
       do i=1, nk
          Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
          Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
+         write(*,*) "Vk(i)=", vk(i), sum_int(i)
       end do
     endif
 
@@ -1279,8 +1280,8 @@ contains
     const2 = 1/fem_bin_width
     const3 = TWOPI
 !JASON - TODO
-deallocate(A1)
-allocate(A1(52073))
+!deallocate(A1)
+!allocate(A1(52073))
 
     IF(pixel_square) THEN
       do i=1,size(pix_atoms)
@@ -1307,8 +1308,8 @@ allocate(A1(52073))
            x1(i)=x2
            y1(i)=y2
            j=int(const1*rr_a(i))
-           if(j .eq. 0) write(*,*) "     j = ",j
-           if(j .eq. 0) j=1
+           !if(j .eq. 0) write(*,*) "     j = ",j
+           !if(j .eq. 0) j=1
 !write(*,*) "DEBUG - j = ", j
            sum1(znum_r(i),i)=A1(j)
          endif
