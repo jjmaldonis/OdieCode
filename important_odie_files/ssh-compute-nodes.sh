@@ -12,7 +12,7 @@ do
 done
 #echo "Finished checking compute node status."
 if [ $SHOULD_EMAIL -eq 1 ]
-	then cat /home/jjmaldonis/OdieCode/odie_testing/ssh-compute-nodes.log | mail -s "ssh-compute-nodes.log" -a "/home/jjmaldonis/OdieCode/odie_testing/ssh-compute-nodes.log" jjmaldonis@gmail.com
+	then cat /home/jjmaldonis/OdieCode/important_odie_files/ssh-compute-nodes.log | mail -s "ssh-compute-nodes.log" -a "/home/jjmaldonis/OdieCode/important_odie_files/ssh-compute-nodes.log" jjmaldonis@gmail.com
 fi
 
 # I linked this file to /etc/cron.daily so that it runs every day. I cant figure out how I added it for a user like I did last time.
