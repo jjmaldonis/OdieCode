@@ -80,7 +80,7 @@ call mpi_init(mpierr)
 call mpi_comm_rank(mpi_comm_world, myid, mpierr)
 call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
-model_filename = 'model_1.xyz'
+model_filename = 'model_040511c_t2_final.xyz'
 param_filename = 'param_file.in'
 
 
