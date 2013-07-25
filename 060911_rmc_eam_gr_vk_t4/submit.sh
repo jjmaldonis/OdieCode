@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # declare a name for this job (replace <jobname> with something more descriptive)
-#$ -N rmc_test
+#$ -N rmc_jason
 
 # request the queue for this job
 # replace <queue_name> with queue_name e.g all.q
@@ -10,7 +10,7 @@
 # request computational resources for this job as follows
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It's suggested use 12*integer processors here. 
-#$ -pe orte 1
+#$ -pe orte 4
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=48:00:00

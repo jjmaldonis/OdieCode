@@ -80,7 +80,7 @@ program rmc
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
-    model_filename = 'model_1.xyz'
+    model_filename = 'model_040511c_t2_final.xyz'
     param_filename = 'param_file.in'
     outbase = ""
 
@@ -116,7 +116,7 @@ program rmc
     !write (*,*) 'Znum reduced, scatt pow initialized.'
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
 
-    call gr_no_hutch(m,used_data_sets)
+    ! call gr_no_hutch(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
 
     ! Initialize and calculate initial vk
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
@@ -186,7 +186,7 @@ program rmc
         ! Update hutches, data for chi2, and chi2/del_chi
         call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
         call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
-        call gr_hutch_mc(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new,used_data_sets,istat)
+        !call gr_hutch_mc(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new,used_data_sets,istat) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
         call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
         write(*,*) "Finished updating eam, gr, and fem data."
         
@@ -208,7 +208,7 @@ program rmc
         if(del_chi <0.0)then
             ! Accept the move
             e1 = e2
-            call accept_gr(m, used_data_sets)
+            !call accept_gr(m, used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
             call fem_accept_move(mpi_comm_world)
             if(myid.eq.0)then
                 write(*,*)i, chi2_gr, chi2_vk, te2, temperature
@@ -221,7 +221,7 @@ program rmc
             if(log(1.-randnum)<-del_chi*beta)then
                 ! Accept move
                 e1 = e2
-                call accept_gr(m, used_data_sets)
+                !call accept_gr(m, used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_accept_move(mpi_comm_world)
                 if(myid.eq.0)then
                     write(*,*)i, chi2_gr, chi2_vk, te2, temperature
@@ -233,7 +233,7 @@ program rmc
                 e2 = e1
                 call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                call reject_gr(m,used_data_sets)
+                !call reject_gr(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_reject_move(m, mpi_comm_world)
                 write(*,*) "MC move rejected."
             endif
@@ -262,10 +262,10 @@ program rmc
                 open(34,file=outbase//'_energy_function.txt',form='formatted',status='unknown')
                 open(35,file=outbase//'_time_elapsed.txt',form='formatted',status='unknown')
                 ! Write to gr_update        
-                do j=1, mbin_x
-                    R = del_r_x*(j)-del_r_x
-                    write(31,*)R, gr_x_sim_new(j)
-                enddo
+                !do j=1, mbin_x
+                !    R = del_r_x*(j)-del_r_x
+                !    write(31,*)R, gr_x_sim_new(j)
+                !enddo
                 ! Write to vk_update
                 do j=1, nk
                     write(32,*)k(j),vk(j)
@@ -299,12 +299,12 @@ program rmc
         write(*,*)t1, t0
 
         ! Write final gr
-        open(unit=53,file=outbase//"_gr_update_final.txt",form='formatted',status='unknown')
-        do i=1, mbin_e
-            R = del_r_e*(i)-del_r_e
-            write(53,*)R, gr_e_sim_new(i)
-        enddo
-        close(53)
+        !open(unit=53,file=outbase//"_gr_update_final.txt",form='formatted',status='unknown')
+        !do i=1, mbin_e
+        !    R = del_r_e*(i)-del_r_e
+        !    write(53,*)R, gr_e_sim_new(i)
+        !enddo
+        !close(53)
         
         ! Write final vk
         open(unit=54,file=outbase//"_vk_update_final.txt",form='formatted',status='unknown')

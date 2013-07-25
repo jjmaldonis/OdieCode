@@ -1,7 +1,7 @@
 #parameter file opened. set a filename to # to ignore it
 100  !total RMC steps - ignore
-968.89    !starting temperature
-0.671    !maximum move distance
+100000.0    !starting temperature
+1.5    !maximum move distance
 !cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
 1.76 1.76 1.76
 1.76 1.76 1.76
@@ -13,12 +13,12 @@
 0
 0  0
 xrd_zr50_kramer_reduced.txt
-700.0	!weight of xrd gr
+3290.0	!weight of xrd gr
 1.68  10.0
 fem_exp_jwh.txt
-3.0	 !weight of fem
+1.0	 !weight of fem
 28.637     !scaling factor for exp Vk
 1 40 20 	 !# of rotations(nphi, npsi, ntheta)
-0.04  !Q (inverse angstrom)
+0.0305  !Q (inverse angstrom)
 1	 !fem algorithm
 13.0	 !pixel distance
