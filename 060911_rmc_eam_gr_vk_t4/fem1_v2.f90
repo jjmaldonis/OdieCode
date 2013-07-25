@@ -160,8 +160,8 @@ contains
         endif
 
         !if (istat /= 0) return
-        if( mod(m%lx,res) /= 0 ) then
-            write(*,*) "WARNING! Your world size should be an integer multiple of the resolution. Res = 0.61/Q = ", res, ". World size = ", m%lx
+        if( mod(m%lx,pa%phys_diam) >= 0.001 ) then
+            write(*,*) "WARNING! Your world size should be an integer multiple of the resolution. Pixel diameter = ", pa%phys_diam, ". World size = ", m%lx
         endif
 
         call read_f_e
@@ -393,11 +393,11 @@ contains
         pa%npix = pa%npix_1D**2
 
         if(pixel_square) then
-            pa%phys_diam = res
-        else
             pa%phys_diam = res * sqrt(2.0)
+        else
+            pa%phys_diam = res
         endif
-        pa%dr = m%lx/pa%npix_1D - res
+        pa%dr = m%lx/pa%npix_1D - pa%phys_diam
 
         allocate(pa%pix(pa%npix, 2), stat=istat)
         if (istat /= 0) then
@@ -592,7 +592,9 @@ contains
             enddo
 
             ! Calculate intensities for every single pixel in every single model. This is very expensive.
-            write(*,*) "Calculating intensities over the models: nrot = ", nrot, ", numprocs = ", numprocs
+            write(*,*)
+            write(*,*) "Calculating intensities over the models: nrot = ", nrot
+            write(*,*)
             do i=myid+1, nrot, numprocs
                 do j=1, pa%npix
                     !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
@@ -610,7 +612,6 @@ contains
                 do i=1, nk
                     Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                     Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
-                    write(*,*) "Vk(i), sum_int(i)=", vk(i), sum_int(i)
                 end do
             endif
 
@@ -896,7 +897,7 @@ contains
         psum_int = 0.0
         psum_int_sq = 0.0
 
-        write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
+        !write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         rotations: do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 old_int(1:nk, m, i) = int_i(1:nk, m, i)
@@ -1353,7 +1354,7 @@ contains
 !-------------------------------- End Previous
 
         enddo rotations
-        write(*,*) "Rotating models in fem_update complete."
+        !write(*,*) "Rotating models in fem_update complete."
 
         ntpix = 0
         do i=1, nrot
@@ -1368,7 +1369,7 @@ contains
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                    call intensity(mrot(i), pa%phys_size, pa%pix(m, 1), pa%pix(m, 2), k, &
                         int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                 endif
             enddo
