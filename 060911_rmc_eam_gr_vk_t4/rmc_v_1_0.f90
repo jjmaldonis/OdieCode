@@ -37,6 +37,7 @@ program rmc
     include 'mpif.h'
     type(model) :: m
     character (len=256) :: model_filename
+    character (len=256) :: vk_filename
     character (len=256) :: param_filename  
     character (len=256) :: outbase
     character (len=512) :: comment
@@ -127,22 +128,25 @@ program rmc
 
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
+    vk_filename = 'vk_initial.txt'
     if(myid.eq.0)then
         ! Write initial gr
-        open(unit=51,file=outbase//"_gr_initial.txt",form='formatted',status='unknown')
+        open(unit=51,file=outbase//"gr_initial.txt",form='formatted',status='unknown')
             do i=1, mbin_x
                 R = del_r_x*(i)-del_r_x
                 write(51,*)R, gr_x_sim_cur(i)
             enddo
         close(51)
         ! Write initial vk 
-        open(unit=52,file=outbase//"vk_initial.txt",form='formatted',status='unknown')
+        open(unit=52,file="vk_initial.txt",form='formatted',status='unknown')
             do i=1, nk
                 !write (*,*) k(i),vk(i)
                 write(52,*)k(i),vk(i)
             enddo
         close(52)
     endif
+
+!stop ! Uncomment for femsim.
 
     ! Initial chi2
     chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
@@ -158,7 +162,9 @@ program rmc
        write(*,*)"  i, chi2_gr, chi2_vk, te1, temperature"
     endif
 
+    write(*,*)
     write(*,*)"Initialization complete. Starting Monte Carlo."
+    write(*,*)
     t0 = mpi_wtime()
     ! RMC step begins
 

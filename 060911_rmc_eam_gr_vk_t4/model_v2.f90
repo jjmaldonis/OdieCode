@@ -581,9 +581,10 @@ contains
 
         !release the memory allocated to mt
         !call destroy_model(mt)   ! pmv 04/17/09
+        ! I am assuming he commented out the above line and replaced it with the
+        ! two below because he never created the hutch array or rot_i for mt.
         deallocate(mt%atom_type, mt%composition)
         deallocate(mt%znum,mt%znum_r, mt%xx, mt%yy, mt%zz)
-        ! TODO I think we need to destroy mt like pmv did above?
 
         ! set the rest of of the rotated model paramters
         mrot%lx = min%lx
@@ -754,6 +755,7 @@ contains
     ! model extends from -lx/2 to lx/2, -ly/2 to ly/2 and -lz/2 to lz/2 and does no
     ! error checking. It also return relative position of point (xx, yy, zz) in the hutch
     ! in 2D and 3D cases the hutch is divided into equal 8 parts 2*2*2
+    ! TODO Check if this function is necessary.
         type(model), intent(in) :: m
         real, intent(in) :: xx, yy, zz
         integer, intent(out) :: hx, hy, hz
@@ -802,6 +804,7 @@ contains
     !consider the worst condition for 2d case
     !use private variable list_1_2d
     !it is called only once. once, notice!!!
+    ! TODO Figure out what the heck this function actually does.
         type(model), target, intent(in) :: m
         real, allocatable,dimension(:) :: ratio_list
         !ratio_list from 0 to 0.5, 0.5 to 1.5, then step size with 1
@@ -927,6 +930,9 @@ contains
     end subroutine pre_calc_2d_hutch
 
     subroutine add_index(il, i)
+        ! TODO Consider making this into a function that adds 10% of the size of
+        ! il to il if we need to reallocate. This would reduce future needs to
+        ! reallocate.
         type(index_list), intent(inout) :: il
         integer, intent(in) :: i
         integer, dimension(:), allocatable :: scratch
@@ -950,6 +956,8 @@ contains
 
 
     subroutine remove_element(il, elem)
+    ! TODO Consider not reallocating here unless there is a significant amount
+    ! not being used. This would save time reallocating constantly.
         type(index_list), intent(inout) :: il
         integer, intent(in) :: elem
         integer, dimension(:), allocatable :: scratch
@@ -968,6 +976,7 @@ contains
         deallocate(scratch)
         il%nat = il%nat - 1
     end subroutine remove_element
+
 
     subroutine composition_model(m)
     ! Calculates the composition of the model and fills in nelements, atom_type,
@@ -1023,6 +1032,7 @@ contains
             enddo
         enddo
     end subroutine composition_model
+
 
     subroutine periodic_continue_model(xp, yp, zp, min, mout, init_hutch, istat)
     ! Makes (xp, yp, zp) copies of the input model min and puts them in the output model
@@ -1243,6 +1253,57 @@ contains
     end subroutine hutch_list_3d
 
     subroutine hutch_list_pixel_sq(m, px, py, diameter, atoms, istat)
+!    type(model), target, intent(in) :: m
+!    real, intent(in) :: px, py, diameter
+!    integer, pointer, dimension(:) :: atoms
+!    integer, intent(out) :: istat
+!
+!    integer :: hx, hy, hz   ! hutch of position (px, py, pz)
+!    integer :: nh           ! number of hutches corresponding to diameter
+!    integer :: nlist        ! number of atoms in list
+!    integer :: i, j         ! counting variables
+!    integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
+!    integer, dimension(:), allocatable, target :: temp_atoms
+!    type(hutch_array), pointer :: ha
+!
+!    ha => m%ha
+!
+!    allocate(temp_atoms(m%natoms), stat=istat)
+!    if (istat /= 0) then
+!       write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel'
+!       return
+!    end if
+!
+!    call hutch_position(m, px, py, 0.0, hx, hy, hz)
+!
+!     nh = ceiling( (12.0) / ha%hutch_size)   !debug
+!
+!    nlist = m%natoms
+!
+!    allocate(atoms(nlist), stat=istat)
+!
+!    if (istat /= 0) then
+!       write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
+!       return
+!    endif
+!
+!    ! assign atoms to the subset of temp_atoms that was filled in
+!    if (nlist > 1) then
+!    !atoms = temp_atoms(1:nlist-1)
+!    do i=1, nlist
+!        atoms(i) = i
+!    enddo
+!    else
+!       nullify(atoms)
+!       istat = -1
+!    endif
+!
+!    if(allocated(temp_atoms)) deallocate(temp_atoms)
+!
+!    IF(ASSOCIATED(ha)) THEN
+!    NULLIFY(ha)             !jwh - 062509
+!    ENDIF
+
     ! Makes a list of atom indices (in atoms) of the atoms in a rectangular
     ! prism with side length diameter in x and y, through the model thickness
     ! in z, centered on the hutch containing the point (px, py). Useful for
@@ -1259,6 +1320,7 @@ contains
         integer :: i, j, k      ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
         integer :: i_start, i_end, j_start, j_end, trash
+        !logical :: found
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
         allocate(temp_atoms(m%natoms), stat=istat)
@@ -1304,7 +1366,19 @@ contains
             !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
 
         if(allocated(temp_atoms)) deallocate(temp_atoms)
-
+!do i=1, m%natoms
+!    found = .false.
+!    do j=1, size(atoms)
+!        if( atoms(j) == i ) then
+!            found = .true.
+!        endif
+!    enddo
+!    if( .not. found ) then
+!        write(*,*) "HERE", i, m%xx(i), m%yy(i), m%zz(i)
+!    endif
+!enddo
+!write(*,*) "size(atoms) = ", size(atoms)
+!call sleep(60)
     end subroutine hutch_list_pixel_sq
 
 
@@ -1314,6 +1388,7 @@ contains
     !assign values for list_1_3d
     !it is only called once. once,notice!!!!!
     !type(hutch_3d_array) list1
+    ! TODO Figure out what this does.
         type(model), target, intent(in) :: m
         real,allocatable, dimension(:) :: ratio_list
         !ratio_list from 0 to 0.5, 0.5 to 1.5, then step size with 1
@@ -1468,9 +1543,10 @@ contains
 
     end subroutine pre_calc_3d_hutch
 
+
     subroutine hutch_move_atom(m, atom, xx, yy, zz)
     ! Moves the atom with index atom from its current hutch in hutch_array to
-    ! to the hutch that encompasses position (xx, yy, zz).  Used to update the
+    ! to the hutch that encompasses position (xx, yy, zz). Used to update the
     ! hutch_array for a Monte Carlo move of one atom.
         type(model), target, intent(inout) :: m
         integer, intent(in) :: atom

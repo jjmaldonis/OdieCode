@@ -379,24 +379,14 @@ contains
             pixel_square = .FALSE.
         endif
 
-        ! Paul's version.
-        !if(pixel_square) then
-        !    pa%dr = sqrt(2.0) * res
-        !else
-        !    pa%dr = res
-        !endif
-        !pa%npix_1D = anint(m%lx/pa%dr)
-        !pa%npix = pa%npix_1D**2
-
-
-        pa%npix_1D = floor( m%lx / res )
-        pa%npix = pa%npix_1D**2
-
         if(pixel_square) then
             pa%phys_diam = res * sqrt(2.0)
         else
             pa%phys_diam = res
         endif
+        pa%npix_1D = floor( m%lx / pa%phys_diam )
+        pa%npix = pa%npix_1D**2
+
         pa%dr = m%lx/pa%npix_1D - pa%phys_diam
 
         allocate(pa%pix(pa%npix, 2), stat=istat)
@@ -404,16 +394,6 @@ contains
            write (*,*) 'Cannot allocate pixel position array.'
            return
         endif
-
-        ! Paul's version.
-        !k=1
-        !do i=1, pa%npix_1D
-        !    do j=1, pa%npix_1D
-        !        pa%pix(k,1) = -m%lx/2.0 + (pa%dr)/2.0 + (pa%dr)*(i-1)
-        !        pa%pix(k,2) = -m%ly/2.0 + (pa%dr)/2.0 + (pa%dr)*(j-1)
-        !        k = k + 1
-        !    enddo
-        !enddo
 
         k=1
         do i=1, pa%npix_1D
@@ -639,8 +619,8 @@ contains
         integer :: bin_max
         logical pixel_square
         real, allocatable, dimension(:) :: rr_x, rr_y
-        real sqrt1_2_res
-        real k_1
+        real :: sqrt1_2_res
+        real :: k_1
         real :: timer1, timer2
         !real, dimension(:,:), allocatable :: pp_array
 
@@ -660,7 +640,7 @@ contains
 
         if(pixel_square) then
             !r_max = sqrt(8.0) * res
-            r_max = 2 * res !small pixel inscribed in airy circle
+            r_max = 2*res !small pixel inscribed in airy circle
         else
             r_max = 2*res     !assuming resolution=radius
         endif
@@ -741,7 +721,7 @@ contains
             do i=1,size(pix_atoms)
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size(pix_atoms)
-                        if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le.  sqrt1_2_res))then
+                        if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le. sqrt1_2_res))then
                             x2=x1(i)-x1(j)
                             y2=y1(i)-y1(j)
                             rr=sqrt(x2*x2 + y2*y2)
@@ -848,7 +828,9 @@ contains
         logical, dimension(:,:), allocatable :: update_pix
         real, dimension(:), allocatable :: scratch_real
         integer, dimension(:), allocatable :: scratch_int
+        integer, pointer, dimension(:,:) :: scratch_int_2d
         integer :: old_mrot_natoms ! temp variable
+        integer :: hx, hy, hz
 
         istat = 0
 
@@ -935,6 +917,7 @@ contains
             ! did not reenter so there is no structural change - we can skip to
             ! the end of the rotations do loop.
 !write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natoms, "mrot(i)%rot_i(atom)%nat=", mrot(i)%rot_i(atom)%nat
+write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms
 
                 ! Store the original index and position in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
@@ -972,11 +955,13 @@ contains
 
                 ! STARTING: Update the rotated positions in mrot(i).
                 ! As far as we can or should, we will update positions in the rotated model.
+                ! Also update their hutches.
                 j = 1
                 do while( j <= rot_atom%natoms .and. j <= mrot(i)%rot_i(atom)%nat )
                     mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%xx(j)
                     mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%yy(j)
                     mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%zz(j)
+                    call hutch_move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)) )
                     j = j + 1
                 enddo
 
@@ -986,12 +971,13 @@ contains
                 ! The number of times the atom appears went up (duplication).
                 ! We need to update xx, yy, zz, znum, znum_r, ha, natoms, and
                 ! composition. We need to check nelements and atom_type as well.
-                !write(*,*) "A wild atom appeared!"
+                write(*,*) "A wild atom appeared!"
 
                     ! Reallocate xx, yy, zz, znum, and znum_r bigger (leaving the
                     ! end empty for the new atoms to fit into).
                     allocate(scratch_real( mrot(i)%natoms))
                     allocate(scratch_int( mrot(i)%natoms))
+                    allocate(scratch_int_2d( mrot(i)%natoms, 3))
 
                     ! Resize mrot(i)%xx
                     scratch_real = mrot(i)%xx
@@ -1026,6 +1012,13 @@ contains
                     deallocate(scratch_real)
                     deallocate(scratch_int)
 
+                    !scratch_int_2d = mrot(i)%ha%atom_hutch
+                    !deallocate(mrot(i)%ha%atom_hutch)
+                    !allocate(mrot(i)%ha%atom_hutch( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat), 3 ))
+                    !mrot(i)%ha%atom_hutch(1:mrot(i)%natoms, 1) = scratch_int_2d(1:mrot(i)%natoms, 1)
+                    !mrot(i)%ha%atom_hutch(1:mrot(i)%natoms, 2) = scratch_int_2d(1:mrot(i)%natoms, 1)
+                    !mrot(i)%ha%atom_hutch(1:mrot(i)%natoms, 3) = scratch_int_2d(1:mrot(i)%natoms, 1)
+
                     ! Note that the ending condition on fortran do loops are only
                     ! evaluated when the loop begins, so modifying the ending
                     ! condition inside the loop will not change when it ends. This
@@ -1039,7 +1032,12 @@ contains
                         mrot(i)%znum(mrot(i)%natoms + 1) = rot_atom%znum(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
                         mrot(i)%znum_r(mrot(i)%natoms + 1) = rot_atom%znum_r(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
                         mrot(i)%natoms = mrot(i)%natoms + 1
+                        !call hutch_position(mrot(i), mrot(i)%xx(mrot(i)%natoms), mrot(i)%yy(mrot(i)%natoms), mrot(i)%zz(mrot(i)%natoms), hx, hy, hz)
+                        !call hutch_add_atom(mrot(i), mrot(i)%natoms, hx, hy, hz)
                     enddo
+
+                    ! Recalculate composition of model because it may have changed.
+                    call composition_model(mrot(i))
 
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
                 ! The number of times the atom appears in the rotated model went down.
@@ -1062,6 +1060,10 @@ contains
                         call remove_element(mrot(i)%rot_i(atom), highest)
                         ! Remove highest from model. The model will still have to be
                         ! resized after this.
+                        ! Also, we need to decrement each index in the rot_i
+                        ! arrays that are .gt. highest because array deletion
+                        ! decrements those elements (note that highest gets
+                        ! removed so you don't need to decrement it).
                         old_mrot_natoms = mrot(i)%natoms
                         do j=1, old_mrot_natoms
                             if( j == highest) then
@@ -1073,10 +1075,29 @@ contains
                                     mrot(i)%zz(n) = mrot(i)%zz(n+1)
                                     mrot(i)%znum(n) = mrot(i)%znum(n+1)
                                     mrot(i)%znum_r(n) = mrot(i)%znum_r(n+1)
+                                    ! Go through every single rot_i in mrot(i)
+                                    ! and look for n. If we find it in that
+                                    ! rot_i, decrement it. This accounts for the
+                                    ! decement above. Otherwise we will
+                                    ! eventually get an out of bounds error on
+                                    ! the next iteration. I think this is the
+                                    ! bug...
+                                    do l=1, unrot_natoms
+                                        do k=1, mrot(i)%rot_i(l)%nat
+                                            if( mrot(i)%rot_i(l)%ind(k) == n) then
+                                                !mrot(i)%rot_i(l)%ind(k) = mrot(i)%rot_i(l)%ind(k) - 1
+                                                write(*,*) "Failure expected."
+                                                !write(*,*) "Fixed." !TODO
+                                            endif
+                                        enddo
+                                    enddo
                                 enddo
+                write(*,*) "An atom ran away!", highest, "ind=", mrot(i)%rot_i(atom)%ind !highest is the atom in mrot(i) that is being removed.
                                 exit
                             endif
                         enddo
+                        ! Remove highest from hutch.
+                        call hutch_remove_atom(mrot(i), highest)
                     enddo
 
                     allocate(scratch_real( mrot(i)%natoms ))
@@ -1114,19 +1135,19 @@ contains
 
                     deallocate(scratch_real)
                     deallocate(scratch_int)
+
+                    ! Recalculate composition of model because it may have changed.
+                    call composition_model(mrot(i))
                 endif
-                ! You can probably figure out how to update the hutches instead of
-                ! completely destroying them and then remaking them.
                 call destroy_hutch(mrot(i)%ha)
                 call model_init_hutches(mrot(i), istat)
-                ! Recalculate composition of model because it may have changed.
-                call composition_model(mrot(i))
                 ! TODO check nelements and atom_type to make sure the last one
                 ! didn't disappear. Is this necessary?
                 ! ENDING: Update the rotated positions in mrot(i).
 
                 ! Now check if the position of the rotated atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
+                ! The same loop is in Intensity.
                 do m=1, pa%npix
                     do n=1, rot_atom%natoms
                         temp1 = rot_atom%xx(n) - pa%pix(m,1)
@@ -1167,195 +1188,9 @@ contains
 
 !-------------------------------- End Jason
 
-!-------------------------------- Start Previous
-
-!! In the below output, 1,1 means all went well.
-!! 1,2 means the atom was duplicated???
-!! 0,0 means the atom rotated out of the model.
-!! Not equal values means something funny happened???
-!!if((rot_atom%natoms /= 1) .or. (mrot(i)%rot_i(atom)%nat /= 1)) then
-!!if( rot_atom%natoms /= mrot(i)%rot_i(atom)%nat ) then
-!!write(*,*) "HERE", rot_atom%natoms, "=?", mrot(i)%rot_i(atom)%nat
-!!write(*,*) "HERE2", moved_atom%xx(1), moved_atom%yy(1), moved_atom%zz(1), rot_atom%xx(1), rot_atom%yy(1), rot_atom%zz(1)
-!!endif
-!            if( (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0) ) goto 100   !JWH - 04/14/2009
-!            ! the rotated atom left the model previously and did not reenter
-!            ! so there is no structural change - skip the rest of the loop
-!
-!            ! if moving the atom changes the number of times it appears in the
-!            ! rotated model, just give up: re-rotate the entire model, and recalculate all
-!            ! the intensities (might not be necessary to recalculate all the intensities.  
-!            ! have to think about that.)
-!            ! TODO
-!            if(mrot(i)%rot_i(atom)%nat /= rot_atom%natoms) then
-!                write(*,*)"scratch", i, mrot(i)%rot_i(atom)%nat, rot_atom%natoms
-!                ! store the original index and position in old_index and old_pos
-!                if(mrot(i)%rot_i(atom)%nat /= 0) then
-!                    do j=1, mrot(i)%rot_i(atom)%nat
-!                        call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
-!                        call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), &
-!                        mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
-!                    enddo
-!                endif
-!
-!                !write (*,*) 'Rerotating model', i,'from scratch.'
-!
-!                old_mrot_roti_nat = mrot(i)%rot_i(atom)%nat
-!                call destroy_model(mrot(i))
-!                call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m_in, mrot(i), istat)
-!
-!                do m=1, npix
-!                    no_int_recal = .true.
-!                    if(rot_atom%natoms /= 0) then
-!                        do n=1, rot_atom%natoms
-!                            temp1 = rot_atom%xx(n) - pix(m,1)
-!                            temp2 = rot_atom%yy(n) - pix(m,2)
-!                            temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-!                            temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-!                            rr_x_new = ABS(temp1)
-!                            rr_y_new = ABS(temp2)
-!                            rot_dist_sq = (temp1)**2 + (temp2)**2
-!
-!                            if(pixel_square) then
-!                                sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/ ???
-!                                if((rr_x_new .LE. sqrt1_2_res) .AND. (rr_y_new .LE.  sqrt1_2_res)) THEN
-!                                    call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-!                                    int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-!                                    no_int_recal = .false.
-!                                endif
-!                            else
-!                                if (rot_dist_sq <= res2) then
-!                                    call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-!                                    int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-!                                    no_int_recal = .false.
-!                                endif
-!                            endif
-!                        enddo
-!                    endif
-!
-!                    if(no_int_recal)then
-!                        if(old_mrot_roti_nat /= 0) then
-!                            do n=1, old_mrot_roti_nat
-!                                temp1 = old_pos(i)%pos(n,1) - pix(m,1)
-!                                temp2 = old_pos(i)%pos(n,2) - pix(m,2)
-!                                temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-!                                temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-!                                rr_x_old = ABS(temp1)
-!                                rr_y_old = ABS(temp2)
-!                                orig_dist_sq = (temp1)**2 + (temp2)**2
-!
-!                                if(pixel_square) then
-!                                    sqrt1_2_res = SQRT(0.5) * res !JASON added this line - taken from fem1.f90 in ~/Jinwoo/2011/060911_rmc_eam_gr_t0/ ???
-!                                    if((rr_x_old .LE. sqrt1_2_res) .AND.  (rr_y_old .LE.  sqrt1_2_res)) then
-!                                        call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-!                                        int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-!                                    endif
-!                                else
-!                                    if (orig_dist_sq <= res2) then
-!                                        call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e, istat, pixel_square)
-!                                        int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-!                                    endif
-!                                endif
-!                            enddo
-!                        endif
-!                    endif
-!                enddo
-!
-!                old_index(i)%nat = -1
-!
-!            else
-!                !write(*,*)"reg", mrot(i)%rot_i(atom)%nat, rot_atom%natoms
-!
-!                ! The atom seems to have simply moved positions in the model.
-!                ! replace the original, rotated atom with its new position(s).
-!                ! if the atom appears more than once in the new model,
-!                ! the rotated model atoms should appear in the
-!                ! same order as they do in the full-size, rotated model
-!                !write (*,*) 'replacing rotated atoms with new positions.'
-!
-!                do j=1,mrot(i)%rot_i(atom)%nat
-!                    ! store the original index and position in old_index and old_pos
-!                    call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
-!                    call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), &
-!                    mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
-!
-!                    ! change the model atom position to the new, rotated position
-!                    mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%xx(j)
-!                    mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%yy(j)
-!                    mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%zz(j)
-!                enddo
-!
-!                ! now check if either the original position of the moved atom or
-!                ! the rotated position of the moved
-!                ! atom are inside each pixel.  If so, that pixel intensity must
-!                ! be recalculated.
-!                ! replace this with one loop over the rotated atom positions and
-!                ! another over the original atom
-!                ! positions, and if either is true, calculate the intensities.
-!                ! that way it works for either case above.
-!
-!                !write(*,*) "This loop is where most of our time goes. Everything else in the outside do loop goes fast. If we made smaller pixels this would be solved."
-!                do m=1, npix
-!                    do n=1, rot_atom%natoms
-!                        !This didn't have PBC. Now it's added below - 030409 -JWH
-!                        !rot_dist_sq = (mrot(i)%xx(n) - pix(m,1))**2 +
-!                        !(mrot(i)%yy(n) - pix(m,2))**2
-!
-!                        temp1 = rot_atom%xx(n) - pix(m,1)
-!                        temp2 = rot_atom%yy(n) - pix(m,2)
-!                        temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-!                        temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-!                        rr_x_new = ABS(temp1)
-!                        rr_y_new = ABS(temp2)
-!
-!                        rot_dist_sq = (temp1)**2 + (temp2)**2
-!
-!                        temp1 = old_pos(i)%pos(n,1) - pix(m,1)
-!                        temp2 = old_pos(i)%pos(n,2) - pix(m,2)
-!                        temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-!                        temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-!
-!                        rr_x_old = ABS(temp1)
-!                        rr_y_old = ABS(temp2)
-!
-!                        orig_dist_sq = (temp1)**2 + (temp2)**2
-!
-!                        if(pixel_square) then
-!                            if(((rr_x_old .LE. res) .AND. (rr_y_old .LE. res)) .OR. ((rr_x_new .LE. res) .AND. (rr_y_new .LE. res))) then
-!                                !write(*,*) "Calling intensity on pixel (", pix(m,1), ",",pix(m,2), ") in rotated model ", i
-!                                call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
-!                                int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-!                            endif
-!                        else
-!                            if ( (rot_dist_sq <= res2) .OR. (orig_dist_sq <= res2) ) then
-!                                call intensity(mrot(i), res, pix(m, 1), pix(m, 2), k, int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
-!                                int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
-!                            endif
-!                        endif
-!                    enddo
-!                enddo
-!            endif
-!            100 continue
-!            do m=1, npix
-!                psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, m, i)
-!                psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)
-!            enddo
-!
-!            !Deallocate ind in rot_atom%rot_i
-!
-!            do n=1, size(rot_atom%rot_i,1)
-!                if(associated(rot_atom%rot_i(n)%ind))then
-!                    deallocate(rot_atom%rot_i(n)%ind)
-!                endif
-!            enddo
-!
-!            deallocate(rot_atom%xx, rot_atom%yy, rot_atom%zz, rot_atom%znum, rot_atom%rot_i, rot_atom%znum_r, stat=istat)
-!
-!-------------------------------- End Previous
-
         enddo rotations
-        !write(*,*) "Rotating models in fem_update complete."
 
+        ! TODO For debugging only.
         ntpix = 0
         do i=1, nrot
             do m=1, pa%npix
@@ -1369,7 +1204,7 @@ contains
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    call intensity(mrot(i), pa%phys_size, pa%pix(m, 1), pa%pix(m, 2), k, &
+                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
                         int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                 endif
             enddo
@@ -1378,7 +1213,7 @@ contains
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
 
-        ! recalculate the variance
+        ! Recalculate the variance
         if(myid.eq.0)then
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
