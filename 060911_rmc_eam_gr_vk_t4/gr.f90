@@ -324,16 +324,16 @@ contains
 
         do i=1, m%natoms
             !WRITE(*,*) 'i is: ', i !debug
-            xi = m%xx(i)
-            yi = m%yy(i)
-            zi = m%zz(i)
+            xi = m%xx%ind(i)
+            yi = m%yy%ind(i)
+            zi = m%zz%ind(i)
 
             do j=1, m%natoms
                 if(i.ne.j)then
                     !WRITE(*,*) 'j is: ', j !debug
-                    xj = m%xx(j)
-                    yj = m%yy(j)
-                    zj = m%zz(j)
+                    xj = m%xx%ind(j)
+                    yj = m%yy%ind(j)
+                    zj = m%zz%ind(j)
                 
                     xij = xi - xj
                     yij = yi - yj
@@ -355,8 +355,8 @@ contains
                             endif
                             !WRITE(*,*) 'Wrong here!' !debug
                             !WRITE(*,*) 'ig is: ', ig, 'mbin_e is; ', mbin_e
-                            gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig)+1
-                            gr_e_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(j),ig)
+                            gr_e_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig) = gr_e_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig)+1
+                            gr_e_part_new(m%znum_r%ind(i),m%znum_r%ind(j),ig) = gr_e_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig)
                         endif
                     endif
 
@@ -364,8 +364,8 @@ contains
                         rmax_n = del_r_n*mbin_n
                         if(R.lt.rmax_n)then
                             ig = int(R/del_r_n) +1
-                            gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig)+1
-                            gr_n_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(j),ig)
+                            gr_n_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig) = gr_n_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig)+1
+                            gr_n_part_new(m%znum_r%ind(i),m%znum_r%ind(j),ig) = gr_n_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig)
                         endif
                     endif
 
@@ -373,8 +373,8 @@ contains
                         rmax_x = del_r_x*mbin_x
                         if(R.lt.rmax_x)then
                             ig = int(R/del_r_x) +1
-                            gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig)+1
-                            gr_x_part_new(m%znum_r(i),m%znum_r(j),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(j),ig)
+                            gr_x_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig) = gr_x_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig)+1
+                            gr_x_part_new(m%znum_r%ind(i),m%znum_r%ind(j),ig) = gr_x_part_cur(m%znum_r%ind(i),m%znum_r%ind(j),ig)
                         endif
                     endif
                 endif
@@ -472,23 +472,23 @@ contains
         dev_del_r_n = del_r_n / 100.0
         dev_del_r_x = del_r_x / 100.0
 
-        m%xx(w) = xx_cur
-        m%yy(w) = yy_cur
-        m%zz(w) = zz_cur !revisded by Feng Yi on 03/03/2009
+        m%xx%ind(w) = xx_cur
+        m%yy%ind(w) = yy_cur
+        m%zz%ind(w) = zz_cur !revisded by Feng Yi on 03/03/2009
         !uncommented by Feng Yi on 03/06/2009 for compatibility with random_move in rmc_functions.f90
 
-        call hutch_list_3D(m, m%xx(w), m%yy(w), m%zz(w), radius, atoms, istat, nlist)
+        call hutch_list_3D(m, m%xx%ind(w), m%yy%ind(w), m%zz%ind(w), radius, atoms, istat, nlist)
 
         do k=1,nlist-1
             if(atoms(k).ne.w)then
 
-                xj = m%xx(atoms(k))
-                yj = m%yy(atoms(k))
-                zj = m%zz(atoms(k))
+                xj = m%xx%ind(atoms(k))
+                yj = m%yy%ind(atoms(k))
+                zj = m%zz%ind(atoms(k))
             
-                xij = m%xx(w) - xj
-                yij = m%yy(w) - yj
-                zij = m%zz(w) - zj
+                xij = m%xx%ind(w) - xj
+                yij = m%yy%ind(w) - yj
+                zij = m%zz%ind(w) - zj
             
                 xij = xij-m%lx*anint(xij/(m%lx))                
                 yij = yij-m%ly*anint(yij/(m%ly))            
@@ -500,43 +500,43 @@ contains
                 if(R.le.radius)then
                     if(used_data_sets(1)) then
                         ig = int(R/del_r_e) +1 !should + 1 NOT 1.0 Changed by Feng Yi on 02/27/2009
-                        gr_e_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig) = gr_e_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig)-1   !revised by Feng Yi on 03/04/2009
-                        gr_e_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig) = gr_e_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig)-1   !revised by Feng Yi on 03/05/2009
+                        gr_e_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig) = gr_e_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig)-1   !revised by Feng Yi on 03/04/2009
+                        gr_e_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig) = gr_e_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig)-1   !revised by Feng Yi on 03/05/2009
                     endif
 
                     if(used_data_sets(2)) then
                         ig = int(R/del_r_n) +1
-                        gr_n_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig) = gr_n_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig)-1  !changed by Feng on 03/04/3009
-                        gr_n_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig) = gr_n_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig)-1   !revised by Feng Yi on 03/05/2009
+                        gr_n_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig) = gr_n_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig)-1  !changed by Feng on 03/04/3009
+                        gr_n_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig) = gr_n_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig)-1   !revised by Feng Yi on 03/05/2009
                     endif
 
                     if(used_data_sets(3)) then
                         ig = int(R/del_r_x) +1
-                        gr_x_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig) = gr_x_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig)-1  !03/04/2009 by Feng Yi
-                        gr_x_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig) = gr_x_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig)-1   !revised by Feng Yi on 03/05/2009
+                        gr_x_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig) = gr_x_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig)-1  !03/04/2009 by Feng Yi
+                        gr_x_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig) = gr_x_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig)-1   !revised by Feng Yi on 03/05/2009
                     endif
                 endif !R < radius
             endif !w != atoms(k)
         enddo
 
         !update position here
-        m%xx(w) = xx_new
-        m%yy(w) = yy_new
-        m%zz(w) = zz_new
+        m%xx%ind(w) = xx_new
+        m%yy%ind(w) = yy_new
+        m%zz%ind(w) = zz_new
         deallocate(atoms) !added by Feng Yi on 03/04/2009
 
-        call hutch_list_3D(m, m%xx(w), m%yy(w), m%zz(w), radius, atoms, istat, nlist)
+        call hutch_list_3D(m, m%xx%ind(w), m%yy%ind(w), m%zz%ind(w), radius, atoms, istat, nlist)
 
         do k=1,nlist-1
             if(atoms(k).ne.w)then
 
-                xj = m%xx(atoms(k))
-                yj = m%yy(atoms(k))
-                zj = m%zz(atoms(k))
+                xj = m%xx%ind(atoms(k))
+                yj = m%yy%ind(atoms(k))
+                zj = m%zz%ind(atoms(k))
             
-                xij = m%xx(w) - xj
-                yij = m%yy(w) - yj
-                zij = m%zz(w) - zj
+                xij = m%xx%ind(w) - xj
+                yij = m%yy%ind(w) - yj
+                zij = m%zz%ind(w) - zj
             
                 !original code
                 xij = xij-m%lx*anint(xij/(m%lx))                
@@ -560,20 +560,20 @@ contains
                         !IF(ig .GT. mbin_e) THEN
                         !  WRITE(*, *) 'outside mbin_e! ', ig, mbin_e
                         !ENDIF
-                        gr_e_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig) = gr_e_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig)+1  !03/04/2009 by Feng Yi
-                        gr_e_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig) = gr_e_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig)+1   !revised by Feng Yi on 03/05/2009
+                        gr_e_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig) = gr_e_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig)+1  !03/04/2009 by Feng Yi
+                        gr_e_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig) = gr_e_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig)+1   !revised by Feng Yi on 03/05/2009
                     endif
 
                     if(used_data_sets(2)) then
                         ig = int(R/del_r_n) +1
-                        gr_n_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig) = gr_n_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig)+1  !by Feng Yi on 03/04/2009
-                        gr_n_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig) = gr_n_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig)+1   !revised by Feng Yi on 03/05/2009
+                        gr_n_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig) = gr_n_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig)+1  !by Feng Yi on 03/04/2009
+                        gr_n_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig) = gr_n_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig)+1   !revised by Feng Yi on 03/05/2009
                     endif
 
                     if(used_data_sets(3)) then
                         ig = int(R/del_r_x) +1
-                        gr_x_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig) = gr_x_part_new(m%znum_r(w),m%znum_r(atoms(k)),ig)+1  !by feng yi on 03/04/2009
-                        gr_x_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig) = gr_x_part_new(m%znum_r(atoms(k)),m%znum_r(w),ig)+1   !revised by Feng Yi on 03/05/2009
+                        gr_x_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig) = gr_x_part_new(m%znum_r%ind(w),m%znum_r%ind(atoms(k)),ig)+1  !by feng yi on 03/04/2009
+                        gr_x_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig) = gr_x_part_new(m%znum_r%ind(atoms(k)),m%znum_r%ind(w),ig)+1   !revised by Feng Yi on 03/05/2009
                     endif
                 endif
 
@@ -768,18 +768,18 @@ contains
             sum_h = 0 !added by Feng Yi on 03/10/2009 for debug
             sum_no_h = 0
             !***************************** 
-            xi = m%xx(i)
-            yi = m%yy(i)
-            zi = m%zz(i)
+            xi = m%xx%ind(i)
+            yi = m%yy%ind(i)
+            zi = m%zz%ind(i)
 
             call hutch_list_3D(m, xi, yi, zi, radius, atoms, istat, nlist)
 
             do k=1,nlist-1
                 if(atoms(k).ne.i)then
 
-                    xj = m%xx(atoms(k))
-                    yj = m%yy(atoms(k))
-                    zj = m%zz(atoms(k))
+                    xj = m%xx%ind(atoms(k))
+                    yj = m%yy%ind(atoms(k))
+                    zj = m%zz%ind(atoms(k))
             
                     xij = xi - xj
                     yij = yi - yj
@@ -801,8 +801,8 @@ contains
                         !ENDIF !debug
 
                             ig = int(R/del_r_e) +1
-                            gr_e_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig)+1
-                            gr_e_part_new(m%znum_r(i),m%znum_r(atoms(k)),ig) = gr_e_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig)       
+                            gr_e_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig) = gr_e_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig)+1
+                            gr_e_part_new(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig) = gr_e_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig)       
                         endif
                     endif
 
@@ -810,8 +810,8 @@ contains
                         rmax_n = del_r_n*mbin_n
                         if(R.lt.rmax_n)then
                             ig = int(R/del_r_n) +1
-                            gr_n_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig)+1   
-                            gr_n_part_new(m%znum_r(i),m%znum_r(atoms(k)),ig) = gr_n_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig)       
+                            gr_n_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig) = gr_n_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig)+1   
+                            gr_n_part_new(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig) = gr_n_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig)       
                         endif
                     endif
 
@@ -819,8 +819,8 @@ contains
                         rmax_x = del_r_x*mbin_x
                         if(R.lt.rmax_x)then
                             ig = int(R/del_r_x) +1
-                            gr_x_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig)+1
-                            gr_x_part_new(m%znum_r(i),m%znum_r(atoms(k)),ig) = gr_x_part_cur(m%znum_r(i),m%znum_r(atoms(k)),ig)       
+                            gr_x_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig) = gr_x_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig)+1
+                            gr_x_part_new(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig) = gr_x_part_cur(m%znum_r%ind(i),m%znum_r%ind(atoms(k)),ig)       
                         endif
                     endif
                 endif
@@ -832,9 +832,9 @@ contains
             do j=m%natoms + 1, m%natoms
                 if(i.ne.j)then
                     !WRITE(*,*) 'j is: ', j !debug
-                    xj = m%xx(j)
-                    yj = m%yy(j)
-                    zj = m%zz(j)
+                    xj = m%xx%ind(j)
+                    yj = m%yy%ind(j)
+                    zj = m%zz%ind(j)
                 
                     xij = xi - xj
                     yij = yi - yj

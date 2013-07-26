@@ -473,6 +473,7 @@ contains
         integer :: comm
         integer :: i, j
         integer begin_rot, end_rot
+write(*,*) "DEBUG 1"
 
         if(present(square_pixel)) then
             pixel_square = square_pixel
@@ -533,6 +534,7 @@ contains
         ELSE        !RMC
         !*************************************
 
+write(*,*) "DEBUG 2"
             allocate (psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), sum_int_sq(size(k)), stat=istat)
             sum_int = 0.0
             sum_int_sq = 0.0
@@ -562,14 +564,16 @@ contains
                 return
             endif
 
+write(*,*) "DEBUG 3"
             ! initialize old_index and old_pos arrays
             ! ??? I don't know what these are.
             do i=myid+1, nrot, numprocs
                 old_index(i)%nat = 0
-                nullify(old_index(i)%ind)
+                if( allocated(old_index(i)%ind) ) deallocate(old_index(i)%ind)
                 old_pos(i)%nat = 0
-                nullify(old_pos(i)%pos)
+                if( associated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
             enddo
+write(*,*) "DEBUG 4"
 
             ! Calculate intensities for every single pixel in every single model. This is very expensive.
             write(*,*)
@@ -665,7 +669,7 @@ contains
         ! replaced code recalculating znum_r with code copying it from previous
         ! calculations 3/18/09 pmv  !tr RE-ok-jwh
         do i=1, size(pix_atoms)
-            znum_r(i) = m_int%znum_r(pix_atoms(i))
+            znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
         enddo
 
         gr_i = 0.0
@@ -683,8 +687,8 @@ contains
         ! Calculate sum1 for gr_i calculation in next loop.
         if(pixel_square) then
             do i=1,size(pix_atoms)
-                x2=m_int%xx(pix_atoms(i))-px
-                y2=m_int%yy(pix_atoms(i))-py
+                x2=m_int%xx%ind(pix_atoms(i))-px
+                y2=m_int%yy%ind(pix_atoms(i))-py
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
                 y2=y2-m_int%ly*anint(y2/m_int%ly)
                 rr_x(i) = ABS(x2)
@@ -701,8 +705,8 @@ contains
             enddo
         else
             do i=1,size(pix_atoms)
-                x2=m_int%xx(pix_atoms(i))-px
-                y2=m_int%yy(pix_atoms(i))-py
+                x2=m_int%xx%ind(pix_atoms(i))-px
+                y2=m_int%yy%ind(pix_atoms(i))-py
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
                 y2=y2-m_int%ly*anint(y2/m_int%ly)
                 rr_a(i)=sqrt(x2*x2 + y2*y2)
@@ -830,7 +834,7 @@ contains
         integer, dimension(:), allocatable :: scratch_int
         integer, pointer, dimension(:,:) :: scratch_int_2d
         integer :: old_mrot_natoms ! temp variable
-        integer :: hx, hy, hz
+        integer :: hx, hy, hz, ll, l
 
         istat = 0
 
@@ -848,22 +852,22 @@ contains
 
         ! Create a new model (moved_atom) with only one atom in it and put the
         ! position etc of the moved atom into it.
-        allocate(moved_atom%xx(1), moved_atom%yy(1), moved_atom%zz(1), moved_atom%znum(1), &
-        moved_atom%atom_type(1), moved_atom%znum_r(1), moved_atom%composition(1), stat=istat)
+        allocate(moved_atom%xx%ind(1), moved_atom%yy%ind(1), moved_atom%zz%ind(1), moved_atom%znum%ind(1), &
+        moved_atom%atom_type(1), moved_atom%znum_r%ind(1), moved_atom%composition(1), stat=istat)
         allocate(psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), sum_int_sq(size(k)), stat=istat)
         moved_atom%natoms = 1
-        ! m_in%xx, etc have already been updated by random_move so these are the
+        ! m_in%xx%ind, etc have already been updated by random_move so these are the
         ! new, moved atom positions.
-        moved_atom%xx(1) = m_in%xx(atom)
-        moved_atom%yy(1) = m_in%yy(atom)
-        moved_atom%zz(1) = m_in%zz(atom)
-        moved_atom%znum(1) = m_in%znum(atom)
-        moved_atom%znum_r(1) = m_in%znum_r(atom)
+        moved_atom%xx%ind(1) = m_in%xx%ind(atom)
+        moved_atom%yy%ind(1) = m_in%yy%ind(atom)
+        moved_atom%zz%ind(1) = m_in%zz%ind(atom)
+        moved_atom%znum%ind(1) = m_in%znum%ind(atom)
+        moved_atom%znum_r%ind(1) = m_in%znum_r%ind(atom)
         moved_atom%lx = m_in%lx
         moved_atom%ly = m_in%ly
         moved_atom%lz = m_in%lz
         moved_atom%nelements = 1
-        moved_atom%atom_type(1) = m_in%znum(atom)
+        moved_atom%atom_type(1) = m_in%znum%ind(atom)
         moved_atom%composition(1) = 1.0
         moved_atom%rotated = .FALSE.
 
@@ -892,13 +896,13 @@ contains
             ! every atom in them; it is different than these. rot_atom now
             ! contains a model that needs to be incorporated into mrot(i) in the
             ! appropriate manner.
-            !write(*,*) "moved_atom = ", moved_atom%xx, moved_atom%yy, moved_atom%zz
-            !write(*,*) "rot_atom = ", rot_atom%xx, rot_atom%yy, rot_atom%zz
-            !write(*,*) "mrot(i) = ", mrot(i)%xx(mrot(i)%rot_i(atom)%ind(1)), mrot(i)%yy(mrot(i)%rot_i(atom)%ind(1)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(1))
+            !write(*,*) "moved_atom = ", moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind
+            !write(*,*) "rot_atom = ", rot_atom%xx%ind, rot_atom%yy%ind, rot_atom%zz%ind
+            !write(*,*) "mrot(i) = ", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(1)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(1)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(1))
 
-!x = moved_atom%xx(1)*cos(rot(i,2)) + moved_atom%yy(1)*sin(rot(i,2))
-!y = moved_atom%xx(1)*-cos(rot(i,3))*sin(rot(i,2)) + moved_atom%yy(1)*cos(rot(i,3))*cos(rot(i,2)) + moved_atom%zz(1)*sin(rot(i,3))
-!z = moved_atom%xx(1)*sin(rot(i,3))*sin(rot(i,2)) + moved_atom%yy(1)*-sin(rot(i,3))*cos(rot(i,2)) + moved_atom%zz(1)*sin(rot(i,3))
+!x = moved_atom%xx%ind(1)*cos(rot(i,2)) + moved_atom%yy%ind(1)*sin(rot(i,2))
+!y = moved_atom%xx%ind(1)*-cos(rot(i,3))*sin(rot(i,2)) + moved_atom%yy%ind(1)*cos(rot(i,3))*cos(rot(i,2)) + moved_atom%zz%ind(1)*sin(rot(i,3))
+!z = moved_atom%xx%ind(1)*sin(rot(i,3))*sin(rot(i,2)) + moved_atom%yy%ind(1)*-sin(rot(i,3))*cos(rot(i,2)) + moved_atom%zz%ind(1)*sin(rot(i,3))
 
 !-------------------------------- Jason
 
@@ -916,15 +920,14 @@ contains
             ! If that is true, the rotated atom left the model previously and
             ! did not reenter so there is no structural change - we can skip to
             ! the end of the rotations do loop.
-!write(*,*) "moved_atom%nat=", moved_atom%natoms, "rot_atom%nat=", rot_atom%natoms, "mrot(i)%rot_i(atom)%nat=", mrot(i)%rot_i(atom)%nat
-write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms
+!write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms
 
                 ! Store the original index and position in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
                     call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
-                    call add_pos(old_pos(i), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), &
-                        mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), &
-                        mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)), istat)
+                    call add_pos(old_pos(i), mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)), &
+                        mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), &
+                        mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), istat)
                 enddo
                 ! Now check if the original position of the moved atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
@@ -958,10 +961,10 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                 ! Also update their hutches.
                 j = 1
                 do while( j <= rot_atom%natoms .and. j <= mrot(i)%rot_i(atom)%nat )
-                    mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%xx(j)
-                    mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%yy(j)
-                    mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%zz(j)
-                    call hutch_move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), mrot(i)%xx(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%yy(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz(mrot(i)%rot_i(atom)%ind(j)) )
+                    mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%xx%ind(j)
+                    mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%yy%ind(j)
+                    mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)) = rot_atom%zz%ind(j)
+                    call hutch_move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)) )
                     j = j + 1
                 enddo
 
@@ -971,7 +974,7 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                 ! The number of times the atom appears went up (duplication).
                 ! We need to update xx, yy, zz, znum, znum_r, ha, natoms, and
                 ! composition. We need to check nelements and atom_type as well.
-                write(*,*) "A wild atom appeared!"
+                !write(*,*) "A wild atom appeared!"
 
                     ! Reallocate xx, yy, zz, znum, and znum_r bigger (leaving the
                     ! end empty for the new atoms to fit into).
@@ -979,35 +982,35 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                     allocate(scratch_int( mrot(i)%natoms))
                     allocate(scratch_int_2d( mrot(i)%natoms, 3))
 
-                    ! Resize mrot(i)%xx
-                    scratch_real = mrot(i)%xx
-                    deallocate(mrot(i)%xx)
-                    allocate(mrot(i)%xx( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
-                    mrot(i)%xx(1:mrot(i)%natoms) = scratch_real
+                    ! Resize mrot(i)%xx%ind
+                    scratch_real = mrot(i)%xx%ind
+                    deallocate(mrot(i)%xx%ind)
+                    allocate(mrot(i)%xx%ind( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
+                    mrot(i)%xx%ind(1:mrot(i)%natoms) = scratch_real
 
-                    ! Resize mrot(i)%yy
-                    scratch_real = mrot(i)%yy
-                    deallocate(mrot(i)%yy)
-                    allocate(mrot(i)%yy( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
-                    mrot(i)%yy(1:mrot(i)%natoms) = scratch_real
+                    ! Resize mrot(i)%yy%ind
+                    scratch_real = mrot(i)%yy%ind
+                    deallocate(mrot(i)%yy%ind)
+                    allocate(mrot(i)%yy%ind( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
+                    mrot(i)%yy%ind(1:mrot(i)%natoms) = scratch_real
 
-                    ! Resize mrot(i)%zz
-                    scratch_real = mrot(i)%zz
-                    deallocate(mrot(i)%zz)
-                    allocate(mrot(i)%zz( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
-                    mrot(i)%zz(1:mrot(i)%natoms) = scratch_real
+                    ! Resize mrot(i)%zz%ind
+                    scratch_real = mrot(i)%zz%ind
+                    deallocate(mrot(i)%zz%ind)
+                    allocate(mrot(i)%zz%ind( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
+                    mrot(i)%zz%ind(1:mrot(i)%natoms) = scratch_real
 
-                    ! Resize mrot(i)%znum
-                    scratch_int = mrot(i)%znum
-                    deallocate(mrot(i)%znum)
-                    allocate(mrot(i)%znum( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
-                    mrot(i)%znum(1:mrot(i)%natoms) = scratch_int
+                    ! Resize mrot(i)%znum%ind
+                    scratch_int = mrot(i)%znum%ind
+                    deallocate(mrot(i)%znum%ind)
+                    allocate(mrot(i)%znum%ind( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
+                    mrot(i)%znum%ind(1:mrot(i)%natoms) = scratch_int
 
-                    ! Resize mrot(i)%znum_r
-                    scratch_int = mrot(i)%znum_r
-                    deallocate(mrot(i)%znum_r)
-                    allocate(mrot(i)%znum_r( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
-                    mrot(i)%znum_r(1:mrot(i)%natoms) = scratch_int
+                    ! Resize mrot(i)%znum_r%ind
+                    scratch_int = mrot(i)%znum_r%ind
+                    deallocate(mrot(i)%znum_r%ind)
+                    allocate(mrot(i)%znum_r%ind( mrot(i)%natoms+(rot_atom%natoms-mrot(i)%rot_i(atom)%nat) ))
+                    mrot(i)%znum_r%ind(1:mrot(i)%natoms) = scratch_int
 
                     deallocate(scratch_real)
                     deallocate(scratch_int)
@@ -1026,13 +1029,13 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                     ! Add the rest of the rot_atom model to mrot(i) (appending).
                     do j=1, (rot_atom%natoms - mrot(i)%rot_i(atom)%nat)
                         call add_index(mrot(i)%rot_i(atom), mrot(i)%natoms + 1)
-                        mrot(i)%xx(mrot(i)%natoms + 1) = rot_atom%xx(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
-                        mrot(i)%yy(mrot(i)%natoms + 1) = rot_atom%yy(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
-                        mrot(i)%zz(mrot(i)%natoms + 1) = rot_atom%zz(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
-                        mrot(i)%znum(mrot(i)%natoms + 1) = rot_atom%znum(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
-                        mrot(i)%znum_r(mrot(i)%natoms + 1) = rot_atom%znum_r(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
+                        mrot(i)%xx%ind(mrot(i)%natoms + 1) = rot_atom%xx%ind(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
+                        mrot(i)%yy%ind(mrot(i)%natoms + 1) = rot_atom%yy%ind(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
+                        mrot(i)%zz%ind(mrot(i)%natoms + 1) = rot_atom%zz%ind(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
+                        mrot(i)%znum%ind(mrot(i)%natoms + 1) = rot_atom%znum%ind(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
+                        mrot(i)%znum_r%ind(mrot(i)%natoms + 1) = rot_atom%znum_r%ind(j + (rot_atom%natoms - mrot(i)%rot_i(atom)%nat))
                         mrot(i)%natoms = mrot(i)%natoms + 1
-                        !call hutch_position(mrot(i), mrot(i)%xx(mrot(i)%natoms), mrot(i)%yy(mrot(i)%natoms), mrot(i)%zz(mrot(i)%natoms), hx, hy, hz)
+                        !call hutch_position(mrot(i), mrot(i)%xx%ind(mrot(i)%natoms), mrot(i)%yy%ind(mrot(i)%natoms), mrot(i)%zz%ind(mrot(i)%natoms), hx, hy, hz)
                         !call hutch_add_atom(mrot(i), mrot(i)%natoms, hx, hy, hz)
                     enddo
 
@@ -1070,11 +1073,11 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                                 ! Array deletion.
                                 mrot(i)%natoms = mrot(i)%natoms - 1
                                 do n=highest, old_mrot_natoms - 1
-                                    mrot(i)%xx(n) = mrot(i)%xx(n+1)
-                                    mrot(i)%yy(n) = mrot(i)%yy(n+1)
-                                    mrot(i)%zz(n) = mrot(i)%zz(n+1)
-                                    mrot(i)%znum(n) = mrot(i)%znum(n+1)
-                                    mrot(i)%znum_r(n) = mrot(i)%znum_r(n+1)
+                                    mrot(i)%xx%ind(n) = mrot(i)%xx%ind(n+1)
+                                    mrot(i)%yy%ind(n) = mrot(i)%yy%ind(n+1)
+                                    mrot(i)%zz%ind(n) = mrot(i)%zz%ind(n+1)
+                                    mrot(i)%znum%ind(n) = mrot(i)%znum%ind(n+1)
+                                    mrot(i)%znum_r%ind(n) = mrot(i)%znum_r%ind(n+1)
                                     ! Go through every single rot_i in mrot(i)
                                     ! and look for n. If we find it in that
                                     ! rot_i, decrement it. This accounts for the
@@ -1082,17 +1085,16 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                                     ! eventually get an out of bounds error on
                                     ! the next iteration. I think this is the
                                     ! bug...
-                                    do l=1, unrot_natoms
-                                        do k=1, mrot(i)%rot_i(l)%nat
-                                            if( mrot(i)%rot_i(l)%ind(k) == n) then
-                                                !mrot(i)%rot_i(l)%ind(k) = mrot(i)%rot_i(l)%ind(k) - 1
-                                                write(*,*) "Failure expected."
-                                                !write(*,*) "Fixed." !TODO
+                                    do l=1, mrot(i)%unrot_natoms
+                                        do ll=1, mrot(i)%rot_i(l)%nat
+                                            if( mrot(i)%rot_i(l)%ind(ll) == n) then
+                                                mrot(i)%rot_i(l)%ind(ll) = mrot(i)%rot_i(l)%ind(ll) - 1
+                                                !write(*,*) "Failure expected."
+                                                write(*,*) "Fixed." !TODO
                                             endif
                                         enddo
                                     enddo
                                 enddo
-                write(*,*) "An atom ran away!", highest, "ind=", mrot(i)%rot_i(atom)%ind !highest is the atom in mrot(i) that is being removed.
                                 exit
                             endif
                         enddo
@@ -1103,35 +1105,35 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                     allocate(scratch_real( mrot(i)%natoms ))
                     allocate(scratch_int( mrot(i)%natoms ))
 
-                    ! Resize mrot(i)%xx
-                    scratch_real = mrot(i)%xx( 1:mrot(i)%natoms )
-                    deallocate(mrot(i)%xx)
-                    allocate(mrot(i)%xx( mrot(i)%natoms ))
-                    mrot(i)%xx = scratch_real 
+                    ! Resize mrot(i)%xx%ind
+                    scratch_real = mrot(i)%xx%ind( 1:mrot(i)%natoms )
+                    deallocate(mrot(i)%xx%ind)
+                    allocate(mrot(i)%xx%ind( mrot(i)%natoms ))
+                    mrot(i)%xx%ind = scratch_real 
 
-                    ! Resize mrot(i)%yy
-                    scratch_real = mrot(i)%yy( 1:mrot(i)%natoms )
-                    deallocate(mrot(i)%yy)
-                    allocate(mrot(i)%yy( mrot(i)%natoms ))
-                    mrot(i)%yy = scratch_real 
+                    ! Resize mrot(i)%yy%ind
+                    scratch_real = mrot(i)%yy%ind( 1:mrot(i)%natoms )
+                    deallocate(mrot(i)%yy%ind)
+                    allocate(mrot(i)%yy%ind( mrot(i)%natoms ))
+                    mrot(i)%yy%ind = scratch_real 
 
-                    ! Resize mrot(i)%zz
-                    scratch_real = mrot(i)%zz( 1:mrot(i)%natoms )
-                    deallocate(mrot(i)%zz)
-                    allocate(mrot(i)%zz( mrot(i)%natoms ))
-                    mrot(i)%zz = scratch_real 
+                    ! Resize mrot(i)%zz%ind
+                    scratch_real = mrot(i)%zz%ind( 1:mrot(i)%natoms )
+                    deallocate(mrot(i)%zz%ind)
+                    allocate(mrot(i)%zz%ind( mrot(i)%natoms ))
+                    mrot(i)%zz%ind = scratch_real 
 
-                    ! Resize mrot(i)%znum
-                    scratch_real = mrot(i)%znum( 1:mrot(i)%natoms )
-                    deallocate(mrot(i)%znum)
-                    allocate(mrot(i)%znum( mrot(i)%natoms ))
-                    mrot(i)%znum = scratch_real 
+                    ! Resize mrot(i)%znum%ind
+                    scratch_real = mrot(i)%znum%ind( 1:mrot(i)%natoms )
+                    deallocate(mrot(i)%znum%ind)
+                    allocate(mrot(i)%znum%ind( mrot(i)%natoms ))
+                    mrot(i)%znum%ind = scratch_real 
 
-                    ! Resize mrot(i)%znum_r
-                    scratch_real = mrot(i)%znum_r( 1:mrot(i)%natoms )
-                    deallocate(mrot(i)%znum_r)
-                    allocate(mrot(i)%znum_r( mrot(i)%natoms ))
-                    mrot(i)%znum_r = scratch_real 
+                    ! Resize mrot(i)%znum_r%ind
+                    scratch_real = mrot(i)%znum_r%ind( 1:mrot(i)%natoms )
+                    deallocate(mrot(i)%znum_r%ind)
+                    allocate(mrot(i)%znum_r%ind( mrot(i)%natoms ))
+                    mrot(i)%znum_r%ind = scratch_real 
 
                     deallocate(scratch_real)
                     deallocate(scratch_int)
@@ -1150,8 +1152,8 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
                 ! The same loop is in Intensity.
                 do m=1, pa%npix
                     do n=1, rot_atom%natoms
-                        temp1 = rot_atom%xx(n) - pa%pix(m,1)
-                        temp2 = rot_atom%yy(n) - pa%pix(m,2)
+                        temp1 = rot_atom%xx%ind(n) - pa%pix(m,1)
+                        temp2 = rot_atom%yy%ind(n) - pa%pix(m,2)
                         temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx) !PBC I think
                         temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly) !PBC I think
                         if(pixel_square) then
@@ -1179,12 +1181,12 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
 
             !Deallocate ind in rot_atom%rot_i
             do n=1, size(rot_atom%rot_i,1)
-                if(associated(rot_atom%rot_i(n)%ind))then
+                if(allocated(rot_atom%rot_i(n)%ind))then
                     deallocate(rot_atom%rot_i(n)%ind)
                 endif
             enddo
-            deallocate(rot_atom%xx, rot_atom%yy, rot_atom%zz, rot_atom%znum, &
-                rot_atom%rot_i, rot_atom%znum_r, stat=istat)
+            deallocate(rot_atom%xx%ind, rot_atom%yy%ind, rot_atom%zz%ind, rot_atom%znum%ind, &
+                rot_atom%rot_i, rot_atom%znum_r%ind, stat=istat)
 
 !-------------------------------- End Jason
 
@@ -1221,7 +1223,7 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
             end do
         endif
 
-        deallocate(moved_atom%xx, moved_atom%yy, moved_atom%zz, moved_atom%znum, moved_atom%atom_type, moved_atom%znum_r, moved_atom%composition, stat=istat)
+        deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
     end subroutine fem_update
 
@@ -1234,14 +1236,16 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
     end subroutine fem_accept_move
 
     subroutine fem_reset_old(comm)
+        ! TODO Make sure I should be deallocating. Also, search for
+        ! 'deallocate(' and check the same thing.
         use mpi
         integer :: i, comm
         do i=myid+1, nrot, numprocs
             if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
-            nullify(old_index(i)%ind)
+            deallocate(old_index(i)%ind)
             old_index(i)%nat = 0
             if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
-            nullify(old_pos(i)%pos)
+            deallocate(old_pos(i)%pos)
             old_pos(i)%nat = 0
         enddo
     end subroutine fem_reset_old
@@ -1270,9 +1274,9 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
             ! otherwise, copy the old positions back into the model at the
             ! correct indices
             do j=1,old_index(i)%nat
-                mrot(i)%xx(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
-                mrot(i)%yy(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
-                mrot(i)%zz(old_index(i)%ind(j)) = old_pos(i)%pos(j,3)
+                mrot(i)%xx%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
+                mrot(i)%yy%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
+                mrot(i)%zz%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,3)
             enddo
 
             !The saved intensity values must return to their old values - JWH
@@ -1350,7 +1354,7 @@ write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "m
 
         do i=1, m%natoms
             !write(*,'(I0)',advance='no') sampled_atoms(i)
-            write(*,*) sampled_atoms(i), m%xx(i), m%yy(i), m%zz(i)
+            write(*,*) sampled_atoms(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
         enddo
     end subroutine print_sampled_map
 

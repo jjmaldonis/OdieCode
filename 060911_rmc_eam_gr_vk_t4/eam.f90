@@ -218,12 +218,12 @@ contains
         do i=1, m%natoms
         phi2 = 0.0
         rho2 = 0.0
-            call hutch_list_3D(m, m%xx(i), m%yy(i), m%zz(i), eam_max_r, atoms, istat, nlist)
+            call hutch_list_3D(m, m%xx%ind(i), m%yy%ind(i), m%zz%ind(i), eam_max_r, atoms, istat, nlist)
             do j=1, nlist-1
                 if(atoms(j).ne.i)then
-                    xij = m%xx(i) - m%xx(atoms(j))
-                    yij = m%yy(i) - m%yy(atoms(j))          
-                    zij = m%zz(i) - m%zz(atoms(j))
+                    xij = m%xx%ind(i) - m%xx%ind(atoms(j))
+                    yij = m%yy%ind(i) - m%yy%ind(atoms(j))          
+                    zij = m%zz%ind(i) - m%zz%ind(atoms(j))
                     xij = xij-m%lx*anint(xij/(m%lx))                
                     yij = yij-m%ly*anint(yij/(m%ly))            
                     zij = zij-m%lz*anint(zij/(m%lz))
@@ -231,9 +231,9 @@ contains
                     if(r2.lt.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
-                        phi1 = phi(m%znum_r(i), m%znum_r(atoms(j)) , rbin)
+                        phi1 = phi(m%znum_r%ind(i), m%znum_r%ind(atoms(j)) , rbin)
                         phi2 = phi2 + phi1
-                        rho1 = rho(m%znum_r(i), rbin)
+                        rho1 = rho(m%znum_r%ind(i), rbin)
                         rho2 = rho2 + rho1
                     endif
                 endif
@@ -243,7 +243,7 @@ contains
             if(rhobin.le.0)then
                 e1(i) = 0.5*phi2
             else
-                e1(i) = f(m%znum_r(i), rhobin) + 0.5*phi2
+                e1(i) = f(m%znum_r%ind(i), rhobin) + 0.5*phi2
             endif
             deallocate(atoms)
         enddo
@@ -275,9 +275,9 @@ contains
             rho2 = 0.0
             do j=1, m%natoms
                 if(j.ne.i)then
-                    xij = m%xx(i) - m%xx(j)
-                    yij = m%yy(i) - m%yy(j)         
-                    zij = m%zz(i) - m%zz(j)
+                    xij = m%xx%ind(i) - m%xx%ind(j)
+                    yij = m%yy%ind(i) - m%yy%ind(j)         
+                    zij = m%zz%ind(i) - m%zz%ind(j)
                     xij = xij-m%lx*anint(xij/(m%lx))                
                     yij = yij-m%ly*anint(yij/(m%ly))            
                     zij = zij-m%lz*anint(zij/(m%lz))
@@ -285,9 +285,9 @@ contains
                     if(r2.le.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
-                        phi1 = phi(m%znum_r(i), m%znum_r(j) , rbin)
+                        phi1 = phi(m%znum_r%ind(i), m%znum_r%ind(j) , rbin)
                         phi2 = phi2 + phi1
-                        rho1 = rho(m%znum_r(i), rbin)
+                        rho1 = rho(m%znum_r%ind(i), rbin)
                         rho2 = rho2 + rho1
                     endif
                 endif
@@ -296,7 +296,7 @@ contains
             if(rhobin.le.0)then
                 e1(i) = 0.5*phi2
             else
-                e1(i) = f(m%znum_r(i), rhobin) + 0.5*phi2
+                e1(i) = f(m%znum_r%ind(i), rhobin) + 0.5*phi2
             endif
         enddo
 
@@ -329,12 +329,12 @@ contains
         do i=1, nlist1-1
             phi2 = 0.0
             rho2 = 0.0
-            call hutch_list_3D(m, m%xx(atoms1(i)), m%yy(atoms1(i)), m%zz(atoms1(i)), eam_max_r, atoms2, istat, nlist2)
+            call hutch_list_3D(m, m%xx%ind(atoms1(i)), m%yy%ind(atoms1(i)), m%zz%ind(atoms1(i)), eam_max_r, atoms2, istat, nlist2)
             do j=1, nlist2-1
                 if(atoms2(j).ne.atoms1(i))then
-                    xij = m%xx(atoms1(i)) - m%xx(atoms2(j))
-                    yij = m%yy(atoms1(i)) - m%yy(atoms2(j))         
-                    zij = m%zz(atoms1(i)) - m%zz(atoms2(j))
+                    xij = m%xx%ind(atoms1(i)) - m%xx%ind(atoms2(j))
+                    yij = m%yy%ind(atoms1(i)) - m%yy%ind(atoms2(j))         
+                    zij = m%zz%ind(atoms1(i)) - m%zz%ind(atoms2(j))
                     xij = xij-m%lx*anint(xij/(m%lx))                
                     yij = yij-m%ly*anint(yij/(m%ly))            
                     zij = zij-m%lz*anint(zij/(m%lz))
@@ -342,9 +342,9 @@ contains
                     if(r2.le.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
-                        phi1 = phi(m%znum_r(atoms1(i)), m%znum_r(atoms2(j)) , rbin)
+                        phi1 = phi(m%znum_r%ind(atoms1(i)), m%znum_r%ind(atoms2(j)) , rbin)
                         phi2 = phi2 + phi1
-                        rho1 = rho(m%znum_r(atoms1(i)), rbin)
+                        rho1 = rho(m%znum_r%ind(atoms1(i)), rbin)
                         rho2 = rho2 + rho1
                     endif
                 endif
@@ -353,7 +353,7 @@ contains
             if(rhobin.le.0)then
                 e2(atoms1(i)) = 0.5*phi2
             else
-                e2(atoms1(i)) = f(m%znum_r(atoms1(i)), rhobin) + 0.5*phi2
+                e2(atoms1(i)) = f(m%znum_r%ind(atoms1(i)), rhobin) + 0.5*phi2
             endif
             not_counted(atoms1(i)) = .false.
             deallocate(atoms2)
@@ -365,12 +365,12 @@ contains
             phi2 = 0.0
             rho2 = 0.0
             if(not_counted(atoms3(i)))then
-                call hutch_list_3D(m, m%xx(atoms3(i)), m%yy(atoms3(i)), m%zz(atoms3(i)), eam_max_r, atoms4, istat, nlist4)
+                call hutch_list_3D(m, m%xx%ind(atoms3(i)), m%yy%ind(atoms3(i)), m%zz%ind(atoms3(i)), eam_max_r, atoms4, istat, nlist4)
                 do j=1, nlist4-1
                     if(atoms4(j).ne.atoms3(i))then
-                        xij = m%xx(atoms3(i)) - m%xx(atoms4(j))
-                        yij = m%yy(atoms3(i)) - m%yy(atoms4(j))         
-                        zij = m%zz(atoms3(i)) - m%zz(atoms4(j))
+                        xij = m%xx%ind(atoms3(i)) - m%xx%ind(atoms4(j))
+                        yij = m%yy%ind(atoms3(i)) - m%yy%ind(atoms4(j))     
+                        zij = m%zz%ind(atoms3(i)) - m%zz%ind(atoms4(j))
                         xij = xij-m%lx*anint(xij/(m%lx))                
                         yij = yij-m%ly*anint(yij/(m%ly))            
                         zij = zij-m%lz*anint(zij/(m%lz))
@@ -378,9 +378,9 @@ contains
                         if(r2.le.eam_max_r*eam_max_r)then
                             r = sqrt(r2)
                             rbin = int(r/dr)+1
-                            phi1 = phi(m%znum_r(atoms3(i)), m%znum_r(atoms4(j)) , rbin)
+                            phi1 = phi(m%znum_r%ind(atoms3(i)), m%znum_r%ind(atoms4(j)) , rbin)
                             phi2 = phi2 + phi1
-                            rho1 = rho(m%znum_r(atoms3(i)), rbin)
+                            rho1 = rho(m%znum_r%ind(atoms3(i)), rbin)
                             rho2 = rho2 + rho1
                         endif
                     endif
@@ -389,7 +389,7 @@ contains
                 if(rhobin.le.0)then
                     e2(atoms3(i)) = 0.5*phi2
                 else
-                    e2(atoms3(i)) = f(m%znum_r(atoms3(i)), rhobin) + 0.5*phi2
+                    e2(atoms3(i)) = f(m%znum_r%ind(atoms3(i)), rhobin) + 0.5*phi2
                 endif
                 deallocate(atoms4)
             endif

@@ -328,7 +328,7 @@ contains
                 endif
             deallocate(tempdata)
             else
-                print *, 'open fem file fails'
+                print *, 'open fem file fails', femfile(1:filenamelength)
             endif
             close(30)
         else 

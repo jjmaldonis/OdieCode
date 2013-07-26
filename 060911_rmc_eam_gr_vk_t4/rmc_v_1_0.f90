@@ -183,9 +183,9 @@ program rmc
         ! another atom. Returns true if the move is okay. (hard shere cutoff)
         do while( .not. check_cutoffs(m,cutoff_r,w) )
             ! Check_cutoffs returned false so reset positions and try again.
-            m%xx(w) = xx_cur
-            m%yy(w) = yy_cur
-            m%zz(w) = zz_cur
+            m%xx%ind(w) = xx_cur
+            m%yy%ind(w) = yy_cur
+            m%zz%ind(w) = zz_cur
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
         end do
 
@@ -280,7 +280,7 @@ program rmc
                 write(33,*)"updated model"
                 write(33,*)m%lx,m%ly,m%lz
                 do j=1,m%natoms
-                    write(33,*)m%znum(j), m%xx(j), m%yy(j), m%zz(j)
+                    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
                 enddo
                 write(33,*)"-1"
                 ! Write to energy_function
@@ -324,7 +324,7 @@ program rmc
         write(55,*)"updated model"
         write(55,*)m%lx,m%ly,m%lz
         do i=1,m%natoms
-            write(55,*)m%znum(i), m%xx(i), m%yy(i), m%zz(i)
+            write(55,*)m%znum%ind(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
         enddo
         write(55,*)"-1"
         close(55)

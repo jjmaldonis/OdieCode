@@ -149,7 +149,7 @@ CONTAINS
 
         ! Find all atoms within radius radius of moved_atom and put them 
         ! in the list atoms. Also sets nlist == size(atoms)+1.
-        call hutch_list_3D(m, m%xx(moved_atom),m%yy(moved_atom),m%zz(moved_atom), radius, atoms, istat, nlist)
+        call hutch_list_3D(m, m%xx%ind(moved_atom),m%yy%ind(moved_atom),m%zz%ind(moved_atom), radius, atoms, istat, nlist)
         if (istat .eq. 1) then
             print *, 'memory allocation fails!'
             return
@@ -164,7 +164,7 @@ CONTAINS
 
         !first, determine the type of moved_atom 
         do i=1, m%nelements
-            if(m%znum(moved_atom) .eq. m%atom_type(i)) then
+            if(m%znum%ind(moved_atom) .eq. m%atom_type(i)) then
                 num1 = i
                 exit
             endif
@@ -176,7 +176,7 @@ CONTAINS
             ! in atoms by hutch_list_3d as far as i know.
             if (atoms(i) .ne. moved_atom) then
                 do j=1, m%nelements
-                    if(m%atom_type(j) .eq. m%znum(atoms(i))) then
+                    if(m%atom_type(j) .eq. m%znum%ind(atoms(i))) then
                         num2 = j
                         exit
                     endif
@@ -186,9 +186,9 @@ CONTAINS
                
                 !calculate the atomic distance
                 !compare with cutoff_r
-                temp_x = abs(m%xx(moved_atom) - m%xx(atoms(i)))  !pbc added - jwh 04/14/2009
-                temp_y = abs(m%yy(moved_atom) - m%yy(atoms(i)))
-                temp_z = abs(m%zz(moved_atom) - m%zz(atoms(i)))
+                temp_x = abs(m%xx%ind(moved_atom) - m%xx%ind(atoms(i)))  !pbc added - jwh 04/14/2009
+                temp_y = abs(m%yy%ind(moved_atom) - m%yy%ind(atoms(i)))
+                temp_z = abs(m%zz%ind(moved_atom) - m%zz%ind(atoms(i)))
 
                 !write(*,*)"abs=", temp_x, temp_y, temp_z
                 
@@ -240,28 +240,28 @@ CONTAINS
 
     !write(*,*)myid, rand1, rand2, rand3, rand4
 
-    xx_cur = m%xx(w)            !Cur positions of the atom before random move
-    yy_cur = m%yy(w)
-    zz_cur = m%zz(w)
+    xx_cur = m%xx%ind(w)            !Cur positions of the atom before random move
+    yy_cur = m%yy%ind(w)
+    zz_cur = m%zz%ind(w)
     
     aa = alpha*(rand2 - 0.5)
     bb = alpha*(rand3 - 0.5)
     cc = alpha*(rand4 - 0.5)
     
-    m%xx(w) = m%xx(w) + aa 
-    m%yy(w) = m%yy(w) + bb 
-    m%zz(w) = m%zz(w) + cc
+    m%xx%ind(w) = m%xx%ind(w) + aa 
+    m%yy%ind(w) = m%yy%ind(w) + bb 
+    m%zz%ind(w) = m%zz%ind(w) + cc
     
-    if(m%xx(w)>m%lx*0.5) m%xx(w)=m%xx(w)-m%lx       !pbc 
-    if(m%yy(w)>m%ly*0.5) m%yy(w)=m%yy(w)-m%ly
-    if(m%zz(w)>m%lz*0.5) m%zz(w)=m%zz(w)-m%lz
-    if(m%xx(w)<-m%lx*0.5) m%xx(w)=m%xx(w)+m%lx
-    if(m%yy(w)<-m%ly*0.5) m%yy(w)=m%yy(w)+m%ly
-    if(m%zz(w)<-m%lz*0.5) m%zz(w)=m%zz(w)+m%lz
+    if(m%xx%ind(w)>m%lx*0.5) m%xx%ind(w)=m%xx%ind(w)-m%lx       !pbc 
+    if(m%yy%ind(w)>m%ly*0.5) m%yy%ind(w)=m%yy%ind(w)-m%ly
+    if(m%zz%ind(w)>m%lz*0.5) m%zz%ind(w)=m%zz%ind(w)-m%lz
+    if(m%xx%ind(w)<-m%lx*0.5) m%xx%ind(w)=m%xx%ind(w)+m%lx
+    if(m%yy%ind(w)<-m%ly*0.5) m%yy%ind(w)=m%yy%ind(w)+m%ly
+    if(m%zz%ind(w)<-m%lz*0.5) m%zz%ind(w)=m%zz%ind(w)+m%lz
     
-    xx_new=m%xx(w)              !new positions of the atom after random move
-    yy_new=m%yy(w)
-    zz_new=m%zz(w)
+    xx_new=m%xx%ind(w)              !new positions of the atom after random move
+    yy_new=m%yy%ind(w)
+    zz_new=m%zz%ind(w)
   end subroutine random_move
 
 

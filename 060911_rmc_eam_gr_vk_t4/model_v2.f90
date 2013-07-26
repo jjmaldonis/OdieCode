@@ -38,8 +38,13 @@ module model_mod
     ! adjustable-size list of atom indices
     type index_list
         integer :: nat
-        integer, pointer, dimension(:) :: ind
+        integer, allocatable, dimension(:) :: ind
     end type index_list
+
+    type real_index_list
+        integer :: nat
+        real, allocatable, dimension(:) :: ind
+    end type real_index_list
 
 
     ! list for a rotated model that is the original models natoms long.  each atom in the list
@@ -50,16 +55,18 @@ module model_mod
     ! Defined type for a structural model with atoms positions and a bunch of metadata
     type model
         integer :: natoms                              ! number of atoms in the model
-        real, pointer, dimension(:) :: xx, yy, zz      ! atom positions in Angstroms
-        integer, pointer, dimension(:) :: znum, znum_r         ! atom atomic numbers, and reduced z numbners
+        !real, allocatable, dimension(:) :: xx, yy, zz      ! atom positions in Angstroms
+        type(real_index_list) :: xx, yy, zz      ! atom positions in Angstroms
+        !integer, allocatable, dimension(:) :: znum, znum_r         ! atom atomic numbers, and reduced z numbners
+        type(index_list) :: znum, znum_r         ! atom atomic numbers, and reduced z numbners
         real :: lx, ly, lz                             ! box size, in Angstroms
         integer :: nelements                           ! # of elements in the model
-        integer, pointer, dimension(:) :: atom_type    ! array listing atomic numbers present
-        real, pointer, dimension(:) :: composition     ! fractional composition in the order of atom_type
+        integer, allocatable, dimension(:) :: atom_type    ! array listing atomic numbers present
+        real, allocatable, dimension(:) :: composition     ! fractional composition in the order of atom_type
         type(hutch_array) :: ha                        ! hutch data structure
         logical :: rotated                             ! TRUE if model has been rotated, FALSE otherwise
         integer :: unrot_natoms
-        type(index_list), dimension(:), pointer :: rot_i ! list of which atoms in the rotated model correspond
+        type(index_list), dimension(:), allocatable :: rot_i ! list of which atoms in the rotated model correspond
         ! to the index i in the unrotated model
     end type model
 
@@ -162,7 +169,14 @@ contains
         ! Set the number of atoms in the model m and allocate space for each
         ! coordinate.
         m%natoms = nat
-        allocate(m%xx(nat), m%yy(nat), m%zz(nat), m%znum(nat), stat=istat)
+        !TODO change nat to nat + ceiling(nat*0.02) in the following line.
+        allocate(m%xx%ind(nat), m%yy%ind(nat), m%zz%ind(nat), m%znum%ind(nat), stat=istat)
+        m%xx%nat = nat
+        m%yy%nat = nat
+        m%zz%nat = nat
+        m%znum%nat = nat
+        m%znum_r%nat = nat
+
         ! Allocate should return 0 if successful.
         if(istat /= 0) then
             write (*,*) 'Unable to allocate memory for the model being read.'
@@ -181,10 +195,10 @@ contains
         endif
         ! Read the atomic numbers and atom positions directly into the model.
         do i=1,nat
-            read(1,*) m%znum(i),m%xx(i),m%yy(i),m%zz(i)
+            read(1,*) m%znum%ind(i),m%xx%ind(i),m%yy%ind(i),m%zz%ind(i)
             ! If this atom has atomic number z, then increment the z position in
             ! the array elements. This counts the number of each atom type we have.
-            elements(m%znum(i)) = elements(m%znum(i)) + 1
+            elements(m%znum%ind(i)) = elements(m%znum%ind(i)) + 1
         enddo
         close(1)
 
@@ -243,16 +257,16 @@ contains
 
         ! For each atom i, add a parameter znum_r(i) that corresponds to
         ! m%atom_type and m%composition for fast lookup.
-        allocate(m%znum_r(m%natoms), stat=istat)
+        allocate(m%znum_r%ind(m%natoms), stat=istat)
         if(istat /= 0) then
             write (*,*) 'Unable to allocate memory for m%znum_r.'
             return
         endif
-        m%znum_r = 0.0
+        m%znum_r%ind = 0.0
         do i=1, m%natoms
             do j=1, m%nelements
-                if(m%znum(i) .eq. m%atom_type(j)) then
-                    m%znum_r(i) = j
+                if(m%znum%ind(i) .eq. m%atom_type(j)) then
+                    m%znum_r%ind(i) = j
                 end if
             end do
         end do
@@ -276,13 +290,13 @@ contains
         real :: xshift, yshift, zshift
         ! maxval calculates the maximum value in the array. There are some
         ! nice parameters for it described online by the way.
-        xshift = xc*m%lx - (maxval(m%xx) + minval(m%xx))/2.0
-        yshift = yc*m%ly - (maxval(m%yy) + minval(m%yy))/2.0
-        zshift = zc*m%lz - (maxval(m%zz) + minval(m%zz))/2.0
+        xshift = xc*m%lx - (maxval(m%xx%ind) + minval(m%xx%ind))/2.0
+        yshift = yc*m%ly - (maxval(m%yy%ind) + minval(m%yy%ind))/2.0
+        zshift = zc*m%lz - (maxval(m%zz%ind) + minval(m%zz%ind))/2.0
 
-        m%xx = m%xx+xshift
-        m%yy = m%yy+yshift
-        m%zz = m%zz+zshift
+        m%xx%ind = m%xx%ind+xshift
+        m%yy%ind = m%yy%ind+yshift
+        m%zz%ind = m%zz%ind+zshift
     end subroutine recenter_model
 
     subroutine model_init_hutches(m, status)
@@ -342,7 +356,7 @@ contains
 
         ! Calculate which hutch each atom should be in and add it to that hutch.
         do i=1, m%natoms
-            call hutch_position(m, m%xx(i), m%yy(i), m%zz(i), hx, hy, hz)
+            call hutch_position(m, m%xx%ind(i), m%yy%ind(i), m%zz%ind(i), hx, hy, hz)
             call hutch_add_atom(m, i, hx, hy, hz)
         end do
     end subroutine model_init_hutches
@@ -422,9 +436,9 @@ contains
         real xlen, ylen, zlen 
         istat = 0
 
-        xlen = maxval(m%xx) - minval(m%xx)
-        ylen = maxval(m%yy) - minval(m%yy)
-        zlen = maxval(m%zz) - minval(m%zz)
+        xlen = maxval(m%xx%ind) - minval(m%xx%ind)
+        ylen = maxval(m%yy%ind) - minval(m%yy%ind)
+        zlen = maxval(m%zz%ind) - minval(m%zz%ind)
 
         if ( xlen > m%lx ) then 
             write (*,*) 'Maximum x distance of ',xlen,' Ang exceeds box size ',m%lx,' Ang.'
@@ -441,13 +455,13 @@ contains
             istat = 1
         end if
 
-        if (minval(m%znum) < 1) then 
-            write (*,*) 'Minimum atomic number of ', minval(m%znum, 1), 'is less than zero.'
+        if (minval(m%znum%ind) < 1) then 
+            write (*,*) 'Minimum atomic number of ', minval(m%znum%ind, 1), 'is less than zero.'
             istat = 1
         end if
 
-        if (maxval(m%znum) > 103) then 
-            write (*,*) 'Maximum atomic number of ', maxval(m%znum, 1), 'is greater than 103.'
+        if (maxval(m%znum%ind) > 103) then 
+            write (*,*) 'Maximum atomic number of ', maxval(m%znum%ind, 1), 'is greater than 103.'
             istat = 1
         end if
     end subroutine check_model
@@ -511,16 +525,16 @@ contains
 
         ! Rotate the position vectors in mt (the temporary 3x3x3 model).
         do i=1,mt%natoms
-            if(abs(mt%xx(i)).le.1.2*sqrt(2.0)*min%lx/2)then
-                if(abs(mt%yy(i)).le.1.2*sqrt(2.0)*min%ly/2)then
-                    if(abs(mt%zz(i)).le.1.2*sqrt(2.0)*min%lz/2)then
-                        x = mt%xx(i)*r(1,1) + mt%yy(i)*r(1,2) + mt%zz(i)*r(1,3)
-                        y = mt%xx(i)*r(2,1) + mt%yy(i)*r(2,2) + mt%zz(i)*r(2,3)
-                        z = mt%xx(i)*r(3,1) + mt%yy(i)*r(3,2) + mt%zz(i)*r(3,3)
-                        mt%xx(i) = x
-                        mt%yy(i) = y
-                        mt%zz(i) = z
-                        !write(1008,*)i, mt%znum_r(i), mt%xx(i), mt%yy(i), mt%zz(i)
+            if(abs(mt%xx%ind(i)).le.1.2*sqrt(2.0)*min%lx/2)then
+                if(abs(mt%yy%ind(i)).le.1.2*sqrt(2.0)*min%ly/2)then
+                    if(abs(mt%zz%ind(i)).le.1.2*sqrt(2.0)*min%lz/2)then
+                        x = mt%xx%ind(i)*r(1,1) + mt%yy%ind(i)*r(1,2) + mt%zz%ind(i)*r(1,3)
+                        y = mt%xx%ind(i)*r(2,1) + mt%yy%ind(i)*r(2,2) + mt%zz%ind(i)*r(2,3)
+                        z = mt%xx%ind(i)*r(3,1) + mt%yy%ind(i)*r(3,2) + mt%zz%ind(i)*r(3,3)
+                        mt%xx%ind(i) = x
+                        mt%yy%ind(i) = y
+                        mt%zz%ind(i) = z
+                        !write(1008,*)i, mt%znum_r%ind(i), mt%xx%ind(i), mt%yy%ind(i), mt%zz%ind(i)
                     endif
                 endif
             endif
@@ -533,9 +547,9 @@ contains
         ly2 = min%ly / 2.0
         lz2 = min%lz / 2.0
         do i=1, mt%natoms
-            if((mt%xx(i) <= lx2 .AND. mt%xx(i) >= -1.0*lx2) .and. &
-               (mt%yy(i) <= ly2 .AND. mt%yy(i) >= -1.0*ly2) .and. &
-               (mt%zz(i) <= lz2 .AND. mt%zz(i) >= -1.0*lz2)) then
+            if((mt%xx%ind(i) <= lx2 .AND. mt%xx%ind(i) >= -1.0*lx2) .and. &
+               (mt%yy%ind(i) <= ly2 .AND. mt%yy%ind(i) >= -1.0*ly2) .and. &
+               (mt%zz%ind(i) <= lz2 .AND. mt%zz%ind(i) >= -1.0*lz2)) then
                 mrot%natoms = mrot%natoms + 1
             !else
                 !if(min%natoms /= 1425) write(*,*) "Atom outside world."
@@ -543,8 +557,13 @@ contains
         enddo
         ! Allocate memory for the new atoms.
         mrot%unrot_natoms = min%natoms
-        allocate(mrot%xx(mrot%natoms), mrot%yy(mrot%natoms), mrot%zz(mrot%natoms), &
-            mrot%znum(mrot%natoms),  mrot%rot_i(mrot%unrot_natoms), mrot%znum_r(mrot%natoms), stat=istat) !add mrot%znum_r here by Feng Yi on 03/19/2009
+        allocate(mrot%xx%ind(mrot%natoms), mrot%yy%ind(mrot%natoms), mrot%zz%ind(mrot%natoms), &
+            mrot%znum%ind(mrot%natoms),  mrot%rot_i(mrot%unrot_natoms), mrot%znum_r%ind(mrot%natoms), stat=istat) !add mrot%znum_r here by Feng Yi on 03/19/2009
+        mrot%xx%nat = mrot%natoms
+        mrot%yy%nat = mrot%natoms
+        mrot%zz%nat = mrot%natoms
+        mrot%znum%nat = mrot%natoms
+        mrot%znum_r%nat = mrot%natoms
         if( istat /= 0) then
            write (*,*) 'Problem allocating memory in rotate_model.'
            return
@@ -552,21 +571,21 @@ contains
 
         do i=1,mrot%unrot_natoms
            mrot%rot_i(i)%nat = 0
-           nullify(mrot%rot_i(i)%ind)
+           !deallocate(mrot%rot_i(i)%ind)
         enddo
 
         ! now copy just the atoms inside the original box size 
         ! from the temp model to the rotated one.
         j=1
         do i=1, mt%natoms
-            if (mt%xx(i) <= lx2 .AND. mt%xx(i) >= -1.0*lx2) then
-                if (mt%yy(i) <= ly2 .AND. mt%yy(i) >= -1.0*ly2) then
-                    if (mt%zz(i) <= lz2 .AND. mt%zz(i) >= -1.0*lz2) then
-                        mrot%xx(j) = mt%xx(i)
-                        mrot%yy(j) = mt%yy(i)
-                        mrot%zz(j) = mt%zz(i)
-                        mrot%znum(j) = mt%znum(i)
-                        mrot%znum_r(j) = mt%znum_r(i) !Added by Feng Yi on 03/19/2009   !Bug fixed : j to i -JWH 09/03/09
+            if (mt%xx%ind(i) <= lx2 .AND. mt%xx%ind(i) >= -1.0*lx2) then
+                if (mt%yy%ind(i) <= ly2 .AND. mt%yy%ind(i) >= -1.0*ly2) then
+                    if (mt%zz%ind(i) <= lz2 .AND. mt%zz%ind(i) >= -1.0*lz2) then
+                        mrot%xx%ind(j) = mt%xx%ind(i)
+                        mrot%yy%ind(j) = mt%yy%ind(i)
+                        mrot%zz%ind(j) = mt%zz%ind(i)
+                        mrot%znum%ind(j) = mt%znum%ind(i)
+                        mrot%znum_r%ind(j) = mt%znum_r%ind(i) !Added by Feng Yi on 03/19/2009   !Bug fixed : j to i -JWH 09/03/09
                         !write(*,*)"here",i, mt%znum_r(i), mt%xx(i),mt%yy(i),mt%zz(i)
                         ! add_index is basically just the general 
                         ! "append(list, element)" function except 
@@ -584,7 +603,7 @@ contains
         ! I am assuming he commented out the above line and replaced it with the
         ! two below because he never created the hutch array or rot_i for mt.
         deallocate(mt%atom_type, mt%composition)
-        deallocate(mt%znum,mt%znum_r, mt%xx, mt%yy, mt%zz)
+        deallocate(mt%znum%ind,mt%znum_r%ind, mt%xx%ind, mt%yy%ind, mt%zz%ind)
 
         ! set the rest of of the rotated model paramters
         mrot%lx = min%lx
@@ -607,7 +626,7 @@ contains
     subroutine destroy_model(m)
     ! Deallocates all the various allocatable arrays and sub-arrays in a model.
         type(model), intent(inout) :: m 
-        deallocate(m%xx, m%yy, m%zz, m%znum, m%atom_type, m%znum_r, m%composition)
+        deallocate(m%xx%ind, m%yy%ind, m%zz%ind, m%znum%ind, m%atom_type, m%znum_r%ind, m%composition)
         call destroy_hutch(m%ha)
         call destroy_rot_indices(m%unrot_natoms, m%rot_i)
     end subroutine destroy_model
@@ -635,14 +654,14 @@ contains
     ! deallocates all of the allocatable arrays and sub-arrays in an index list.
     ! used by destroy_model
         integer, intent(in) :: unrot_natoms
-        type(index_list), pointer, dimension(:) :: ri
+        type(index_list), allocatable, dimension(:) :: ri
         integer i
         do i=1, unrot_natoms
             if(ri(i)%nat .gt. 0) then  !added by feng yi
                 deallocate(ri(i)%ind)
             endif
         enddo
-        if(associated(ri))then   !JWH - 042109
+        if(allocated(ri))then   !JWH - 042109
           deallocate(ri)
         endif
     end subroutine destroy_rot_indices
@@ -933,24 +952,36 @@ contains
         ! TODO Consider making this into a function that adds 10% of the size of
         ! il to il if we need to reallocate. This would reduce future needs to
         ! reallocate.
+        ! Search for 'size(' to make sure nat is always used.
         type(index_list), intent(inout) :: il
         integer, intent(in) :: i
         integer, dimension(:), allocatable :: scratch
         if( il%nat >= 1 ) then
-           allocate(scratch(il%nat))
-           scratch = il%ind
-           il%nat = il%nat+1
-           deallocate(il%ind)
-           allocate(il%ind(il%nat))
-           il%ind(1:il%nat-1) = scratch
-           il%ind(il%nat) = i
+            ! If there is space no need to reallocate. If not, reallocate.
+            if(size(il%ind) .ge. il%nat+1) then
+                il%nat = il%nat + 1
+                il%ind(il%nat) = i
+            else
+                allocate(scratch(il%nat))
+                scratch = il%ind
+                ! Increase the size by 2%. For the rot_i's this won't matter, but for
+                ! the model lists it will increase them by a few atoms so that when
+                ! we rotate in and out we don't need to reallocate every single time.
+                ! 2% is barely a waste of space for the speed increase we will get.
+                ! But only increment nat by 1. This is the size for the algorithm.
+                il%nat = il%nat + 1
+                deallocate(il%ind)
+                allocate(il%ind( il%nat + ceiling(il%nat*0.02) ))
+                il%ind(1:il%nat-1) = scratch
+                il%ind(il%nat) = i
+            endif
         else
-           il%nat = 1
-           allocate(il%ind(1))
-           il%ind(1) = i
+            il%nat = 1
+            allocate(il%ind(1))
+            il%ind(1) = i
         endif
         if(allocated(scratch)) then
-        deallocate(scratch)
+            deallocate(scratch)
         endif
     end subroutine add_index
 
@@ -988,17 +1019,17 @@ contains
         real temp2 ! for temporary storage
 
         m%nelements=1
-        znum_list(1) = m%znum(1)
+        znum_list(1) = m%znum%ind(1)
         do i=1,m%natoms
             isnew = 1
             do j=1,m%nelements
                 ! If atom i's atomic number is already in the list, don't add
                 ! its atomic number to the list again.
-                if(m%znum(i) == znum_list(j)) isnew = 0
+                if(m%znum%ind(i) == znum_list(j)) isnew = 0
             enddo
             if (isnew /= 0) then
                 m%nelements=m%nelements+1
-                znum_list(m%nelements) = m%znum(i)
+                znum_list(m%nelements) = m%znum%ind(i)
             endif
         enddo
 
@@ -1008,7 +1039,7 @@ contains
 
         do i = 1, m%natoms
             do j=1,m%nelements
-                if(m%atom_type(j) == m%znum(i)) then
+                if(m%atom_type(j) == m%znum%ind(i)) then
                     m%composition(j) = m%composition(j) + 1.0
                     cycle
                 endif
@@ -1046,8 +1077,13 @@ contains
         real :: shift_x, shift_y, shift_z
 
         mout%natoms = min%natoms*xp*yp*zp
-        allocate(mout%xx(mout%natoms), mout%yy(mout%natoms), mout%zz(mout%natoms), &
-             mout%znum(mout%natoms), mout%znum_r(mout%natoms),stat=istat) !modified by Feng Yi on 03/19/2009
+        allocate(mout%xx%ind(mout%natoms), mout%yy%ind(mout%natoms), mout%zz%ind(mout%natoms), &
+             mout%znum%ind(mout%natoms), mout%znum_r%ind(mout%natoms),stat=istat) !modified by Feng Yi on 03/19/2009
+        mout%xx%nat = mout%natoms
+        mout%yy%nat = mout%natoms
+        mout%zz%nat = mout%natoms
+        mout%znum%nat = mout%natoms
+        mout%znum_r%nat = mout%natoms
         if(istat /= 0) then
             write (*,*) 'Error allocating memory for the periodic continued model.'
             return
@@ -1064,11 +1100,11 @@ contains
                 shift_y = real(j)*min%ly
                 do k = -(zp-1)/2, (zp-1)/2
                     shift_z = real(k)*min%lz
-                    mout%xx(c*min%natoms+1:(c+1)*min%natoms) = min%xx + shift_x
-                    mout%yy(c*min%natoms+1:(c+1)*min%natoms) = min%yy + shift_y
-                    mout%zz(c*min%natoms+1:(c+1)*min%natoms) = min%zz + shift_z
-                    mout%znum(c*min%natoms+1:(c+1)*min%natoms) = min%znum
-                    mout%znum_r(c*min%natoms+1:(c+1)*min%natoms) = min%znum_r  !added by Feng Yi on 03/19/2009
+                    mout%xx%ind(c*min%natoms+1:(c+1)*min%natoms) = min%xx%ind + shift_x
+                    mout%yy%ind(c*min%natoms+1:(c+1)*min%natoms) = min%yy%ind + shift_y
+                    mout%zz%ind(c*min%natoms+1:(c+1)*min%natoms) = min%zz%ind + shift_z
+                    mout%znum%ind(c*min%natoms+1:(c+1)*min%natoms) = min%znum%ind
+                    mout%znum_r%ind(c*min%natoms+1:(c+1)*min%natoms) = min%znum_r%ind  !added by Feng Yi on 03/19/2009
                     c = c+1
                 end do
             end do
@@ -1569,9 +1605,9 @@ contains
         real, intent(in) :: xx_cur, yy_cur, zz_cur
         !The moved atom in the original model, m, should return to their old position
         !when the random move is rejected - JWH 03/05/09
-        m%xx(atom) = xx_cur
-        m%yy(atom) = yy_cur
-        m%zz(atom) = zz_cur
+        m%xx%ind(atom) = xx_cur
+        m%yy%ind(atom) = yy_cur
+        m%zz%ind(atom) = zz_cur
     end subroutine reject_position
 
 
