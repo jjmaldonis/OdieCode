@@ -128,7 +128,6 @@ program rmc
 
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
-    vk_filename = 'vk_initial.txt'
     if(myid.eq.0)then
         ! Write initial gr
         open(unit=51,file=outbase//"gr_initial.txt",form='formatted',status='unknown')
@@ -241,6 +240,7 @@ program rmc
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                 !call reject_gr(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_reject_move(m, mpi_comm_world)
+write(*,*) "RMC DEBUG 5"
                 write(*,*) "MC move rejected."
             endif
         endif

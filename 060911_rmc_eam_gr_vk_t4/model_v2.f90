@@ -31,7 +31,8 @@ module model_mod
         integer :: nhutch_x, nhutch_y, nhutch_z
         ! physical size of a hutch in Angstroms
         real :: hutch_size
-        ! list of the hutch indices for every atom
+        ! list of the hutch indices for every atom. we don't use it so im
+        ! getting rid of it. Jason 20130729
         integer, pointer, dimension(:,:) :: atom_hutch
     end type hutch_array
 
@@ -403,10 +404,13 @@ contains
         integer, intent(in) :: atom, hx, hy, hz
         integer :: nat
         integer, dimension(m%ha%h(hx, hy, hz)%nat+1) :: scratch_atoms
+        integer, dimension(:,:), allocatable :: temp_atom_hutch
         type(hutch_array), pointer :: ha
         ha => m%ha
         ! ha%h(hx,hy,hz)%nat is set to 0 in a do loop in model_init_hutches,
         ! slightly before this function is called for each atom.
+        ! TODO I should be able to use add_index and remove_index in functions
+        ! like this. That would be ideal.
         nat = ha%h(hx,hy,hz)%nat
         if(nat > 0) then
             scratch_atoms(1:nat) = ha%h(hx, hy, hz)%at
@@ -421,6 +425,16 @@ contains
         end if
 
         ha%h(hx,hy,hz)%nat = nat+1
+        ! Create space if there isnt already.
+        ! I am lucky that this array allocation works.
+        if( size(ha%atom_hutch) / 3 < atom ) then
+            allocate(temp_atom_hutch( size(ha%atom_hutch) / 3, 3))
+            temp_atom_hutch = ha%atom_hutch
+            deallocate(ha%atom_hutch)
+            allocate(ha%atom_hutch(m%natoms, 3))
+            ha%atom_hutch = temp_atom_hutch
+            deallocate(temp_atom_hutch)
+        endif
         ha%atom_hutch(atom, 1) = hx
         ha%atom_hutch(atom, 2) = hy
         ha%atom_hutch(atom, 3) = hz
@@ -571,7 +585,7 @@ contains
 
         do i=1,mrot%unrot_natoms
            mrot%rot_i(i)%nat = 0
-           !deallocate(mrot%rot_i(i)%ind)
+           if(allocated(mrot%rot_i(i)%ind)) deallocate(mrot%rot_i(i)%ind)
         enddo
 
         ! now copy just the atoms inside the original box size 
@@ -626,44 +640,45 @@ contains
     subroutine destroy_model(m)
     ! Deallocates all the various allocatable arrays and sub-arrays in a model.
         type(model), intent(inout) :: m 
-        deallocate(m%xx%ind, m%yy%ind, m%zz%ind, m%znum%ind, m%atom_type, m%znum_r%ind, m%composition)
+        deallocate(m%xx%ind, m%yy%ind, m%zz%ind, m%znum%ind, m%znum_r%ind)
+        if(allocated(m%atom_type)) deallocate(m%atom_type)
+        if(allocated(m%composition)) deallocate(m%composition)
         call destroy_hutch(m%ha)
         call destroy_rot_indices(m%unrot_natoms, m%rot_i)
     end subroutine destroy_model
 
     subroutine destroy_hutch(ha)
-    ! deallocates the hutch_array ha and the atom lists inside it.  used as part
-    ! of destroy_model.
+    ! Deallocates the hutch_array ha and the atom lists inside it.
+    ! Used by destroy_model.
         type(hutch_array), intent(inout) :: ha
         integer i, j, k
         if(associated(ha%h)) then
-            do i=1, ha%nhutch_x
-                do j=1, ha%nhutch_y
-                    do k=1, ha%nhutch_z
-                        if (ha%h(i,j,k)%nat .gt. 0) then !added by feng yi on 03/14/2009
-                            deallocate(ha%h(i,j,k)%at)
-                        endif
+            do i=1,ha%nhutch_x
+                do j=1,ha%nhutch_y
+                    do k=1,ha%nhutch_z
+                        if(ha%h(i,j,k)%nat .gt. 0) deallocate(ha%h(i,j,k)%at)
                     enddo
                 enddo
             enddo
-        deallocate(ha%h, ha%atom_hutch)
+            deallocate(ha%h, ha%atom_hutch)
         endif !if associated(ha%h)
+        ! I wonder if there is a memory leak because we dont actually delete the
+        ! rest of the ha variables and ha itself. TODO
+        ! This would occur for all the rot_atom models in fem_update.
     end subroutine destroy_hutch
 
     subroutine destroy_rot_indices(unrot_natoms, ri)
-    ! deallocates all of the allocatable arrays and sub-arrays in an index list.
-    ! used by destroy_model
+    ! Deallocates all of the allocatable arrays and sub-arrays in an index list.
+    ! Used by destroy_model.
         integer, intent(in) :: unrot_natoms
         type(index_list), allocatable, dimension(:) :: ri
-        integer i
+        integer :: i
         do i=1, unrot_natoms
             if(ri(i)%nat .gt. 0) then  !added by feng yi
                 deallocate(ri(i)%ind)
             endif
         enddo
-        if(allocated(ri))then   !JWH - 042109
-          deallocate(ri)
-        endif
+        if(allocated(ri)) deallocate(ri)
     end subroutine destroy_rot_indices
 
     subroutine hutch_list_pixel(m, px, py, diameter, atoms, istat)
@@ -971,7 +986,8 @@ contains
                 ! But only increment nat by 1. This is the size for the algorithm.
                 il%nat = il%nat + 1
                 deallocate(il%ind)
-                allocate(il%ind( il%nat + ceiling(il%nat*0.02) ))
+                !allocate(il%ind( il%nat + ceiling(il%nat*0.02) ))
+                allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
                 il%ind(1:il%nat-1) = scratch
                 il%ind(il%nat) = i
             endif
@@ -985,28 +1001,82 @@ contains
         endif
     end subroutine add_index
 
+    subroutine add_index_real(il, i)
+        ! TODO Consider making this into a function that adds 10% of the size of
+        ! il to il if we need to reallocate. This would reduce future needs to
+        ! reallocate.
+        ! Search for 'size(' to make sure nat is always used.
+        type(real_index_list), intent(inout) :: il
+        real, intent(in) :: i
+        integer, dimension(:), allocatable :: scratch
+        if( il%nat >= 1 ) then
+            ! If there is space no need to reallocate. If not, reallocate.
+            if(size(il%ind) .ge. il%nat+1) then
+                il%nat = il%nat + 1
+                il%ind(il%nat) = i
+            else
+                allocate(scratch(il%nat))
+                scratch = il%ind
+                ! Increase the size by 2%. For the rot_i's this won't matter, but for
+                ! the model lists it will increase them by a few atoms so that when
+                ! we rotate in and out we don't need to reallocate every single time.
+                ! 2% is barely a waste of space for the speed increase we will get.
+                ! But only increment nat by 1. This is the size for the algorithm.
+                il%nat = il%nat + 1
+                deallocate(il%ind)
+                !allocate(il%ind( il%nat + ceiling(il%nat*0.02) ))
+                allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
+                il%ind(1:il%nat-1) = scratch
+                il%ind(il%nat) = i
+            endif
+        else
+            il%nat = 1
+            allocate(il%ind(1))
+            il%ind(1) = i
+        endif
+        if(allocated(scratch)) then
+            deallocate(scratch)
+        endif
+    end subroutine add_index_real
 
-    subroutine remove_element(il, elem)
+
+    subroutine remove_index(il, ind)
     ! TODO Consider not reallocating here unless there is a significant amount
     ! not being used. This would save time reallocating constantly.
+    ! However, I would still need to do array deletion.
         type(index_list), intent(inout) :: il
-        integer, intent(in) :: elem
+        integer, intent(in) :: ind
         integer, dimension(:), allocatable :: scratch
-        integer :: i
         allocate(scratch(il%nat-1))
-        do i=1,il%nat
-            if(il%ind(i) == elem) then
-                scratch(1:i-1) = il%ind(1:i-1)
-                scratch(i:il%nat-1) = il%ind(i+1:il%nat)
-                exit
-            endif
-        enddo
+        ! First half
+        scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
+        ! Second half
+        scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
         deallocate(il%ind)
         allocate(il%ind( il%nat-1 ))
         il%ind = scratch
         deallocate(scratch)
         il%nat = il%nat - 1
-    end subroutine remove_element
+    end subroutine remove_index
+
+    subroutine remove_index_real(il, ind)
+    ! TODO Consider not reallocating here unless there is a significant amount
+    ! not being used. This would save time reallocating constantly.
+    ! However, I would still need to do array deletion.
+        type(real_index_list), intent(inout) :: il
+        integer, intent(in) :: ind
+        integer, dimension(:), allocatable :: scratch
+        allocate(scratch(il%nat-1))
+        ! First half
+        scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
+        ! Second half
+        scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
+        deallocate(il%ind)
+        allocate(il%ind( il%nat-1 ))
+        il%ind = scratch
+        deallocate(scratch)
+        il%nat = il%nat - 1
+    end subroutine remove_index_real
 
 
     subroutine composition_model(m)
@@ -1033,7 +1103,12 @@ contains
             endif
         enddo
 
-        allocate(m%atom_type(m%nelements), m%composition(m%nelements))
+        if( .not. allocated(m%atom_type) ) then
+            allocate(m%atom_type(m%nelements))
+        endif
+        if( .not. allocated(m%composition) ) then
+            allocate(m%composition(m%nelements))
+        endif
         m%atom_type = znum_list(1:m%nelements)
         m%composition = 0.0
 
@@ -1593,9 +1668,6 @@ contains
         call hutch_remove_atom(m, atom)
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
         call hutch_add_atom(m, atom, hx, hy, hz)
-        ha%atom_hutch(atom, 1) = hx
-        ha%atom_hutch(atom, 2) = hy
-        ha%atom_hutch(atom, 3) = hz
     end subroutine hutch_move_atom
 
 
@@ -1621,15 +1693,24 @@ contains
         type(hutch_array), pointer :: ha
         ha => m%ha
 
+        !call hutch_position(m, m%xx%ind(atom), m%yy%ind(atom), m%zz%ind(atom), hx, hy, hz)
+        !write(*,*) "hx,hy,hz=", hx, hy, hz
+        ! I wanted to get rid of atom_hutch, but if I accidently move the atom
+        ! first before removing it from the hutch then I will royaly screw
+        ! things up. So atom_hutch is more of a saftey feature right now, but it
+        ! is a worthy one too. I may get rid of it later once I have all the
+        ! bugs figured out. TODO
+
         hx = ha%atom_hutch(atom,1)
         hy = ha%atom_hutch(atom,2)
         hz = ha%atom_hutch(atom,3)
+        !write(*,*) "hx,hy,hz=", hx, hy, hz
 
         scratch_atoms = ha%h(hx,hy,hz)%at
         deallocate(ha%h(hx,hy,hz)%at)
 
         if(ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
-            allocate(ha%h(hx,hy,hz)%at(ha%h(hx,hy,hz)%nat-1))
+            allocate(ha%h(hx,hy,hz)%at( ha%h(hx,hy,hz)%nat-1 ))
             j=1
             do i=1, ha%h(hx,hy,hz)%nat
                 if (scratch_atoms(i) /= atom) then
@@ -1639,6 +1720,9 @@ contains
             enddo
 
             ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
+            ! I technically should reallocate here but I am going to do it in
+            ! remove_atom because move_atom calls this, and if thats the case I
+            ! dont need to reallocate.
             ha%atom_hutch(atom,1) = 0
             ha%atom_hutch(atom,2) = 0
             ha%atom_hutch(atom,3) = 0
@@ -1646,6 +1730,167 @@ contains
             ha%h(hx,hy, hz)%nat = 0
         endif
     end subroutine hutch_remove_atom
+
+
+    subroutine move_atom(m, atom, xx, yy, zz)
+        type(model), intent(inout) :: m
+        integer, intent(in) :: atom
+        real, intent(in) :: xx, yy, zz
+        m%xx%ind(atom) = xx
+        m%yy%ind(atom) = yy
+        m%zz%ind(atom) = zz
+        call hutch_move_atom(m, atom, xx, yy, zz)
+    end subroutine move_atom
+
+    subroutine add_atom(m, atom, xx, yy, zz, znum, znum_r)
+        type(model), intent(inout) :: m
+        integer, intent(in) :: atom ! index of atom in unroated model.
+        real, intent(in) :: xx, yy, zz ! position of new atom
+        integer, intent(in) :: znum, znum_r ! znum and znum_r of new atom
+        integer :: hx, hy, hz
+        ! We need to add an atom to xx, yy, zz, znum, znum_r, and the hutches.
+        ! We need to increment natoms.
+        ! We need to add a spot to rot_i with the correct index we used in xx, etc.
+        ! We need to update the model's composition.
+        ! We should check nelements and atom_type as well, but I am going to
+        ! leave this out because it is so rare that we will remove the last atom
+        ! of an atom type, and then re-add it later.
+        write(*,*) "A wild atom appeared!"
+
+        ! We place the extra atom at the end of the above arrays, and therefore
+        ! the new atom has index m%natoms+1.
+        ! TODO Make sure if we remove an atom that every index gets updated
+        ! correctly.
+        ! Reallocate xx, yy, zz, znum, and znum_r bigger (leaving the
+        ! end empty for the new atom to fit into).
+
+        ! Add the atom to the model.
+        call add_index(m%rot_i(atom), m%natoms + 1)
+        call add_index_real(m%xx, xx)
+        call add_index_real(m%yy, yy)
+        call add_index_real(m%zz, zz)
+        call add_index(m%znum, znum)
+        call add_index(m%znum_r, znum_r)
+        m%natoms = m%natoms + 1
+        call hutch_position(m, xx, yy, zz, hx, hy, hz)
+        ! This should give an out of bounds error on atom_hutch TODO
+        ! I need to modify those functions to correctly increase the size of
+        ! atom_hutch I think. But then I should be careful not to reallocate
+        ! when the atom simply moves if I can help it... I don't want to do
+        ! unnecessary reallocation.
+        call hutch_add_atom(m, m%natoms, hx, hy, hz)
+
+        ! Recalculate composition of model because it may have changed.
+        call composition_model(m)
+    end subroutine add_atom
+
+    subroutine remove_atom(m, atom, ind)
+        ! We need to remove atom ind from xx, yy, zz, znum, znum_r, and the hutches.
+        ! We need to decrement natoms.
+        ! We need to remove the spot from rot_i with the correct index we used in xx, etc.
+        ! We need to update the model's composition.
+        ! We should check nelements and atom_type as well, but I am going to
+        ! leave this out because it is so rare that we will remove the last atom
+        ! of an atom type.
+        type(model), intent(inout) :: m
+        integer, intent(in) :: atom ! index of atom in unroated model.
+        integer, intent(in) :: ind ! index of atom to remove from m
+        integer :: i, j, temp, hx, hy, hz
+        integer, dimension(:,:), allocatable :: temp_atom_hutch
+        write(*,*) "An atom ran away!"
+
+        temp = ind ! After I call remove_index on m%rot_i, ind is changed to 0
+        ! since it is in an array. This seems like a fault of Fortran, but
+        ! nevertheless I need to get around it by creating a new var temp and just
+        ! setting it to ind before it gets changed. Then I will use temp after.
+        ! I am assuming this happens because arrays are passed by reference, and
+        ! since ind is part of an array, it is also passed by ref. This still
+        ! shouldnt happen since I have it defined as an integer, intent(in).
+        
+        ! Remove ind from xx, yy, zz, znum, znum_r, and rot_i(atom).
+        ! These calls decrement the index of all atoms with a higher index than
+        ! ind. That is an inconvienence that we do need to deal with. It should
+        ! only matter for rot_i hereafter, however, which we fix in the
+        ! next forall loop.
+        call remove_index_real(m%xx, ind)
+        call remove_index_real(m%yy, ind)
+        call remove_index_real(m%zz, ind)
+        call remove_index(m%znum, ind)
+        call remove_index(m%znum_r, ind)
+        do i=1,m%rot_i(atom)%nat
+            if(m%rot_i(atom)%ind(i) .eq. ind) then
+                call remove_index(m%rot_i(atom), i)
+                exit
+            endif
+        enddo
+        ! Hereafter ind is not what it was before!
+
+        ! Decrement every index in each rot_i that is higher than ind.
+        ! We need to do this because we removed an element from each of the
+        ! above arrays and therefore we need to correct the atom indices we
+        ! are pointing to in rot_i.
+        do i=1,m%unrot_natoms
+            do j=1,m%rot_i(i)%nat
+                if(m%rot_i(i)%ind(j) .gt. temp) then
+                    m%rot_i(i)%ind(j) = m%rot_i(i)%ind(j) - 1
+                endif
+            enddo
+        enddo
+
+        ! Remove ind from its hutch.
+        call hutch_remove_atom(m, temp)
+
+        ! I also need to go through the hutches and decrement every index that
+        ! is higher than ind for the same reason.
+        ! Also, reallocate m%ha%atom_hutch here to one smaller.
+        do i=temp+1, m%natoms
+            hx = m%ha%atom_hutch(i,1)
+            hy = m%ha%atom_hutch(i,2)
+            hz = m%ha%atom_hutch(i,3)
+            do j=1, m%ha%h(hx, hy, hz)%nat
+                if( m%ha%h(hx, hy, hz)%at(j) .eq. i) then
+                    m%ha%h(hx, hy, hz)%at(j) = m%ha%h(hx, hy, hz)%at(j) - 1
+                endif
+            enddo
+        end do
+        ! Reallocate m%ha%atom_hutch to one smaller.
+        allocate(temp_atom_hutch( m%natoms, 3))
+        temp_atom_hutch = m%ha%atom_hutch
+        deallocate(m%ha%atom_hutch)
+        allocate(m%ha%atom_hutch(m%natoms-1, 3))
+        j = 1
+        do i=1,m%natoms
+            if( i /= temp) then
+                m%ha%atom_hutch(j,1) = temp_atom_hutch(i,1)
+                m%ha%atom_hutch(j,2) = temp_atom_hutch(i,2)
+                m%ha%atom_hutch(j,3) = temp_atom_hutch(i,3)
+                j = j + 1
+            endif
+        enddo
+        deallocate(temp_atom_hutch)
+
+        m%natoms = m%natoms - 1
+
+        ! Recalculate composition of model because it may have changed.
+        call composition_model(m)
+
+    end subroutine remove_atom
+
+
+    subroutine sort(il)
+        ! Insertion sort on index list of ints
+        type(index_list), intent(inout) :: il
+        integer :: i, j, temp
+        do i=1, il%nat
+            do j=1, i
+                if( il%ind(i) < il%ind(j) ) then
+                    temp = il%ind(i)
+                    il%ind(i) = il%ind(j)
+                    il%ind(j) = temp
+                end if
+            end do
+        end do
+   end subroutine sort
 
 
 end module model_mod
