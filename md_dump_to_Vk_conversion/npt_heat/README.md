@@ -3,7 +3,7 @@ python xyz_to_femsim.py
 
 However, some setup is required.
 Every directory in this dir MUST be a directory that you want to run femsim in.
-For example, I have 5 directories. There name do not matter.
+For example, I have 5 directories. Their names do not matter.
 However, each must have certain files and directories in them:
 vk/ directory for vk output
 xyz_files/ directory containing all the xyz models you want run through femsim
