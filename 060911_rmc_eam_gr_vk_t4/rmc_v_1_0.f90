@@ -193,7 +193,7 @@ program rmc
         call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
         !call gr_hutch_mc(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new,used_data_sets,istat) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
         call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
-        write(*,*) "Finished updating eam, gr, and fem data."
+        !write(*,*) "Finished updating eam, gr, and fem data."
         
         chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err,&
             gr_e_sim_new, gr_n_sim_new, gr_x_sim_new, vk, scale_fac,&
@@ -207,7 +207,6 @@ program rmc
         ! TODO Jason - Check if this is being done as well as it could be.
         ! the accept and reject functions shouldn't both have the same do loops
         ! in them.
-        !write(*,*) "Accepting or rejecting move."
         randnum = ran2(iseed2)
         ! Test if the move should be accepted or rejected based on del_chi
         if(del_chi <0.0)then
@@ -216,7 +215,7 @@ program rmc
             !call accept_gr(m, used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
             call fem_accept_move(mpi_comm_world)
             if(myid.eq.0)then
-                write(*,*)i, chi2_gr, chi2_vk, te2, temperature
+                !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
             endif
             chi2_old = chi2_new
             write(*,*) "MC move accepted outright."
@@ -229,7 +228,7 @@ program rmc
                 !call accept_gr(m, used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_accept_move(mpi_comm_world)
                 if(myid.eq.0)then
-                    write(*,*)i, chi2_gr, chi2_vk, te2, temperature
+                    !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
                 endif
                 chi2_old = chi2_new
                 write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
@@ -240,7 +239,6 @@ program rmc
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                 !call reject_gr(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_reject_move(m, mpi_comm_world)
-write(*,*) "RMC DEBUG 5"
                 write(*,*) "MC move rejected."
             endif
         endif

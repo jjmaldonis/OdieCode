@@ -974,6 +974,7 @@ contains
         if( il%nat >= 1 ) then
             ! If there is space no need to reallocate. If not, reallocate.
             if(size(il%ind) .ge. il%nat+1) then
+                if(il%nat == -1) il%nat = 0 ! We set old_index(i) to -1 sometimes
                 il%nat = il%nat + 1
                 il%ind(il%nat) = i
             else
@@ -1047,16 +1048,21 @@ contains
         type(index_list), intent(inout) :: il
         integer, intent(in) :: ind
         integer, dimension(:), allocatable :: scratch
-        allocate(scratch(il%nat-1))
-        ! First half
-        scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
-        ! Second half
-        scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
-        deallocate(il%ind)
-        allocate(il%ind( il%nat-1 ))
-        il%ind = scratch
-        deallocate(scratch)
-        il%nat = il%nat - 1
+        if( il%nat .gt. 1) then
+            allocate(scratch(il%nat-1))
+            ! First half
+            scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
+            ! Second half
+            scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
+            deallocate(il%ind)
+            allocate(il%ind( il%nat-1 ))
+            il%ind = scratch
+            deallocate(scratch)
+            il%nat = il%nat - 1
+        else
+            deallocate(il%ind)
+            il%nat = 0
+        endif
     end subroutine remove_index
 
     subroutine remove_index_real(il, ind)
@@ -1066,16 +1072,21 @@ contains
         type(real_index_list), intent(inout) :: il
         integer, intent(in) :: ind
         integer, dimension(:), allocatable :: scratch
-        allocate(scratch(il%nat-1))
-        ! First half
-        scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
-        ! Second half
-        scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
-        deallocate(il%ind)
-        allocate(il%ind( il%nat-1 ))
-        il%ind = scratch
-        deallocate(scratch)
-        il%nat = il%nat - 1
+        if( il%nat .gt. 1) then
+            allocate(scratch(il%nat-1))
+            ! First half
+            scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
+            ! Second half
+            scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
+            deallocate(il%ind)
+            allocate(il%ind( il%nat-1 ))
+            il%ind = scratch
+            deallocate(scratch)
+            il%nat = il%nat - 1
+        else
+            deallocate(il%ind)
+            il%nat = 0
+        endif
     end subroutine remove_index_real
 
 
@@ -1755,7 +1766,7 @@ contains
         ! We should check nelements and atom_type as well, but I am going to
         ! leave this out because it is so rare that we will remove the last atom
         ! of an atom type, and then re-add it later.
-        write(*,*) "A wild atom appeared!"
+        !write(*,*) "A wild atom appeared!"
 
         ! We place the extra atom at the end of the above arrays, and therefore
         ! the new atom has index m%natoms+1.
@@ -1765,23 +1776,33 @@ contains
         ! end empty for the new atom to fit into).
 
         ! Add the atom to the model.
+!write(*,*) "DEBUG 4.01"
         call add_index(m%rot_i(atom), m%natoms + 1)
+!write(*,*) "DEBUG 4.02"
         call add_index_real(m%xx, xx)
+!write(*,*) "DEBUG 4.03"
         call add_index_real(m%yy, yy)
+!write(*,*) "DEBUG 4.04"
         call add_index_real(m%zz, zz)
+!write(*,*) "DEBUG 4.05"
         call add_index(m%znum, znum)
+!write(*,*) "DEBUG 4.06"
         call add_index(m%znum_r, znum_r)
+!write(*,*) "DEBUG 4.07"
         m%natoms = m%natoms + 1
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
+!write(*,*) "DEBUG 4.08"
         ! This should give an out of bounds error on atom_hutch TODO
         ! I need to modify those functions to correctly increase the size of
         ! atom_hutch I think. But then I should be careful not to reallocate
         ! when the atom simply moves if I can help it... I don't want to do
         ! unnecessary reallocation.
         call hutch_add_atom(m, m%natoms, hx, hy, hz)
+!write(*,*) "DEBUG 4.09"
 
         ! Recalculate composition of model because it may have changed.
         call composition_model(m)
+!write(*,*) "DEBUG 4.010"
     end subroutine add_atom
 
     subroutine remove_atom(m, atom, ind)
@@ -1797,7 +1818,7 @@ contains
         integer, intent(in) :: ind ! index of atom to remove from m
         integer :: i, j, temp, hx, hy, hz
         integer, dimension(:,:), allocatable :: temp_atom_hutch
-        write(*,*) "An atom ran away!"
+        !write(*,*) "An atom ran away!"
 
         temp = ind ! After I call remove_index on m%rot_i, ind is changed to 0
         ! since it is in an array. This seems like a fault of Fortran, but

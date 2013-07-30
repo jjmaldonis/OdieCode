@@ -391,8 +391,8 @@ contains
 
         allocate(pa%pix(pa%npix, 2), stat=istat)
         if (istat /= 0) then
-           write (*,*) 'Cannot allocate pixel position array.'
-           return
+            write (*,*) 'Cannot allocate pixel position array.'
+            return
         endif
 
         k=1
@@ -414,6 +414,7 @@ contains
                     k=k+1
                 enddo
             enddo
+            write(*,*) "with a distance between pixels of", pa%dr
         endif
     end subroutine init_pix
 
@@ -826,9 +827,10 @@ contains
         !integer :: old_mrot_roti_nat
         !logical :: no_int_recal
         logical, dimension(:,:), allocatable :: update_pix
+        type(index_list) :: pix_il
 
         istat = 0
-
+!write(*,*) "DEBUG 0"
         ! res is diameter of a pixel, but later we need the square of the radius
         res2 = (res)**2    !temporary - radius = resolution assumed - JWH 02/25/09
 
@@ -879,6 +881,9 @@ contains
         !write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         
         rotations: do i=myid+1, nrot, numprocs
+
+            ! Store the current (soon to be old) intensities for fem_reject_move
+            ! so we don't lose them upon recalculation.
             do m=1, pa%npix
                 old_int(1:nk, m, i) = int_i(1:nk, m, i)
                 old_int_sq(1:nk, m, i) = int_sq(1:nk, m, i)
@@ -886,6 +891,7 @@ contains
 
             ! Rotate that moved_atom into rot_atom. moved_atom is unchanged.
             call rotate_model(rot(i,1), rot(i, 2), rot(i, 3), moved_atom, rot_atom, istat)
+!write(*,*) "natoms to check in pixels", rot_atom%natoms + moved_atom%natoms
             ! Note that mrot is the array containing the rotated models with
             ! every atom in them; it is different than these. rot_atom now
             ! contains a model that needs to be incorporated into mrot(i) in the
@@ -911,7 +917,7 @@ contains
             ! did not reenter so there is no structural change - we can skip to
             ! the end of the rotations do loop.
             if( .not. ((rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)) ) then
-            write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
+            !write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
 
                 ! Store the original index and position in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
@@ -920,6 +926,7 @@ contains
                         mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), &
                         mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), istat)
                 enddo
+!write(*,*) "DEBUG 0"
 
                 ! ------- Update pixels for original positions. ------- !
 
@@ -940,14 +947,22 @@ contains
                             rr_x_old = ABS(temp1) ! For square pixel
                             rr_y_old = ABS(temp2) ! For square pixel
                             if( (rr_x_old .LE. res) .AND. (rr_y_old .LE. res) ) then
-                                update_pix(i,m) = .TRUE.
+                                !update_pix(i,m) = .TRUE.
                             endif
                         else
                             orig_dist_sq = (temp1)**2 + (temp2)**2 ! For round pixel
                             if(orig_dist_sq <= res2) then
-                                update_pix(i,m) = .TRUE.
+                                !update_pix(i,m) = .TRUE.
                             endif
                         endif
+                    enddo
+                enddo
+
+                do n=1, mrot(i)%rot_i(atom)%nat
+                    call pixel_positions(old_pos(i)%pos(n,1), &
+                        old_pos(i)%pos(n,2), pix_il)
+                    do m=1,pix_il%nat
+                        update_pix(i,pix_il%ind(m)) = .TRUE.
                     enddo
                 enddo
                 
@@ -966,49 +981,80 @@ contains
                             rr_x_new = ABS(temp1) ! For square pixel
                             rr_y_new = ABS(temp2) ! For square pixel
                             if( (rr_x_new .LE. res) .AND. (rr_y_new .LE. res) ) then
-                                update_pix(i,m) = .TRUE.
+                                !update_pix(i,m) = .TRUE.
                             endif
                         else
                             rot_dist_sq = (temp1)**2 + (temp2)**2 ! For round pixel
                             if( rot_dist_sq <= res2 ) then
-                                update_pix(i,m) = .TRUE.
+                                !update_pix(i,m) = .TRUE.
                             endif
                         endif
                     enddo
                 enddo
 
+                do n=1, rot_atom%natoms
+                    call pixel_positions(rot_atom%xx%ind(n), &
+                        rot_atom%yy%ind(n), pix_il)
+                    do m=1,pix_il%nat
+                        update_pix(i,pix_il%ind(m)) = .TRUE.
+                    enddo
+                enddo
+
 
                 ! ------- Update atoms in the rotated model. ------- !
-
+!write(*,*) "DEBUG 1"
                 if( mrot(i)%rot_i(atom)%nat .eq. rot_atom%natoms ) then
                 ! The atom simply moved. It is still in the rotated model the
                 ! same number of times as before.
+!write(*,*) "DEBUG 2"
                     do j=1,rot_atom%natoms
                         ! Function ref: move_atom(m, atom, new_xx, new_yy, new_zz)
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
+!write(*,*) "DEBUG 3"
 
                 else if( rot_atom%natoms .ge. mrot(i)%rot_i(atom)%nat ) then
                 ! The number of times the atom appears went up (duplication).
+
+!write(*,*) "DEBUG 4"
+
+                    ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
+                    ! the number of atoms was changed. It destroys mrot(i) and
+                    ! rebuilds it. This could be done better - I could figure out
+                    ! how to revert, but that is a fair amount of work. This will
+                    ! work for now.
+                    old_index(i)%nat = -1
 
                     ! The atom positions in the rotated model (not atom) should
                     ! be updated up to the number of times it appeared in the
                     ! model before. This saves deleting rot_i(atom) and
                     ! re-implementing it, as well as all the atoms it points to.
                     do j=1,mrot(i)%rot_i(atom)%nat
+!write(*,*) "DEBUG 4.1"
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
+!write(*,*) "DEBUG 4.2"
                     enddo
 
                     ! Now add the rest of the atom positions in rot_atom that we
                     ! haven't gotten to yet.
                     do j=mrot(i)%rot_i(atom)%nat+1, rot_atom%natoms
+!write(*,*) "DEBUG 4.3"
                         call add_atom(mrot(i), atom, rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j), rot_atom%znum%ind(j), rot_atom%znum_r%ind(j) )
+!write(*,*) "DEBUG 4.4"
                     enddo
 
+!write(*,*) "DEBUG 5"
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
                 ! The number of times the atom appears in the rotated model went down.
+!write(*,*) "DEBUG 6"
+                    ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
+                    ! the number of atoms was changed. It destroys mrot(i) and
+                    ! rebuilds it. This could be done better - I could figure out
+                    ! how to revert, but that is a fair amount of work. This will
+                    ! work for now.
+                    old_index(i)%nat = -1
                 
                     ! First I want to sort the indices in mrot(i)%rot_i(atom)
                     ! so that when we delete an atom from this array we will
@@ -1027,14 +1073,23 @@ contains
                     enddo
 
                     ! Now we delete the extras that were in the model before.
+                    ! The thing you need to be careful of is that remove_atom
+                    ! deletes from mrot(i)%rot_i(atom)%ind. This means that the
+                    ! next call to remove_atom needs the same index, not the
+                    ! next one. So instead of j, we use rot_atom%natoms+1.
+                    ! But we still need to call remove_atom j times.
+!write(*,*) mrot(i)%rot_i(atom)%nat, mrot(i)%rot_i(atom)%ind
                     do j=rot_atom%natoms+1, mrot(i)%rot_i(atom)%nat
-                        call remove_atom(mrot(i), atom, mrot(i)%rot_i(atom)%ind(j) )
+                        call remove_atom(mrot(i), atom, mrot(i)%rot_i(atom)%ind(rot_atom%natoms+1) )
+!write(*,*) "DEBUG 6.5"
+!if(mrot(i)%rot_i(atom)%nat /= 0) write(*,*) mrot(i)%rot_i(atom)%nat, mrot(i)%rot_i(atom)%ind
                     enddo
-
+!write(*,*) "DEBUG 7"
                 endif
                 ! ENDING: Update the rotated positions in mrot(i).
 
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
+!write(*,*) "DEBUG 8"
 
             call destroy_model(rot_atom)
             !Deallocate ind in rot_atom%rot_i
@@ -1048,27 +1103,29 @@ contains
 
         enddo rotations
 
-        ! TODO For debugging only.
+        ! For debugging only.
         ntpix = 0
         do i=1, nrot
             do m=1, pa%npix
-                if(update_pix(i,m)) then
+                if(update_pix(i,m) == .TRUE.) then
                     ntpix = ntpix + 1
                 endif
             enddo
         enddo
-        write(*,*) "Calling Intensity on ", ntpix, " pixels."
+        !write(*,*) "Calling Intensity on ", ntpix, " pixels."
+        write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
         ! Update pixels if necessary.
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                    !call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                    !    int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo
         enddo
 
+!write(*,*) "DEBUG 10"
         ! Set psum_int and psum_int_sq.
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
@@ -1091,6 +1148,7 @@ contains
         !deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
         call destroy_model(moved_atom)
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
+!write(*,*) "DEBUG 11"
     end subroutine fem_update
 
     subroutine fem_accept_move(comm)
@@ -1107,9 +1165,9 @@ contains
         use mpi
         integer :: i, comm
         do i=myid+1, nrot, numprocs
-            if(old_index(i)%nat > 0) deallocate(old_index(i)%ind)
+            if(allocated(old_index(i)%ind)) deallocate(old_index(i)%ind)
             old_index(i)%nat = 0
-            if(old_pos(i)%nat > 0) deallocate(old_pos(i)%pos)
+            if(associated(old_pos(i)%pos)) deallocate(old_pos(i)%pos)
             old_pos(i)%nat = 0
         enddo
     end subroutine fem_reset_old
@@ -1158,8 +1216,11 @@ contains
         real, intent(in) :: xx, yy,  zz
         integer, intent(out) :: istat
         real, dimension(:,:), allocatable :: scratch
+!write(*,*) "DEBUG 0.1"
         if (p%nat .GT. 0) then
+!write(*,*) "DEBUG 0.2"
              allocate(scratch(p%nat+1,3), stat=istat)
+!write(*,*) "DEBUG 0.3"
              if (istat /= 0) continue
              scratch(1:p%nat, 1:3) = p%pos
              p%nat = p%nat+1
@@ -1167,12 +1228,16 @@ contains
              scratch(p%nat,2) = yy
              scratch(p%nat,3) = zz
              deallocate(p%pos)
+!write(*,*) "DEBUG 0.4"
              allocate(p%pos(p%nat,3), stat=istat)
+!write(*,*) "DEBUG 0.5"
              if (istat /= 0) continue
              p%pos = scratch
         else
              p%nat = 1
+!write(*,*) "DEBUG 0.6"
              allocate(p%pos(1,3), stat=istat)
+!write(*,*) "DEBUG 0.7"
              if (istat /= 0) continue
              p%pos(1,1) = xx
              p%pos(1,2) = yy
@@ -1184,6 +1249,7 @@ contains
         if (allocated(scratch)) then
             deallocate(scratch)  ! added 3/18/09 pmv 
         endif
+!write(*,*) "DEBUG 0.8"
     end subroutine add_pos
 
 
@@ -1221,6 +1287,35 @@ contains
             write(*,*) sampled_atoms(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
         enddo
     end subroutine print_sampled_map
+
+
+    subroutine pixel_positions(xx, yy, il)
+        real, intent(in) :: xx, yy
+        type(index_list), intent(out) :: il
+        integer :: i, k
+
+        if(allocated(il%ind)) deallocate(il%ind)
+        il%nat = 0
+
+        ! First count how big il should be.
+        do i=1, pa%npix
+            if( ( abs(pa%pix(i,1) - xx) .le. pa%phys_diam / 2.0 ) .and. &
+                ( abs(pa%pix(i,2) - yy) .le. pa%phys_diam / 2.0 ) ) then
+                il%nat = il%nat + 1
+            endif
+        enddo
+        ! Now allocate il%ind and add the pixels.
+        allocate(il%ind(il%nat))
+        k = 1
+        do i=1, pa%npix
+            if( ( abs(pa%pix(i,1) - xx) .le. pa%phys_diam / 2.0 ) .and. &
+                ( abs(pa%pix(i,2) - yy) .le. pa%phys_diam / 2.0 ) ) then
+                il%ind(k) = i
+                k = k + 1
+            endif
+        enddo
+
+    end subroutine pixel_positions
 
 
 end module fem_mod
