@@ -1113,13 +1113,13 @@ contains
             enddo
         enddo
         !write(*,*) "Calling Intensity on ", ntpix, " pixels."
-        write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
+        !write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
         ! Update pixels if necessary.
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    !call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                    !    int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo

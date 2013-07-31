@@ -73,9 +73,11 @@ program rmc
     logical :: square_pixel, use_femsim
     doubleprecision :: t0, t1 !timers
 
-    write(*,*)
-    write(*,*) "This is the dev version of rmc!"
-    write(*,*)
+    if(myid.eq.0)then
+        write(*,*)
+        write(*,*) "This is the dev version of rmc!"
+        write(*,*)
+    endif
 
     call mpi_init(mpierr)
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
@@ -156,14 +158,14 @@ program rmc
     e2 = e1
 
     if(myid.eq.0)then
-       write(*,*)"initial"
-       write(*,*)chi2_old, chi2_gr, chi2_vk, te1, temperature
-       write(*,*)"  i, chi2_gr, chi2_vk, te1, temperature"
-    endif
+        write(*,*)"initial"
+        write(*,*)chi2_old, chi2_gr, chi2_vk, te1, temperature
+        write(*,*)"  i, chi2_gr, chi2_vk, te1, temperature"
 
-    write(*,*)
-    write(*,*)"Initialization complete. Starting Monte Carlo."
-    write(*,*)
+        write(*,*)
+        write(*,*)"Initialization complete. Starting Monte Carlo."
+        write(*,*)
+    endif
     t0 = mpi_wtime()
     ! RMC step begins
 
@@ -218,7 +220,7 @@ program rmc
                 !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
             endif
             chi2_old = chi2_new
-            write(*,*) "MC move accepted outright."
+            !write(*,*) "MC move accepted outright."
         else
             ! Based on the random number above, even if del_chi is negative, decide
             ! whether to move or not (statistically).
@@ -231,7 +233,9 @@ program rmc
                     !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
                 endif
                 chi2_old = chi2_new
-                write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
+                if(myid.eq.0)then
+                    write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
+                endif
             else
                 ! Reject move
                 e2 = e1
@@ -239,17 +243,23 @@ program rmc
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                 !call reject_gr(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_reject_move(m, mpi_comm_world)
-                write(*,*) "MC move rejected."
+                !write(*,*) "MC move rejected."
             endif
         endif
 
         ! Every 50,000 steps lower the temp, max_move, and reset beta.
         if(mod(i,50000)==0)then
             temperature = temperature * sqrt(0.7)
+if(myid.eq.0)then
+write(*,*) "temp=", temperature, i
+endif
             max_move = max_move * sqrt(0.94)
             beta=1./((8.6171e-05)*temperature)
             if(myid.eq.0)then
                 if(temperature.lt.30.0)then
+                    if(myid.eq.0)then
+                        write(*,*) "STOPPING MC DUE TO TEMP"
+                    endif
                     stop
                 endif
             endif
@@ -295,6 +305,8 @@ program rmc
             endif
         endif
     ENDDO
+
+    write(*,*) "Monte Carlo Finished!"
 
     ! The rmc loop finished. Write final data.
     if(myid.eq.0)then

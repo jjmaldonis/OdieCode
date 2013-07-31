@@ -48,7 +48,7 @@ contains
         allocate(rho_temp(nelements, nr/5, 5))
         allocate(rho(nelements, nr))
         allocate(phi_temp(nelements, nelements, nr/5, 5))
-        allocate(phi(nelements, nelements, nr))
+        allocate(phi(nelements, nelements, nr+1))
         allocate(f_temp2(nelements, nrho))
         allocate(rho_temp2(nelements, nr))
         allocate(phi_temp2(nelements, nelements, nr))
@@ -122,6 +122,7 @@ contains
             enddo
         enddo
 
+write(*,*) "DEBUG eam.1, nr=", nr
         do i=1, nelements
             do j=1, nelements
                 do k=1, nr  
@@ -173,6 +174,7 @@ contains
         open(unit=3,file="rho_zr.out",form='formatted',status='unknown')
         open(unit=4,file="f_zr.out",form='formatted',status='unknown')
 
+write(*,*) "DEBUG eam.1, nr=", nr
         do i=1, nr
             rr=(i*dr)
             write(2,*)rr, phi(1, 1, i)
@@ -214,7 +216,6 @@ contains
         real :: phi1, phi2, rho1, rho2
         real, intent(out) :: te1
         integer :: istat
-
         do i=1, m%natoms
         phi2 = 0.0
         rho2 = 0.0
@@ -231,6 +232,7 @@ contains
                     if(r2.lt.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
+                        if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
                         phi1 = phi(m%znum_r%ind(i), m%znum_r%ind(atoms(j)) , rbin)
                         phi2 = phi2 + phi1
                         rho1 = rho(m%znum_r%ind(i), rbin)
@@ -285,6 +287,7 @@ contains
                     if(r2.le.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
+                        if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
                         phi1 = phi(m%znum_r%ind(i), m%znum_r%ind(j) , rbin)
                         phi2 = phi2 + phi1
                         rho1 = rho(m%znum_r%ind(i), rbin)
@@ -342,6 +345,7 @@ contains
                     if(r2.le.eam_max_r*eam_max_r)then
                         r = sqrt(r2)
                         rbin = int(r/dr)+1
+                        if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
                         phi1 = phi(m%znum_r%ind(atoms1(i)), m%znum_r%ind(atoms2(j)) , rbin)
                         phi2 = phi2 + phi1
                         rho1 = rho(m%znum_r%ind(atoms1(i)), rbin)
@@ -378,6 +382,7 @@ contains
                         if(r2.le.eam_max_r*eam_max_r)then
                             r = sqrt(r2)
                             rbin = int(r/dr)+1
+                            if(rbin == nr+1) rbin = rbin - 1 ! Jason due to out of bounds error. I believe this is the correct fix, and that the problem arrises due to a rounding error. 20130731
                             phi1 = phi(m%znum_r%ind(atoms3(i)), m%znum_r%ind(atoms4(j)) , rbin)
                             phi2 = phi2 + phi1
                             rho1 = rho(m%znum_r%ind(atoms3(i)), rbin)
