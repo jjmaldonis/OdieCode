@@ -18,7 +18,7 @@ module model_mod
     ! of the atoms in this hutch.  nat is the number of atoms in
     ! this hutch
     type hutch
-        integer, dimension(:), pointer :: at
+        integer, dimension(:), allocatable :: at
         integer :: nat
     end type hutch
 
@@ -349,7 +349,7 @@ contains
             do hy = 1, m%ha%nhutch_y
                 do hz = 1, m%ha%nhutch_z
                     ! I don't think we need the line below.
-                    nullify(m%ha%h(hx, hy, hz)%at)
+                    if(allocated(m%ha%h(hx,hy,hz)%at)) deallocate(m%ha%h(hx,hy,hz)%at)
                     m%ha%h(hx, hy, hz)%nat = 0
                 end do
             end do
@@ -439,6 +439,7 @@ contains
         ha%atom_hutch(atom, 2) = hy
         ha%atom_hutch(atom, 3) = hz
     end subroutine hutch_add_atom
+
 
     subroutine check_model(m, istat)
     ! simple error checking on a model.  Currently checks: are all the  
@@ -656,7 +657,9 @@ contains
             do i=1,ha%nhutch_x
                 do j=1,ha%nhutch_y
                     do k=1,ha%nhutch_z
-                        if(ha%h(i,j,k)%nat .gt. 0) deallocate(ha%h(i,j,k)%at)
+                        if(ha%h(i,j,k)%nat .gt. 0) then
+                            deallocate(ha%h(i,j,k)%at)
+                        endif
                     enddo
                 enddo
             enddo
@@ -1375,64 +1378,6 @@ contains
     end subroutine hutch_list_3d
 
     subroutine hutch_list_pixel_sq(m, px, py, diameter, atoms, istat)
-!    type(model), target, intent(in) :: m
-!    real, intent(in) :: px, py, diameter
-!    integer, pointer, dimension(:) :: atoms
-!    integer, intent(out) :: istat
-!
-!    integer :: hx, hy, hz   ! hutch of position (px, py, pz)
-!    integer :: nh           ! number of hutches corresponding to diameter
-!    integer :: nlist        ! number of atoms in list
-!    integer :: i, j         ! counting variables
-!    integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
-!    integer, dimension(:), allocatable, target :: temp_atoms
-!    type(hutch_array), pointer :: ha
-!
-!    ha => m%ha
-!
-!    allocate(temp_atoms(m%natoms), stat=istat)
-!    if (istat /= 0) then
-!       write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel'
-!       return
-!    end if
-!
-!    call hutch_position(m, px, py, 0.0, hx, hy, hz)
-!
-!     nh = ceiling( (12.0) / ha%hutch_size)   !debug
-!
-!    nlist = m%natoms
-!
-!    allocate(atoms(nlist), stat=istat)
-!
-!    if (istat /= 0) then
-!       write (*,*) 'Unable to allocate memory for atom indices in hutch_list_pixel.'
-!       return
-!    endif
-!
-!    ! assign atoms to the subset of temp_atoms that was filled in
-!    if (nlist > 1) then
-!    !atoms = temp_atoms(1:nlist-1)
-!    do i=1, nlist
-!        atoms(i) = i
-!    enddo
-!    else
-!       nullify(atoms)
-!       istat = -1
-!    endif
-!
-!    if(allocated(temp_atoms)) deallocate(temp_atoms)
-!
-!    IF(ASSOCIATED(ha)) THEN
-!    NULLIFY(ha)             !jwh - 062509
-!    ENDIF
-
-    ! Makes a list of atom indices (in atoms) of the atoms in a rectangular
-    ! prism with side length diameter in x and y, through the model thickness
-    ! in z, centered on the hutch containing the point (px, py). Useful for
-    ! calculating the FEM intensity at (px, py).  Returns 1 in istat if the
-    ! atoms array cannot be allocated.
-    ! Technically, if a hutch is partly within the region described above then
-    ! all its atoms are put in 'atoms'. Is this what we want???
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms !output of atom indices
@@ -1776,33 +1721,23 @@ contains
         ! end empty for the new atom to fit into).
 
         ! Add the atom to the model.
-!write(*,*) "DEBUG 4.01"
         call add_index(m%rot_i(atom), m%natoms + 1)
-!write(*,*) "DEBUG 4.02"
         call add_index_real(m%xx, xx)
-!write(*,*) "DEBUG 4.03"
         call add_index_real(m%yy, yy)
-!write(*,*) "DEBUG 4.04"
         call add_index_real(m%zz, zz)
-!write(*,*) "DEBUG 4.05"
         call add_index(m%znum, znum)
-!write(*,*) "DEBUG 4.06"
         call add_index(m%znum_r, znum_r)
-!write(*,*) "DEBUG 4.07"
         m%natoms = m%natoms + 1
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
-!write(*,*) "DEBUG 4.08"
         ! This should give an out of bounds error on atom_hutch TODO
         ! I need to modify those functions to correctly increase the size of
         ! atom_hutch I think. But then I should be careful not to reallocate
         ! when the atom simply moves if I can help it... I don't want to do
         ! unnecessary reallocation.
         call hutch_add_atom(m, m%natoms, hx, hy, hz)
-!write(*,*) "DEBUG 4.09"
 
         ! Recalculate composition of model because it may have changed.
         call composition_model(m)
-!write(*,*) "DEBUG 4.010"
     end subroutine add_atom
 
     subroutine remove_atom(m, atom, ind)
@@ -1911,7 +1846,96 @@ contains
                 end if
             end do
         end do
-   end subroutine sort
+    end subroutine sort
 
+
+    subroutine copy_model(m, mout)
+        ! Copies model m to mout. If mout already contains information, it is
+        ! deallocated and reallocated.
+        ! Hopefully this function is faster than destroying m and re-rotating it
+        type(model), intent(in) :: m
+        type(model), intent(out) :: mout
+        integer :: i, j, k
+        
+        mout%lx = m%lx
+        mout%ly = m%ly
+        mout%lz = m%lz
+
+        mout%natoms = m%natoms
+        if(allocated(mout%xx%ind)) deallocate(mout%xx%ind)
+        if(allocated(mout%yy%ind)) deallocate(mout%xx%ind)
+        if(allocated(mout%zz%ind)) deallocate(mout%xx%ind)
+        if(allocated(mout%znum%ind)) deallocate(mout%znum%ind)
+        if(allocated(mout%znum_r%ind)) deallocate(mout%znum_r%ind)
+        allocate(mout%xx%ind(m%natoms), mout%yy%ind(m%natoms), mout%zz%ind(m%natoms), mout%znum%ind(m%natoms), mout%znum_r%ind(m%natoms))
+        mout%xx%nat = m%xx%nat
+        mout%yy%nat = m%yy%nat
+        mout%zz%nat = m%zz%nat
+        mout%znum%nat = m%znum%nat
+        mout%znum_r%nat = m%znum_r%nat
+        mout%xx%ind = m%xx%ind
+        mout%yy%ind = m%yy%ind
+        mout%zz%ind = m%zz%ind
+        mout%znum%ind = m%znum%ind
+        mout%znum_r%ind = m%znum_r%ind
+
+        mout%nelements = m%nelements
+        if(allocated(mout%atom_type)) deallocate(mout%atom_type)
+        if(allocated(mout%composition)) deallocate(mout%composition)
+        allocate(mout%atom_type(mout%nelements), mout%composition(mout%nelements))
+        mout%atom_type = m%atom_type
+        mout%composition = m%composition
+
+        mout%rotated = m%rotated
+        mout%unrot_natoms = m%unrot_natoms
+        if(allocated(mout%rot_i)) then
+            do i=1,m%unrot_natoms
+                if(allocated(mout%rot_i(i)%ind)) then
+                    deallocate(mout%rot_i(i)%ind)
+                endif
+            enddo
+        endif
+        if(allocated(mout%rot_i)) deallocate(mout%rot_i)
+        allocate(mout%rot_i(mout%unrot_natoms))
+        do i=1,m%unrot_natoms
+            mout%rot_i(i)%nat = m%rot_i(i)%nat
+            if(allocated(m%rot_i(i)%ind)) then
+                allocate(mout%rot_i(i)%ind(mout%rot_i(i)%nat))
+                mout%rot_i(i)%ind = m%rot_i(i)%ind
+            endif
+        enddo
+
+        ! Destroy the old hutch, if necessary.
+        call destroy_hutch(mout%ha)
+       
+        mout%ha%nhutch_x = m%ha%nhutch_x
+        mout%ha%nhutch_y = m%ha%nhutch_y
+        mout%ha%nhutch_z = m%ha%nhutch_z
+        allocate(mout%ha%h(mout%ha%nhutch_x, mout%ha%nhutch_y,mout%ha%nhutch_y))
+        do i=1,mout%ha%nhutch_x
+            do j=1,mout%ha%nhutch_y
+                do k=1,mout%ha%nhutch_z
+                    mout%ha%h(i,j,k)%nat = m%ha%h(i,j,k)%nat
+                    if(allocated(m%ha%h(i,j,k)%at)) then
+                        if(allocated(mout%ha%h(i,j,k)%at)) then
+                            deallocate(mout%ha%h(i,j,k)%at)
+                        endif
+                        allocate(mout%ha%h(i,j,k)%at(mout%ha%h(i,j,k)%nat))
+                        mout%ha%h(i,j,k)%at = m%ha%h(i,j,k)%at
+                    endif
+                enddo
+            enddo
+        enddo
+        mout%ha%hutch_size = m%ha%hutch_size
+        if(associated(m%ha%atom_hutch)) then
+            if(associated(mout%ha%atom_hutch)) then
+                deallocate(mout%ha%atom_hutch)
+            endif
+            allocate(mout%ha%atom_hutch(mout%natoms, 3))
+            mout%ha%atom_hutch = m%ha%atom_hutch
+        else
+            write(*,*) "There might be a problem. Atom_hutch should be associated for every input model."
+        endif
+    end subroutine copy_model
 
 end module model_mod

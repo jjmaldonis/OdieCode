@@ -23,9 +23,9 @@
 ! hutch_move_atom added in reject part - JWH 04/15/2009.
 ! gr_e_err is added - jwh 04/25/2009
 
-
 program rmc
 
+    use omp_lib
     use rmc_global
     use readinputs
     use model_mod
@@ -71,7 +71,22 @@ program rmc
     real :: randnum
     real :: te1, te2
     logical :: square_pixel, use_femsim
+    integer :: ipvd, nthr
     doubleprecision :: t0, t1 !timers
+
+    !call mpi_init(mpierr)
+
+    call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
+    call mpi_comm_rank(mpi_comm_world, myid, mpierr)
+    call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
+
+    !call omp_set_num_threads(2) ! Use use the default 8
+    !$omp parallel do
+    do i=1,1
+    nthr = omp_get_num_threads()
+    write(*,*) "We are using", nthr, "thread(s) in rmc."
+    enddo
+    !$omp end parallel do
 
     if(myid.eq.0)then
         write(*,*)
@@ -79,11 +94,10 @@ program rmc
         write(*,*)
     endif
 
-    call mpi_init(mpierr)
-    call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
     model_filename = 'model_040511c_t2_final.xyz'
+    !model_filename = 'asq_npt_heat_10000000.xyz'
     param_filename = 'param_file.in'
     outbase = ""
 
@@ -220,7 +234,7 @@ program rmc
                 !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
             endif
             chi2_old = chi2_new
-            !write(*,*) "MC move accepted outright."
+            write(*,*) "MC move accepted outright."
         else
             ! Based on the random number above, even if del_chi is negative, decide
             ! whether to move or not (statistically).
@@ -243,7 +257,7 @@ program rmc
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                 !call reject_gr(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_reject_move(m, mpi_comm_world)
-                !write(*,*) "MC move rejected."
+                write(*,*) "MC move rejected."
             endif
         endif
 
@@ -251,7 +265,7 @@ program rmc
         if(mod(i,50000)==0)then
             temperature = temperature * sqrt(0.7)
 if(myid.eq.0)then
-write(*,*) "temp=", temperature, i
+write(*,*) "Lowering temp to", temperature, "at step", i
 endif
             max_move = max_move * sqrt(0.94)
             beta=1./((8.6171e-05)*temperature)

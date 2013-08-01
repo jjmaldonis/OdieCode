@@ -122,7 +122,6 @@ contains
             enddo
         enddo
 
-write(*,*) "DEBUG eam.1, nr=", nr
         do i=1, nelements
             do j=1, nelements
                 do k=1, nr  
@@ -174,7 +173,6 @@ write(*,*) "DEBUG eam.1, nr=", nr
         open(unit=3,file="rho_zr.out",form='formatted',status='unknown')
         open(unit=4,file="f_zr.out",form='formatted',status='unknown')
 
-write(*,*) "DEBUG eam.1, nr=", nr
         do i=1, nr
             rr=(i*dr)
             write(2,*)rr, phi(1, 1, i)

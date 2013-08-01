@@ -4,11 +4,11 @@
 ! See commit notes on Github for details. Username is refreshx2.
 !
 
-
 module fem_mod
     use  model_mod
     use  RMC_Global
     use  scattering_factors 
+    use  omp_lib
 
     implicit none
     private
@@ -34,6 +34,7 @@ module fem_mod
     real, save, dimension(:), pointer :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
     real, save, allocatable, dimension(:) :: j0, A1                                               
     type(model), save, dimension(:), pointer :: mrot  ! array of rotated models
+    type(model), save, dimension(:), pointer :: mcopy  ! array of rotated models
     type(index_list), save, dimension(:), pointer :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
     type(pix_array), save :: pa
@@ -541,6 +542,12 @@ contains
             psum_int_sq = 0.0
 
             ! initialize the rotated models
+            ! Also allocate room for mcopy - Jason 20130731
+            allocate(mcopy(nrot), stat=istat)
+            if (istat /= 0) then
+                write(*,*) 'Cannot allocate copy model array.'
+                return
+            endif
             allocate(mrot(nrot), stat=istat)
             if (istat /= 0) then
                 write(*,*) 'Cannot allocate rotated model array.'
@@ -623,7 +630,15 @@ contains
         real :: sqrt1_2_res
         real :: k_1
         real :: timer1, timer2
+        integer :: nthr
+        integer, dimension(:), allocatable :: znum_r2
         !real, dimension(:,:), allocatable :: pp_array
+
+        allocate(znum_r2(m_int%znum_r%nat))
+        znum_r2 = m_int%znum_r%ind
+        !omp parallel private(pix_atoms, j, i, ii, jj, kk, x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max, sum1)
+        ! I KNOW I NEED TO ADD MORE TO THE ABOVE
+        !shared(i, j, ii, jj, kk)
 
         call cpu_time(timer1)
 
@@ -666,6 +681,7 @@ contains
         ! replaced code recalculating znum_r with code copying it from previous
         ! calculations 3/18/09 pmv  !tr RE-ok-jwh
         do i=1, size(pix_atoms)
+!write(*,*) i
             znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
         enddo
 
@@ -683,7 +699,17 @@ contains
 
         ! Calculate sum1 for gr_i calculation in next loop.
         if(pixel_square) then
+call omp_set_num_threads(8)
+!$omp parallel do private(j, i, ii, jj, kk, x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max, sum1)
+do i=1,1
+nthr = OMP_GET_NUM_THREADS()
+!write(*,*) "We are using", nthr, " thread(s)."
+enddo
+!$omp end parallel do
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size(pix_atoms)
+!nthr = OMP_GET_NUM_THREADS()
+!write(*,*) "We are using", nthr, " thread(s) HERE."
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
@@ -696,11 +722,14 @@ contains
                     k_1=0.82333
                     x1(i)=x2
                     y1(i)=y2
+!write(*,*) "j=", j, const1, rr_a(i)
                     j=int(const1*rr_a(i))
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
+            !$omp end parallel do
         else
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size(pix_atoms)
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -715,10 +744,12 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
+            !$omp end parallel do
         endif
 
         ! Calculate gr_i for int_i in next loop.
         if(pixel_square) then
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size(pix_atoms)
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size(pix_atoms)
@@ -729,6 +760,7 @@ contains
                             kk=int(const2*rr)
                             if(i == j)then
                                 t1=sum1(znum_r(i),i)
+!write(*,*) "HERE2", kk
                                 gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
                             else
                                 t1=sum1(znum_r(i),i)
@@ -739,7 +771,9 @@ contains
                     enddo
                 endif
             enddo
+            !$omp end parallel do
         else
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size(pix_atoms)
                 if(rr_a(i).le.res)then
                     !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
@@ -762,6 +796,7 @@ contains
                     enddo
                 endif
             enddo
+            !$omp end parallel do
         endif !pixel_square
 
         !allocate(pp_array(1:nk,0:bin_max)) !32 x 8001 size array....
@@ -770,6 +805,7 @@ contains
         !    pp_array(i,j) = const3*j*k(i)
         !    int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp_array(i,j)))*gr_i(ii,jj,j)
         !end forall
+        !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
@@ -781,6 +817,7 @@ contains
                 enddo
             end do
         end do
+        !$omp end parallel do
 
         if(allocated(gr_i)) then
             deallocate(gr_i)
@@ -800,7 +837,7 @@ contains
 
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
-        !write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
+        write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
         !write ( *, * ) 'Elapsed CPU time = ', timer2 - timer1
 
     end subroutine intensity
@@ -830,7 +867,6 @@ contains
         type(index_list) :: pix_il
 
         istat = 0
-!write(*,*) "DEBUG 0"
         ! res is diameter of a pixel, but later we need the square of the radius
         res2 = (res)**2    !temporary - radius = resolution assumed - JWH 02/25/09
 
@@ -926,7 +962,6 @@ contains
                         mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), &
                         mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), istat)
                 enddo
-!write(*,*) "DEBUG 0"
 
                 ! ------- Update pixels for original positions. ------- !
 
@@ -1002,22 +1037,18 @@ contains
 
 
                 ! ------- Update atoms in the rotated model. ------- !
-!write(*,*) "DEBUG 1"
                 if( mrot(i)%rot_i(atom)%nat .eq. rot_atom%natoms ) then
                 ! The atom simply moved. It is still in the rotated model the
                 ! same number of times as before.
-!write(*,*) "DEBUG 2"
                     do j=1,rot_atom%natoms
                         ! Function ref: move_atom(m, atom, new_xx, new_yy, new_zz)
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
-!write(*,*) "DEBUG 3"
 
                 else if( rot_atom%natoms .ge. mrot(i)%rot_i(atom)%nat ) then
                 ! The number of times the atom appears went up (duplication).
 
-!write(*,*) "DEBUG 4"
 
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
                     ! the number of atoms was changed. It destroys mrot(i) and
@@ -1031,24 +1062,18 @@ contains
                     ! model before. This saves deleting rot_i(atom) and
                     ! re-implementing it, as well as all the atoms it points to.
                     do j=1,mrot(i)%rot_i(atom)%nat
-!write(*,*) "DEBUG 4.1"
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
-!write(*,*) "DEBUG 4.2"
                     enddo
 
                     ! Now add the rest of the atom positions in rot_atom that we
                     ! haven't gotten to yet.
                     do j=mrot(i)%rot_i(atom)%nat+1, rot_atom%natoms
-!write(*,*) "DEBUG 4.3"
                         call add_atom(mrot(i), atom, rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j), rot_atom%znum%ind(j), rot_atom%znum_r%ind(j) )
-!write(*,*) "DEBUG 4.4"
                     enddo
 
-!write(*,*) "DEBUG 5"
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
                 ! The number of times the atom appears in the rotated model went down.
-!write(*,*) "DEBUG 6"
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
                     ! the number of atoms was changed. It destroys mrot(i) and
                     ! rebuilds it. This could be done better - I could figure out
@@ -1081,15 +1106,12 @@ contains
 !write(*,*) mrot(i)%rot_i(atom)%nat, mrot(i)%rot_i(atom)%ind
                     do j=rot_atom%natoms+1, mrot(i)%rot_i(atom)%nat
                         call remove_atom(mrot(i), atom, mrot(i)%rot_i(atom)%ind(rot_atom%natoms+1) )
-!write(*,*) "DEBUG 6.5"
 !if(mrot(i)%rot_i(atom)%nat /= 0) write(*,*) mrot(i)%rot_i(atom)%nat, mrot(i)%rot_i(atom)%ind
                     enddo
-!write(*,*) "DEBUG 7"
                 endif
                 ! ENDING: Update the rotated positions in mrot(i).
 
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
-!write(*,*) "DEBUG 8"
 
             call destroy_model(rot_atom)
             !Deallocate ind in rot_atom%rot_i
@@ -1118,14 +1140,13 @@ contains
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                    !call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                        !int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo
         enddo
 
-!write(*,*) "DEBUG 10"
         ! Set psum_int and psum_int_sq.
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
@@ -1148,14 +1169,16 @@ contains
         !deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
         call destroy_model(moved_atom)
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
-!write(*,*) "DEBUG 11"
     end subroutine fem_update
 
     subroutine fem_accept_move(comm)
     ! accept the move.  don't need to change any of the atom positions in any of the rotated
     ! models, but we do need to clear the old_index and old_pos arrays for reuse.
         use mpi
-        integer :: comm
+        integer :: comm, j
+        do j=myid+1, nrot, numprocs ! Added by Jason 20130731
+            call copy_model(mrot(j), mcopy(j))
+        enddo
         call fem_reset_old(comm)
     end subroutine fem_accept_move
 
@@ -1181,20 +1204,21 @@ contains
         integer :: comm
 
         do i=myid+1, nrot, numprocs
-            ! the rotated atom wasn't in the model, so this model doesn't need
-            ! to be changed
+            ! If the rotated atom wasn't in the model, this model doesn't need
+            ! to be changed.
             if(old_index(i)%nat == 0) cycle
-            ! the move changed the number of atoms in the model, so the model
-            ! must be re-rotated
-            ! from scratch
+
+            ! If the move changed the number of atoms in the model, the model
+            ! must be re-rotated from scratch.
             if(old_index(i)%nat == -1) then
-                call destroy_model(mrot(i))
-                call rotate_model(rot(i,1), rot(i,2), rot(i,3), m, mrot(i), istat)
+                !call destroy_model(mrot(i))
+                !call rotate_model(rot(i,1), rot(i,2), rot(i,3), m, mrot(i), istat)
+                call copy_model(mcopy(i), mrot(i)) ! Added by Jason 20130731. Commented out destroy_model and rotate_model.
                 cycle
             endif
 
-            ! otherwise, copy the old positions back into the model at the
-            ! correct indices
+            ! Otherwise, copy the old positions back into the model at the
+            ! correct indices.
             do j=1,old_index(i)%nat
                 mrot(i)%xx%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
                 mrot(i)%yy%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
@@ -1216,11 +1240,8 @@ contains
         real, intent(in) :: xx, yy,  zz
         integer, intent(out) :: istat
         real, dimension(:,:), allocatable :: scratch
-!write(*,*) "DEBUG 0.1"
         if (p%nat .GT. 0) then
-!write(*,*) "DEBUG 0.2"
              allocate(scratch(p%nat+1,3), stat=istat)
-!write(*,*) "DEBUG 0.3"
              if (istat /= 0) continue
              scratch(1:p%nat, 1:3) = p%pos
              p%nat = p%nat+1
@@ -1228,16 +1249,12 @@ contains
              scratch(p%nat,2) = yy
              scratch(p%nat,3) = zz
              deallocate(p%pos)
-!write(*,*) "DEBUG 0.4"
              allocate(p%pos(p%nat,3), stat=istat)
-!write(*,*) "DEBUG 0.5"
              if (istat /= 0) continue
              p%pos = scratch
         else
              p%nat = 1
-!write(*,*) "DEBUG 0.6"
              allocate(p%pos(1,3), stat=istat)
-!write(*,*) "DEBUG 0.7"
              if (istat /= 0) continue
              p%pos(1,1) = xx
              p%pos(1,2) = yy
@@ -1249,7 +1266,6 @@ contains
         if (allocated(scratch)) then
             deallocate(scratch)  ! added 3/18/09 pmv 
         endif
-!write(*,*) "DEBUG 0.8"
     end subroutine add_pos
 
 
