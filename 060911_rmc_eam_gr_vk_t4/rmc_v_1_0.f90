@@ -296,6 +296,7 @@ program rmc
                     write (*,*) i, t1-t0
                     write (35,*) i, t1-t0
                     close(32); close(33); close(34); close(35) ! Close files
+                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708)*50000 * log(30/temperature)/log(sqrt(0.7))
                 endif
             endif
         enddo
