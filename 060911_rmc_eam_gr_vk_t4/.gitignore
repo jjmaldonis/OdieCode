@@ -1,0 +1,14 @@
+rmc*.e*
+rmc*.o*
+gr_initial.txt
+vk_initial.txt
+_energy_function.txt
+_gr_update.txt
+_model_update.txt
+_time_elapsed.txt
+_vk_update.txt
+energy_function.txt
+gr_update.txt
+model_update.txt
+time_elapsed.txt
+vk_update.txt
