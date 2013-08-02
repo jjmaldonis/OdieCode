@@ -151,10 +151,7 @@ contains
 
         ! Open file that contains the model information.
         open(1,file=model_filename,iostat=istat,status='old')
-        if(istat.ne.0) then !Open fails
-            write(*,*)"Error in opening flie,"," ",model_filename," status=",istat
-            return
-        endif
+        call check_allocation(istat, "Error in opening flie, "//model_filename)
 
         read(1,*) ! Comment line.
         read(1,*) ! This line contains the box size (lx, ly, lz).
@@ -177,12 +174,7 @@ contains
         m%zz%nat = nat
         m%znum%nat = nat
         m%znum_r%nat = nat
-
-        ! Allocate should return 0 if successful.
-        if(istat /= 0) then
-            write (*,*) 'Unable to allocate memory for the model being read.'
-            return
-        endif
+        call check_allocation(istat, 'Unable to allocate memory for the model being read.')
 
         ! Read in the first 80 characters of the comment
         read(1,'(a80)') comment
@@ -215,10 +207,7 @@ contains
         ! Set m%atom_type to contain the atom types; set m%composition to
         ! contain the percent composition (as a number between 0 and 1).
         allocate(m%atom_type(m%nelements), m%composition(m%nelements), stat=istat)
-        if(istat /= 0) then
-            write (*,*) 'Unable to allocate memory for m%atom_type and m%composition.'
-            return
-        endif
+        call check_allocation(istat, 'Unable to allocate memory for m%atom_type and m%composition.')
         ! Initialize the composition array to 0.0
         m%composition = 0.0
         ! i corresponds to the atomic number.
@@ -259,10 +248,7 @@ contains
         ! For each atom i, add a parameter znum_r(i) that corresponds to
         ! m%atom_type and m%composition for fast lookup.
         allocate(m%znum_r%ind(m%natoms), stat=istat)
-        if(istat /= 0) then
-            write (*,*) 'Unable to allocate memory for m%znum_r.'
-            return
-        endif
+        call check_allocation(istat, 'Unable to allocate memory for m%znum_r.')
         m%znum_r%ind = 0.0
         do i=1, m%natoms
             do j=1, m%nelements
@@ -579,10 +565,7 @@ contains
         mrot%zz%nat = mrot%natoms
         mrot%znum%nat = mrot%natoms
         mrot%znum_r%nat = mrot%natoms
-        if( istat /= 0) then
-           write (*,*) 'Problem allocating memory in rotate_model.'
-           return
-        endif
+        call check_allocation(istat, 'Problem allocating memory in rotate_model.')
 
         do i=1,mrot%unrot_natoms
            mrot%rot_i(i)%nat = 0
@@ -1173,10 +1156,7 @@ contains
         mout%zz%nat = mout%natoms
         mout%znum%nat = mout%natoms
         mout%znum_r%nat = mout%natoms
-        if(istat /= 0) then
-            write (*,*) 'Error allocating memory for the periodic continued model.'
-            return
-        end if
+        call check_allocation(istat, 'Error allocating memory for the periodic continued model.')
 
         mout%lx = min%lx*real(xp)
         mout%ly = min%ly*real(yp)
@@ -1201,19 +1181,13 @@ contains
 
         mout%nelements = min%nelements
         allocate(mout%atom_type(mout%nelements), mout%composition(mout%nelements), stat=istat)
-        if(istat /= 0) then
-            write (*,*) 'Problem allocating memory in periodic_continue_model.'
-            return
-        endif
+        call check_allocation(istat, 'Problem allocating memory in periodic_continue_model.')
         mout%atom_type = min%atom_type
         mout%composition = mout%composition
 
         if(init_hutch) then
             call model_init_hutches(mout, istat)
-            if(istat /= 0) then
-                write (*,*) 'Cannot allocate memeory for the new hutch_array.'
-                return
-            endif
+            call check_allocation(istat, 'Cannot allocate memeory for the new hutch_array.')
         endif
     end subroutine periodic_continue_model
 
@@ -1937,5 +1911,15 @@ contains
             write(*,*) "There might be a problem. Atom_hutch should be associated for every input model."
         endif
     end subroutine copy_model
+
+
+    subroutine check_allocation(istat, message)
+        integer, intent(in) :: istat
+        character(len=*), intent(in) :: message
+        if (istat /= 0) then
+            write (*,*) message
+            return
+        endif
+    end subroutine check_allocation
 
 end module model_mod

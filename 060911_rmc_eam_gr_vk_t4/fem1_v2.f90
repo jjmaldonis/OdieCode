@@ -8,7 +8,6 @@ module fem_mod
     use  model_mod
     use  RMC_Global
     use  scattering_factors 
-    use  omp_lib
 
     implicit none
     private
@@ -427,10 +426,7 @@ contains
 
         istat = 0
         open(unit=314, file=outfile, form='formatted',status='replace',iostat=istat)
-        if( istat /= 0) then 
-           write (*,*) 'Cannot open intensities output file: ',istat
-           return
-        endif
+        call check_allocation(istat, 'Cannot open intensities output file')
         do ik=1, nk
             if(ik /= 1) write (314,*) ' '
             write (314,*) 'k =',k(ik)
@@ -506,15 +502,9 @@ contains
             do i=begin_rot, end_rot
             ! initialize the rotated models
                 allocate(mrot(1), stat=istat) !debug memory leak
-                if (istat /= 0) then
-                    write(*,*) 'Cannot allocate rotated model array.'
-                    return
-                endif
+                call check_allocation(istat, 'Cannot allocate rotated model array.')
                 call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(1), istat) !memory leak
-                if (istat /= 0) then
-                    write (*,*) 'Failed to rotate model ',i
-                    return
-                endif
+                call check_allocation(istat, 'Failed to rotate model.')
 
                 ! Calculate intensities and store them in int_i(1:nk, j, i).
                 do j=1, pa%npix
@@ -544,34 +534,21 @@ contains
             ! initialize the rotated models
             ! Also allocate room for mcopy - Jason 20130731
             allocate(mcopy(nrot), stat=istat)
-            if (istat /= 0) then
-                write(*,*) 'Cannot allocate copy model array.'
-                return
-            endif
+            call check_allocation(istat, 'Cannot allocate copy model array.')
             allocate(mrot(nrot), stat=istat)
-            if (istat /= 0) then
-                write(*,*) 'Cannot allocate rotated model array.'
-                return
-            endif
+            call check_allocation(istat, 'Cannot allocate rotated model array.')
 
             ! Calculate all the rotated models and save them in mrot.
             ! This is actually really fast.
             do i=myid+1, nrot, numprocs
                 call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
-                if (istat /= 0) then
-                    write (*,*) 'Failed to rotate model ',i
-                    return
-                endif
+            call check_allocation(istat, 'Failed to rotate model')
             enddo
 
             allocate(old_index(nrot), old_pos(nrot), stat=istat)
-            if (istat /= 0) then
-                write (*,*) 'Cannot allocate memory for old indices and positions in fem_initialize.'
-                return
-            endif
-
-            ! initialize old_index and old_pos arrays
-            ! ??? I don't know what these are.
+            call check_allocation(istat, 'Cannot allocate memory for old indices and positions in fem_initialize.')
+            ! Initialize old_index and old_pos arrays. The if statements should
+            ! be unnecessary, but they don't hurt. Better safe than sorry.
             do i=myid+1, nrot, numprocs
                 old_index(i)%nat = 0
                 if( allocated(old_index(i)%ind) ) deallocate(old_index(i)%ind)
@@ -580,9 +557,7 @@ contains
             enddo
 
             ! Calculate intensities for every single pixel in every single model. This is very expensive.
-            write(*,*)
-            write(*,*) "Calculating intensities over the models: nrot = ", nrot
-            write(*,*)
+            write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
             do i=myid+1, nrot, numprocs
                 do j=1, pa%npix
                     !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
@@ -606,11 +581,12 @@ contains
             deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
         ENDIF !Femsim or RMC
 
-        time_in_int = 0.0
+        time_in_int = 0.0 ! Reset for RMC.
     end subroutine fem
 
     subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel)
     ! Calculates int_i for output.
+        use  omp_lib
         type(model), intent(in) :: m_int
         real, intent(in) :: res, px, py
         real, dimension(nk), intent(in) :: k
@@ -624,92 +600,60 @@ contains
         real :: x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max
         integer, pointer, dimension(:) :: pix_atoms, znum_r
         integer :: i,j,ii,jj,kk
-        integer :: bin_max
+        integer :: bin_max, size_pix_atoms
         logical pixel_square
         real, allocatable, dimension(:) :: rr_x, rr_y
         real :: sqrt1_2_res
         real :: k_1
         real :: timer1, timer2
         integer :: nthr
-        integer, dimension(:), allocatable :: znum_r2
-        !real, dimension(:,:), allocatable :: pp_array
-
-        allocate(znum_r2(m_int%znum_r%nat))
-        znum_r2 = m_int%znum_r%ind
-        !omp parallel private(pix_atoms, j, i, ii, jj, kk, x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max, sum1)
-        ! I KNOW I NEED TO ADD MORE TO THE ABOVE
-        !shared(i, j, ii, jj, kk)
 
         call cpu_time(timer1)
 
-        if(present(square_pixel)) then
-            pixel_square = square_pixel
-        else
-            pixel_square = .FALSE.
-        endif
+        if(present(square_pixel)) then; pixel_square = square_pixel
+        else; pixel_square = .FALSE.; endif
 
         if(pixel_square) then
             sqrt1_2_res = SQRT(0.5) * res
-        else
-            sqrt1_2_res = res
-        endif
-
-        if(pixel_square) then
             !r_max = sqrt(8.0) * res
             r_max = 2*res !small pixel inscribed in airy circle
+            call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
+            allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
         else
+            sqrt1_2_res = res
             r_max = 2*res     !assuming resolution=radius
+            call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         endif
-
+        size_pix_atoms = size(pix_atoms)
         !r_max = 6*res    !check cut-off effect on 05/11/2009
         bin_max = int(r_max/fem_bin_width)+1
 
-        if(pixel_square) then
-            call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
-        else
-            call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
-        endif
-
         allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
-        allocate(x1(size(pix_atoms)),y1(size(pix_atoms)),rr_a(size(pix_atoms)), stat=istat)
-        allocate(sum1(m_int%nelements,size(pix_atoms)), stat=istat)
-        allocate(znum_r(size(pix_atoms)), stat=istat)
+        allocate(x1(size_pix_atoms),y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
+        allocate(sum1(m_int%nelements,size_pix_atoms), stat=istat)
+        allocate(znum_r(size_pix_atoms), stat=istat)
 
-        if(pixel_square) then
-            allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
-        endif
-        ! replaced code recalculating znum_r with code copying it from previous
-        ! calculations 3/18/09 pmv  !tr RE-ok-jwh
-        do i=1, size(pix_atoms)
-!write(*,*) i
+        do i=1, size_pix_atoms
             znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
         enddo
 
-        gr_i = 0.0
-        int_i = 0.0
-        x1 = 0.0
-        y1 = 0.0
-        rr_a = 0.0
-        x2 = 0.0
-        y2 = 0.0
+        gr_i = 0.0; int_i = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0
 
+        x2 = 0.0; y2 = 0.0
         const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q)
         const2 = 1/fem_bin_width
         const3 = TWOPI
 
+        !call omp_set_num_threads(128) ! We don't need this. As long as it is
+        ! never called we should automatically have the max number of
+        ! threads available in any parallel loop.
+
         ! Calculate sum1 for gr_i calculation in next loop.
         if(pixel_square) then
-call omp_set_num_threads(8)
-!$omp parallel do private(j, i, ii, jj, kk, x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max, sum1)
-do i=1,1
-nthr = OMP_GET_NUM_THREADS()
-!write(*,*) "We are using", nthr, " thread(s)."
-enddo
-!$omp end parallel do
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-            do i=1,size(pix_atoms)
-!nthr = OMP_GET_NUM_THREADS()
-!write(*,*) "We are using", nthr, " thread(s) HERE."
+            do i=1,size_pix_atoms
+                !nthr = omp_get_num_threads() !omp_get_max_threads()
+                !write(*,*) "We are using", nthr, " thread(s) in Intensity."
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
@@ -722,7 +666,6 @@ enddo
                     k_1=0.82333
                     x1(i)=x2
                     y1(i)=y2
-!write(*,*) "j=", j, const1, rr_a(i)
                     j=int(const1*rr_a(i))
                     sum1(znum_r(i),i)=A1(j)
                 endif
@@ -730,7 +673,7 @@ enddo
             !$omp end parallel do
         else
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-            do i=1,size(pix_atoms)
+            do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
@@ -750,9 +693,9 @@ enddo
         ! Calculate gr_i for int_i in next loop.
         if(pixel_square) then
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-            do i=1,size(pix_atoms)
+            do i=1,size_pix_atoms
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
-                    do j=i,size(pix_atoms)
+                    do j=i,size_pix_atoms
                         if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le. sqrt1_2_res))then
                             x2=x1(i)-x1(j)
                             y2=y1(i)-y1(j)
@@ -760,7 +703,6 @@ enddo
                             kk=int(const2*rr)
                             if(i == j)then
                                 t1=sum1(znum_r(i),i)
-!write(*,*) "HERE2", kk
                                 gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
                             else
                                 t1=sum1(znum_r(i),i)
@@ -774,10 +716,10 @@ enddo
             !$omp end parallel do
         else
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-            do i=1,size(pix_atoms)
+            do i=1,size_pix_atoms
                 if(rr_a(i).le.res)then
                     !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
-                    do j=i,size(pix_atoms)
+                    do j=i,size_pix_atoms
                         if(rr_a(j).le.res)then
                             !if(rr_a(j) .le. res*3.0)then  !check cut-off effect
                             x2=x1(i)-x1(j)
@@ -799,18 +741,11 @@ enddo
             !$omp end parallel do
         endif !pixel_square
 
-        !allocate(pp_array(1:nk,0:bin_max)) !32 x 8001 size array....
-        !! Calculate int_i for output.
-        !forall( i=1:nk, j=0:bin_max, ii=1:m_int%nelements, jj=1:m_int%nelements)
-        !    pp_array(i,j) = const3*j*k(i)
-        !    int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp_array(i,j)))*gr_i(ii,jj,j)
-        !end forall
         !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
                     do jj=1,m_int%nelements
-                        !write(111,*)gr_i(ii,jj,j)
                         pp=const3*j*k(i)
                         int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
                     enddo
@@ -837,13 +772,12 @@ enddo
 
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
-        write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
+        !write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
         !write ( *, * ) 'Elapsed CPU time = ', timer2 - timer1
-
     end subroutine intensity
 
 
-    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat,square_pixel)
+    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel)
         use mpi
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
@@ -852,29 +786,19 @@ enddo
         real, dimension(:), intent(out) :: vk
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
+        logical, optional, intent(in) :: square_pixel
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq    !mpi
         integer :: comm
         type(model) :: moved_atom, rot_atom
         integer :: i, j, m, n, ntpix
-        real :: res2, rot_dist_sq, orig_dist_sq, temp1, temp2
-        REAL rr_x_old, rr_y_old, rr_x_new, rr_y_new
-        LOGICAL pixel_square
-        !real :: sqrt1_2_res
-        !integer :: old_mrot_roti_nat
-        !logical :: no_int_recal
+        logical :: pixel_square
         logical, dimension(:,:), allocatable :: update_pix
         type(index_list) :: pix_il
 
         istat = 0
-        ! res is diameter of a pixel, but later we need the square of the radius
-        res2 = (res)**2    !temporary - radius = resolution assumed - JWH 02/25/09
 
-        if( present(square_pixel)) then
-            pixel_square = square_pixel
-        else
-            pixel_square = .FALSE.
-        endif
+        if( present(square_pixel)) then; pixel_square = square_pixel
+        else; pixel_square = .FALSE.; endif
 
         allocate(update_pix(nrot,pa%npix)) !TODO add error message
         update_pix = .FALSE.
@@ -904,18 +828,14 @@ enddo
         allocate(psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), &
         sum_int_sq(size(k)), stat=istat)
 
-        old_int=0.0
-        old_int_sq=0.0
-
-        sum_int = 0.0
-        sum_int_sq = 0.0
-
-        psum_int = 0.0
-        psum_int_sq = 0.0
+        old_int=0.0; old_int_sq=0.0
+        sum_int = 0.0; sum_int_sq = 0.0
+        psum_int = 0.0; psum_int_sq = 0.0
 
         ! ------- Rotate models and call intensity on necessary pixels. ------- !
         !write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         
+        write(*,*) "We have", numprocs, "processor(s)."
         rotations: do i=myid+1, nrot, numprocs
 
             ! Store the current (soon to be old) intensities for fem_reject_move
@@ -927,7 +847,6 @@ enddo
 
             ! Rotate that moved_atom into rot_atom. moved_atom is unchanged.
             call rotate_model(rot(i,1), rot(i, 2), rot(i, 3), moved_atom, rot_atom, istat)
-!write(*,*) "natoms to check in pixels", rot_atom%natoms + moved_atom%natoms
             ! Note that mrot is the array containing the rotated models with
             ! every atom in them; it is different than these. rot_atom now
             ! contains a model that needs to be incorporated into mrot(i) in the
@@ -963,36 +882,10 @@ enddo
                         mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), istat)
                 enddo
 
-                ! ------- Update pixels for original positions. ------- !
+                ! ------- Update pixels for original and new positions. ------- !
 
                 ! Now check if the original position of the moved atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
-                ! The same loop is in Intensity.
-                do m=1, pa%npix
-                    do n=1, mrot(i)%rot_i(atom)%nat !CHECK if this is the correct bound.
-                    ! This is not the upper bound that Paul had, I dont know why
-                    ! his worked but this one makes sense to me based on the
-                    ! previous do loop. TODO. Also note that old_pos is
-                    ! nullified in fem_reject / fem_accept.
-                        temp1 = old_pos(i)%pos(n,1) - pa%pix(m,1)
-                        temp2 = old_pos(i)%pos(n,2) - pa%pix(m,2)
-                        temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx)
-                        temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly)
-                        if(pixel_square) then
-                            rr_x_old = ABS(temp1) ! For square pixel
-                            rr_y_old = ABS(temp2) ! For square pixel
-                            if( (rr_x_old .LE. res) .AND. (rr_y_old .LE. res) ) then
-                                !update_pix(i,m) = .TRUE.
-                            endif
-                        else
-                            orig_dist_sq = (temp1)**2 + (temp2)**2 ! For round pixel
-                            if(orig_dist_sq <= res2) then
-                                !update_pix(i,m) = .TRUE.
-                            endif
-                        endif
-                    enddo
-                enddo
-
                 do n=1, mrot(i)%rot_i(atom)%nat
                     call pixel_positions(old_pos(i)%pos(n,1), &
                         old_pos(i)%pos(n,2), pix_il)
@@ -1000,33 +893,8 @@ enddo
                         update_pix(i,pix_il%ind(m)) = .TRUE.
                     enddo
                 enddo
-                
-                ! ------- Update pixels for new positions. ------- !
-
                 ! Now check if the position of the rotated atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
-                ! The same loop is in Intensity.
-                do m=1, pa%npix
-                    do n=1, rot_atom%natoms
-                        temp1 = rot_atom%xx%ind(n) - pa%pix(m,1)
-                        temp2 = rot_atom%yy%ind(n) - pa%pix(m,2)
-                        temp1 = temp1 - mrot(i)%lx*anint(temp1/mrot(i)%lx) !PBC I think
-                        temp2 = temp2 - mrot(i)%ly*anint(temp2/mrot(i)%ly) !PBC I think
-                        if(pixel_square) then
-                            rr_x_new = ABS(temp1) ! For square pixel
-                            rr_y_new = ABS(temp2) ! For square pixel
-                            if( (rr_x_new .LE. res) .AND. (rr_y_new .LE. res) ) then
-                                !update_pix(i,m) = .TRUE.
-                            endif
-                        else
-                            rot_dist_sq = (temp1)**2 + (temp2)**2 ! For round pixel
-                            if( rot_dist_sq <= res2 ) then
-                                !update_pix(i,m) = .TRUE.
-                            endif
-                        endif
-                    enddo
-                enddo
-
                 do n=1, rot_atom%natoms
                     call pixel_positions(rot_atom%xx%ind(n), &
                         rot_atom%yy%ind(n), pix_il)
@@ -1034,7 +902,6 @@ enddo
                         update_pix(i,pix_il%ind(m)) = .TRUE.
                     enddo
                 enddo
-
 
                 ! ------- Update atoms in the rotated model. ------- !
                 if( mrot(i)%rot_i(atom)%nat .eq. rot_atom%natoms ) then
@@ -1048,13 +915,8 @@ enddo
 
                 else if( rot_atom%natoms .ge. mrot(i)%rot_i(atom)%nat ) then
                 ! The number of times the atom appears went up (duplication).
-
-
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
-                    ! the number of atoms was changed. It destroys mrot(i) and
-                    ! rebuilds it. This could be done better - I could figure out
-                    ! how to revert, but that is a fair amount of work. This will
-                    ! work for now.
+                    ! the number of atoms was changed.
                     old_index(i)%nat = -1
 
                     ! The atom positions in the rotated model (not atom) should
@@ -1075,21 +937,18 @@ enddo
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
                 ! The number of times the atom appears in the rotated model went down.
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
-                    ! the number of atoms was changed. It destroys mrot(i) and
-                    ! rebuilds it. This could be done better - I could figure out
-                    ! how to revert, but that is a fair amount of work. This will
-                    ! work for now.
+                    ! the number of atoms was changed.
                     old_index(i)%nat = -1
                 
                     ! First I want to sort the indices in mrot(i)%rot_i(atom)
                     ! so that when we delete an atom from this array we will
-                    ! always be deleting that atom with the highest index. That
+                    ! always be deleting the atom with the highest index. That
                     ! way our array deletion is faster in the remove_atom
                     ! function.
                     call sort(mrot(i)%rot_i(atom))
 
                     ! The atom positions in the rotated model (not atom) should
-                    ! be updated to the number of atoms in rot_atom. This
+                    ! be updated up to the number of atoms in rot_atom. This
                     ! saves deleting rot_i(atom) and re-implementing it, as well
                     ! as all the atoms it points to.
                     do j=1,rot_atom%natoms
@@ -1103,17 +962,14 @@ enddo
                     ! next call to remove_atom needs the same index, not the
                     ! next one. So instead of j, we use rot_atom%natoms+1.
                     ! But we still need to call remove_atom j times.
-!write(*,*) mrot(i)%rot_i(atom)%nat, mrot(i)%rot_i(atom)%ind
                     do j=rot_atom%natoms+1, mrot(i)%rot_i(atom)%nat
                         call remove_atom(mrot(i), atom, mrot(i)%rot_i(atom)%ind(rot_atom%natoms+1) )
-!if(mrot(i)%rot_i(atom)%nat /= 0) write(*,*) mrot(i)%rot_i(atom)%nat, mrot(i)%rot_i(atom)%ind
                     enddo
                 endif
-                ! ENDING: Update the rotated positions in mrot(i).
 
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
 
-            call destroy_model(rot_atom)
+            call destroy_model(rot_atom) ! I might have a memory leak somewhere. I wonder if it is here.
             !Deallocate ind in rot_atom%rot_i
             !do n=1, size(rot_atom%rot_i,1)
             !    if(allocated(rot_atom%rot_i(n)%ind))then
@@ -1126,22 +982,22 @@ enddo
         enddo rotations
 
         ! For debugging only.
-        ntpix = 0
-        do i=1, nrot
-            do m=1, pa%npix
-                if(update_pix(i,m) == .TRUE.) then
-                    ntpix = ntpix + 1
-                endif
-            enddo
-        enddo
+        !ntpix = 0
+        !do i=1, nrot
+        !    do m=1, pa%npix
+        !        if(update_pix(i,m) == .TRUE.) then
+        !            ntpix = ntpix + 1
+        !        endif
+        !    enddo
+        !enddo
         !write(*,*) "Calling Intensity on ", ntpix, " pixels."
         !write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
         ! Update pixels if necessary.
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    !call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        !int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo
@@ -1167,13 +1023,13 @@ enddo
         endif
 
         !deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
-        call destroy_model(moved_atom)
+        call destroy_model(moved_atom) ! Memory leak?
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
     end subroutine fem_update
 
     subroutine fem_accept_move(comm)
-    ! accept the move.  don't need to change any of the atom positions in any of the rotated
-    ! models, but we do need to clear the old_index and old_pos arrays for reuse.
+    ! Accept the move.  The atom positions are already changed in the rotated
+    ! models, so we only need to clear old_index and old_pos arrays for reuse.
         use mpi
         integer :: comm, j
         do j=myid+1, nrot, numprocs ! Added by Jason 20130731
@@ -1183,8 +1039,6 @@ enddo
     end subroutine fem_accept_move
 
     subroutine fem_reset_old(comm)
-        ! TODO Make sure I should be deallocating. Also, search for
-        ! 'deallocate(' and check the same thing.
         use mpi
         integer :: i, comm
         do i=myid+1, nrot, numprocs
@@ -1195,47 +1049,44 @@ enddo
         enddo
     end subroutine fem_reset_old
 
-    subroutine fem_reject_move(m, comm)
-    ! reject the move.  replace all the moved atoms with their original positions. 
-    ! requires that the model argument have the original (unmoved) positions in it.
+    subroutine fem_reject_move(comm)
+    ! Reject the move. If the atom was simply moved, unmove it using old_pos and old_index.
+    ! If the atom appeared or disappeared we will use mcopy to replace mrot for each rotation.
         use mpi
-        type(model), intent(inout) :: m
-        integer :: i, j, istat
+        integer :: i, j
         integer :: comm
 
         do i=myid+1, nrot, numprocs
             ! If the rotated atom wasn't in the model, this model doesn't need
             ! to be changed.
-            if(old_index(i)%nat == 0) cycle
+            if(.not. old_index(i)%nat == 0) then
+                ! If the move changed the number of atoms in the model, the model
+                ! must be re-rotated from scratch.
+                if(old_index(i)%nat == -1) then
+                    call copy_model(mcopy(i), mrot(i)) ! Added by Jason 20130731. Commented out destroy_model and rotate_model.
+                else
+                ! Otherwise, copy the old positions back into the model at the
+                ! correct indices.
+                    do j=1,old_index(i)%nat
+                        mrot(i)%xx%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
+                        mrot(i)%yy%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
+                        mrot(i)%zz%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,3)
+                    enddo
+                endif
 
-            ! If the move changed the number of atoms in the model, the model
-            ! must be re-rotated from scratch.
-            if(old_index(i)%nat == -1) then
-                !call destroy_model(mrot(i))
-                !call rotate_model(rot(i,1), rot(i,2), rot(i,3), m, mrot(i), istat)
-                call copy_model(mcopy(i), mrot(i)) ! Added by Jason 20130731. Commented out destroy_model and rotate_model.
-                cycle
+                !The saved intensity values must return to their old values - JWH
+                !03/05/09
+                do j=1, pa%npix
+                    int_i(1:nk, j, i) = old_int(1:nk, j, i)
+                    int_sq(1:nk, j, i) = old_int_sq(1:nk, j, i)
+                enddo
             endif
-
-            ! Otherwise, copy the old positions back into the model at the
-            ! correct indices.
-            do j=1,old_index(i)%nat
-                mrot(i)%xx%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
-                mrot(i)%yy%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
-                mrot(i)%zz%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,3)
-            enddo
-
-            !The saved intensity values must return to their old values - JWH
-            !03/05/09
-            do j=1, pa%npix
-                int_i(1:nk, j, i) = old_int(1:nk, j, i)
-                int_sq(1:nk, j, i) = old_int_sq(1:nk, j, i)
-            enddo
         enddo
         call fem_reset_old(comm)
     end subroutine fem_reject_move
 
     subroutine add_pos(p, xx, yy, zz, istat)
+    ! Adds xx, yy, zz to p%ind and increments p%pos.
         type(pos_list), intent(inout) :: p
         real, intent(in) :: xx, yy,  zz
         integer, intent(out) :: istat
@@ -1260,9 +1111,7 @@ enddo
              p%pos(1,2) = yy
              p%pos(1,3) = zz
         endif
-        if (istat /= 0) then
-            write (*,*) 'Error allocating memory in add_pos.'
-        endif
+        call check_allocation(istat, 'Error allocating memory in add_pos.')
         if (allocated(scratch)) then
             deallocate(scratch)  ! added 3/18/09 pmv 
         endif
@@ -1275,6 +1124,7 @@ enddo
     ! model (using pixels). Ideally, all numbers will be 1. A 0 means that atom
     ! is not included in the simulation at all, and a 2 means an atoms is
     ! sampled twice as much as an atom with a 1.
+    ! Currently not working.
         type(model), intent(in) :: m
         integer, dimension(:), allocatable :: sampled_atoms ! This array is of size natoms,
         ! is initialized to 0, and position i is incremented every time atom i is used
@@ -1306,6 +1156,7 @@ enddo
 
 
     subroutine pixel_positions(xx, yy, il)
+    ! Return the pixel(s) that encompass(es) position xx, yy in il.
         real, intent(in) :: xx, yy
         type(index_list), intent(out) :: il
         integer :: i, k
@@ -1330,7 +1181,6 @@ enddo
                 k = k + 1
             endif
         enddo
-
     end subroutine pixel_positions
 
 

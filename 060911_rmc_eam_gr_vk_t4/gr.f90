@@ -92,9 +92,9 @@ contains
         type(model), intent(in) :: m                                
         integer, intent(out) :: istat
         integer i, j, k                        
-        real, dimension(103,3):: a_e, b_e, c_e, d_e
-        real, dimension(98,4):: a_x, b_x, c_x, d_x
-        real ff,q
+        !real, dimension(103,3):: a_e, b_e, c_e, d_e
+        !real, dimension(98,4):: a_x, b_x, c_x, d_x
+        real q
         real scatfact_e(103,100),scatfact_x(98,100)
         real scat_binsize
         real, allocatable, dimension(:,:,:) :: fifj

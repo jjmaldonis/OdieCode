@@ -1,16 +1,18 @@
 #!/bin/bash
 
 # declare a name for this job (replace <jobname> with something more descriptive)
-#$ -N rmc_0730
+#$ -N rmc
 
 # request the queue for this job
 # replace <queue_name> with queue_name e.g all.q
-#$ -q all.q
+# all.q contains 8 slots for every node. testqueue.q contains 1 slot for every queue and therefore should be
+# used with OpenMP in addition to OpenMPI. Both are currently using the same hosts (nodes). - Jason 20130802
+#$ -q testqueue.q
 
 # request computational resources for this job as follows
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It's suggested use 12*integer processors here. 
-#$ -pe orte 64
+#$ -pe orte 16
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=72:00:00

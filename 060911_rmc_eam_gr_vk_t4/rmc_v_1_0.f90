@@ -22,6 +22,8 @@
 ! Vk allocated before initial Vk - JWH 04/02/2009
 ! hutch_move_atom added in reject part - JWH 04/15/2009.
 ! gr_e_err is added - jwh 04/25/2009
+! See commit history for changes by jjm on Github: (check all branches)
+!   https://github.com/refreshx2/OdieCode/tree/master/060911_rmc_eam_gr_vk_t4
 
 program rmc
 
@@ -37,12 +39,10 @@ program rmc
     include 'mpif.h'
     type(model) :: m
     character (len=256) :: model_filename
-    character (len=256) :: vk_filename
     character (len=256) :: param_filename  
     character (len=256) :: outbase
     character (len=512) :: comment
     logical, dimension(4) :: used_data_sets
-    !logical :: not_too_short
     real :: temperature
     real :: max_move
     real :: Q, res
@@ -75,18 +75,9 @@ program rmc
     doubleprecision :: t0, t1 !timers
 
     !call mpi_init(mpierr)
-
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
-
-    !call omp_set_num_threads(2) ! Use use the default 8
-    !$omp parallel do
-    do i=1,1
-    nthr = omp_get_num_threads()
-    write(*,*) "We are using", nthr, "thread(s) in rmc."
-    enddo
-    !$omp end parallel do
 
     if(myid.eq.0)then
         write(*,*)
@@ -97,15 +88,12 @@ program rmc
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
     model_filename = 'model_040511c_t2_final.xyz'
-    !model_filename = 'asq_npt_heat_10000000.xyz'
     param_filename = 'param_file.in'
     outbase = ""
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
     call check_model(m, istat)
-    ! recenter_model is called in read_model so it doesnt need to be called
-    ! agian I dont think. Its small though.
     call recenter_model(0.0, 0.0, 0.0, m)
 
     ! Read input parameters
@@ -125,23 +113,12 @@ program rmc
 
     call read_eam(m)   
     call eam_initial(m, te1)
-
     write(*,*)"te1=", te1
 
-    ! Initialize and calculate initial gr
     call scatt_power(m,used_data_sets,istat)
-    !write (*,*) 'Znum reduced, scatt pow initialized.'
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
-
-    ! call gr_no_hutch(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
-
-    ! Initialize and calculate initial vk
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
-
-    !call print_sampled_map(m, res, square_pixel)
-
     allocate(vk(size(vk_exp)))
-
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
     if(myid.eq.0)then
@@ -161,7 +138,7 @@ program rmc
         close(52)
     endif
 
-!stop ! Uncomment for femsim.
+stop ! Uncomment for femsim.
 
     ! Initial chi2
     chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
@@ -173,24 +150,20 @@ program rmc
 
     if(myid.eq.0)then
         write(*,*)"initial"
-        write(*,*)chi2_old, chi2_gr, chi2_vk, te1, temperature
         write(*,*)"  i, chi2_gr, chi2_vk, te1, temperature"
-
+        write(*,*)  i, chi2_old, chi2_gr, chi2_vk, te1, temperature
         write(*,*)
         write(*,*)"Initialization complete. Starting Monte Carlo."
         write(*,*)
     endif
-    t0 = mpi_wtime()
+
     ! RMC step begins
-
-    !*********update here*******************
+    t0 = mpi_wtime()
     i=1315708
-    !***************************************
-
     ! Fortran's max int is 2147483647, and 2147483647 + 1 = -2147483648, so this
     ! loop will stop at i= one after i=2147483647.
     ! The loops also stops if the temperature goes below a certain temp (30.0).
-    do while (i >0)
+    do while (i > 0)
         i=i+1
 
         call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
@@ -207,32 +180,25 @@ program rmc
         ! Update hutches, data for chi2, and chi2/del_chi
         call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
         call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
-        !call gr_hutch_mc(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new,used_data_sets,istat) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
         call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
         !write(*,*) "Finished updating eam, gr, and fem data."
         
-        chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err,&
-            gr_e_sim_new, gr_n_sim_new, gr_x_sim_new, vk, scale_fac,&
-            rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+        chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
+            gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
+            gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
+            rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
         chi2_new = chi2_new + te2
         del_chi = chi2_new - chi2_old
 
         call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
            
-        ! TODO Jason - Check if this is being done as well as it could be.
-        ! the accept and reject functions shouldn't both have the same do loops
-        ! in them.
         randnum = ran2(iseed2)
         ! Test if the move should be accepted or rejected based on del_chi
         if(del_chi <0.0)then
             ! Accept the move
             e1 = e2
-            !call accept_gr(m, used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
             call fem_accept_move(mpi_comm_world)
-            if(myid.eq.0)then
-                !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
-            endif
             chi2_old = chi2_new
             write(*,*) "MC move accepted outright."
         else
@@ -241,11 +207,7 @@ program rmc
             if(log(1.-randnum)<-del_chi*beta)then
                 ! Accept move
                 e1 = e2
-                !call accept_gr(m, used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
                 call fem_accept_move(mpi_comm_world)
-                if(myid.eq.0)then
-                    !write(*,*)i, chi2_gr, chi2_vk, te2, temperature
-                endif
                 chi2_old = chi2_new
                 if(myid.eq.0)then
                     write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
@@ -255,8 +217,7 @@ program rmc
                 e2 = e1
                 call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                !call reject_gr(m,used_data_sets) ! Jason 20130725 bc not in rmc in Jinwoos 040511c_t1
-                call fem_reject_move(m, mpi_comm_world)
+                call fem_reject_move(mpi_comm_world)
                 write(*,*) "MC move rejected."
             endif
         endif
@@ -264,9 +225,9 @@ program rmc
         ! Every 50,000 steps lower the temp, max_move, and reset beta.
         if(mod(i,50000)==0)then
             temperature = temperature * sqrt(0.7)
-if(myid.eq.0)then
-write(*,*) "Lowering temp to", temperature, "at step", i
-endif
+            if(myid.eq.0)then
+                write(*,*) "Lowering temp to", temperature, "at step", i
+            endif
             max_move = max_move * sqrt(0.94)
             beta=1./((8.6171e-05)*temperature)
             if(myid.eq.0)then
@@ -284,16 +245,11 @@ endif
         ! statistically jumped way up. We could also write del_chi (or instead).
         if(mod(i,1000)==0)then
             if(myid.eq.0)then
-                open(31,file=outbase//'_gr_update.txt',form='formatted',status='unknown')
-                open(32,file=outbase//'_vk_update.txt',form='formatted',status='unknown')
-                open(33,file=outbase//'_model_update.txt',form='formatted',status='unknown')
-                open(34,file=outbase//'_energy_function.txt',form='formatted',status='unknown')
-                open(35,file=outbase//'_time_elapsed.txt',form='formatted',status='unknown')
-                ! Write to gr_update        
-                !do j=1, mbin_x
-                !    R = del_r_x*(j)-del_r_x
-                !    write(31,*)R, gr_x_sim_new(j)
-                !enddo
+                open(31,file=outbase//'gr_update.txt',form='formatted',status='unknown')
+                open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
+                open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
+                open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown')
+                open(35,file=outbase//'time_elapsed.txt',form='formatted',status='unknown')
                 ! Write to vk_update
                 do j=1, nk
                     write(32,*)k(j),vk(j)
@@ -310,54 +266,35 @@ endif
                 ! Write to time_elapsed
                 t1 = mpi_wtime()
                 write (34,*) i, t1-t0
-                ! Close files
-                close(31)
-                close(32)
-                close(33)
-                close(34)
-                close(35)
+                close(31); close(32); close(33); close(34); close(35) ! Close files
             endif
         endif
-    ENDDO
+    enddo
 
     write(*,*) "Monte Carlo Finished!"
 
     ! The rmc loop finished. Write final data.
     if(myid.eq.0)then
-        t1 = mpi_wtime()
-        write(*,*)"time=", t1-t0, "sec"
-        write(*,*)t1, t0
-
-        ! Write final gr
-        !open(unit=53,file=outbase//"_gr_update_final.txt",form='formatted',status='unknown')
-        !do i=1, mbin_e
-        !    R = del_r_e*(i)-del_r_e
-        !    write(53,*)R, gr_e_sim_new(i)
-        !enddo
-        !close(53)
-        
         ! Write final vk
-        open(unit=54,file=outbase//"_vk_update_final.txt",form='formatted',status='unknown')
+        open(unit=54,file=outbase//"vk_update_final.txt",form='formatted',status='unknown')
         do i=1, nk
             write(54,*)k(i),vk(i)
         enddo
         close(54)
-        
         ! Write final model
-        open(unit=55,file=outbase//"_model_update_final.txt",form='formatted',status='unknown')
+        open(unit=55,file=outbase//"model_update_final.txt",form='formatted',status='unknown')
         write(55,*)"updated model"
         write(55,*)m%lx,m%ly,m%lz
         do i=1,m%natoms
             write(55,*)m%znum%ind(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
         enddo
-        write(55,*)"-1"
-        close(55)
+        write(55,*)"-1"; close(55)
         ! Write final energy.
-        open(56,file=outbase//'_energy_function.txt',form='formatted', status='unknown')
+        open(56,file=outbase//'energy_function.txt',form='formatted', status='unknown')
         write(56,*) te1, i
         close(56)
         ! Write final time spent.
-        open(57,file=outbase//'_time_elapsed.txt',form='formatted',status='unknown')
+        open(57,file=outbase//'time_elapsed.txt',form='formatted',status='unknown')
         t1 = mpi_wtime()
         write (34,*) i, t1-t0
         close(57)
