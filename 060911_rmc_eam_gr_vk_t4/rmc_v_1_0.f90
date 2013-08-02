@@ -70,7 +70,7 @@ program rmc
     integer :: iseed2
     real :: randnum
     real :: te1, te2
-    logical :: square_pixel, use_femsim, accepted
+    logical :: square_pixel, use_femsim, accepted, use_rmc
     integer :: ipvd, nthr
     doubleprecision :: t0, t1 !timers
 
@@ -78,6 +78,8 @@ program rmc
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
+    
+    t0 = mpi_wtime()
 
     if(myid.eq.0)then
         write(*,*)
@@ -111,7 +113,13 @@ program rmc
     iseed2 = 104756
 
     square_pixel = .TRUE. ! RMC uses square pixels, not round.
+    ! It would make sense for the two below to always be opposites, but due to
+    ! the code in subroutine fem I don't want to do that right now. I want to
+    ! always do the rmc if statement in fem - but I dont always want to do the
+    ! rmc loop in this file. I may remove the if statement in fem eventually,
+    ! but for now I will just use two different variables.
     use_femsim = .FALSE.
+    use_rmc = .FALSE.
 
     call read_eam(m)   
     call eam_initial(m, te1)
@@ -121,6 +129,9 @@ program rmc
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)))
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+
+    t1 = mpi_wtime()
+    write(*,*) "Femsim took", t1-t0, "seconds."
 
     if(myid.eq.0)then
         ! Write initial gr
@@ -139,182 +150,185 @@ program rmc
         close(52)
     endif
 
-!stop ! Uncomment for femsim.
+    if(use_rmc) then ! End here if we only want femsim. Set the variable above.
 
-    ! Initial chi2
-    chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
-        gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
-        rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
-    chi2_old = chi2_old + te1 
+        ! Initial chi2
+        chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
+            gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
+            rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+        chi2_old = chi2_old + te1 
 
-    e2 = e1
+        e2 = e1
 
-    ! RMC step begins
-    t0 = mpi_wtime()
-    i=1315708
-    if(myid.eq.0)then
-        write(*,*)
-        write(*,*) "Initialization complete. Starting Monte Carlo."
-        write(*,*) "Initial Conditions:"
-        write(*,*) "   Step =      ", i
-        write(*,*) "   Energy =     ", te1
-        write(*,*) "   Temperature =", temperature
-        write(*,*)
-    endif
+        ! RMC step begins
+        t0 = mpi_wtime()
+        i=1315708
+        if(myid.eq.0)then
+            write(*,*)
+            write(*,*) "Initialization complete. Starting Monte Carlo."
+            write(*,*) "Initial Conditions:"
+            write(*,*) "   Step =      ", i
+            write(*,*) "   Energy =     ", te1
+            write(*,*) "   Temperature =", temperature
+            write(*,*)
+        endif
 
-    ! Reset time_elapsed and energy_function
-    open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown')
-        t1 = mpi_wtime()
-        write (35,*) i, t1-t0
-    close(35)
-    open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown')
-        write(34,*) i, te1
-    close(34)
+        ! Reset time_elapsed and energy_function
+        open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown')
+            t1 = mpi_wtime()
+            write (35,*) i, t1-t0
+        close(35)
+        open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown')
+            write(34,*) i, te1
+        close(34)
 
 
-    ! Fortran's max int is 2147483647, and 2147483647 + 1 = -2147483648, so this
-    ! loop will stop at i= one after i=2147483647.
-    ! The loops also stops if the temperature goes below a certain temp (30.0).
-    do while (i > 0)
-        i=i+1
+        ! Fortran's max int is 2147483647, and 2147483647 + 1 = -2147483648, so this
+        ! loop will stop at i= one after i=2147483647.
+        ! The loops also stops if the temperature goes below a certain temp (30.0).
+        do while (i > 0)
+            i=i+1
 
-        if( i - 1315708 > 100) stop ! Stop after 100 steps for timing runs.
+            if( i - 1315708 > 100) stop ! Stop after 100 steps for timing runs.
 
-        call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
-        ! check_curoffs returns false if the new atom placement is too close to
-        ! another atom. Returns true if the move is okay. (hard shere cutoff)
-        do while( .not. check_cutoffs(m,cutoff_r,w) )
-            ! Check_cutoffs returned false so reset positions and try again.
-            m%xx%ind(w) = xx_cur
-            m%yy%ind(w) = yy_cur
-            m%zz%ind(w) = zz_cur
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
-        end do
+            ! check_curoffs returns false if the new atom placement is too close to
+            ! another atom. Returns true if the move is okay. (hard shere cutoff)
+            do while( .not. check_cutoffs(m,cutoff_r,w) )
+                ! Check_cutoffs returned false so reset positions and try again.
+                m%xx%ind(w) = xx_cur
+                m%yy%ind(w) = yy_cur
+                m%zz%ind(w) = zz_cur
+                call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
+            end do
 
-        ! Update hutches, data for chi2, and chi2/del_chi
-        call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
-        call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
-        call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
-        !write(*,*) "Finished updating eam, gr, and fem data."
-        
-        chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
-            gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
-            gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
-            rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+            ! Update hutches, data for chi2, and chi2/del_chi
+            call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
+            call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+            call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+            !write(*,*) "Finished updating eam, gr, and fem data."
+            
+            chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
+                gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
+                gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
+                rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
-        chi2_new = chi2_new + te2
-        del_chi = chi2_new - chi2_old
+            chi2_new = chi2_new + te2
+            del_chi = chi2_new - chi2_old
 
-        call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
-           
-        randnum = ran2(iseed2)
-        ! Test if the move should be accepted or rejected based on del_chi
-        if(del_chi <0.0)then
-            ! Accept the move
-            e1 = e2
-            call fem_accept_move(mpi_comm_world)
-            chi2_old = chi2_new
-            accepted = .true.
-            write(*,*) "MC move accepted outright."
-        else
-            ! Based on the random number above, even if del_chi is negative, decide
-            ! whether to move or not (statistically).
-            if(log(1.-randnum)<-del_chi*beta)then
-                ! Accept move
+            call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
+               
+            randnum = ran2(iseed2)
+            ! Test if the move should be accepted or rejected based on del_chi
+            if(del_chi <0.0)then
+                ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
                 chi2_old = chi2_new
                 accepted = .true.
-                if(myid.eq.0)then
-                    write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
-                endif
+                write(*,*) "MC move accepted outright."
             else
-                ! Reject move
-                e2 = e1
-                call reject_position(m, w, xx_cur, yy_cur, zz_cur)
-                call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                call fem_reject_move(mpi_comm_world)
-                accepted = .false.
-                write(*,*) "MC move rejected."
-            endif
-        endif
-
-        ! Every 50,000 steps lower the temp, max_move, and reset beta.
-        if(mod(i,50000)==0)then
-            temperature = temperature * sqrt(0.7)
-            if(myid.eq.0)then
-                write(*,*) "Lowering temp to", temperature, "at step", i
-            endif
-            max_move = max_move * sqrt(0.94)
-            beta=1./((8.6171e-05)*temperature)
-            if(myid.eq.0)then
-                if(temperature.lt.30.0)then
+                ! Based on the random number above, even if del_chi is negative, decide
+                ! whether to move or not (statistically).
+                if(log(1.-randnum)<-del_chi*beta)then
+                    ! Accept move
+                    e1 = e2
+                    call fem_accept_move(mpi_comm_world)
+                    chi2_old = chi2_new
+                    accepted = .true.
                     if(myid.eq.0)then
-                        write(*,*) "STOPPING MC DUE TO TEMP"
+                        write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                     endif
-                    stop
+                else
+                    ! Reject move
+                    e2 = e1
+                    call reject_position(m, w, xx_cur, yy_cur, zz_cur)
+                    call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
+                    call fem_reject_move(mpi_comm_world)
+                    accepted = .false.
+                    write(*,*) "MC move rejected."
                 endif
             endif
-        endif
 
-        ! Periodically save data.
-        if(mod(i,1)==0)then
-            if(myid.eq.0)then
-                open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
-                open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
-                open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown',access='append')
-                open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown',access='append')
-                ! Write to vk_update
-                do j=1, nk
-                    write(32,*)k(j),vk(j)
-                enddo
-                ! Write to model_update
-                !write(33,*)"updated model"
-                !write(33,*)m%lx,m%ly,m%lz
-                !do j=1,m%natoms
-                !    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
-                !enddo
-                !write(33,*)"-1"
-                if(accepted) then
-                    ! Write to energy_function
-                    write(34,*) i, te2
+            ! Every 50,000 steps lower the temp, max_move, and reset beta.
+            if(mod(i,50000)==0)then
+                temperature = temperature * sqrt(0.7)
+                if(myid.eq.0)then
+                    write(*,*) "Lowering temp to", temperature, "at step", i
                 endif
-                ! Write to time_elapsed
-                t1 = mpi_wtime()
-                write (35,*) i, t1-t0
-                close(32); close(33); close(34); close(35) ! Close files
+                max_move = max_move * sqrt(0.94)
+                beta=1./((8.6171e-05)*temperature)
+                if(myid.eq.0)then
+                    if(temperature.lt.30.0)then
+                        if(myid.eq.0)then
+                            write(*,*) "STOPPING MC DUE TO TEMP"
+                        endif
+                        stop
+                    endif
+                endif
             endif
+
+            ! Periodically save data.
+            if(mod(i,1)==0)then
+                if(myid.eq.0)then
+                    open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
+                    open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
+                    open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown',access='append')
+                    open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown',access='append')
+                    ! Write to vk_update
+                    do j=1, nk
+                        write(32,*)k(j),vk(j)
+                    enddo
+                    ! Write to model_update
+                    !write(33,*)"updated model"
+                    !write(33,*)m%lx,m%ly,m%lz
+                    !do j=1,m%natoms
+                    !    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
+                    !enddo
+                    !write(33,*)"-1"
+                    if(accepted) then
+                        ! Write to energy_function
+                        write(*,*) i, te2
+                        write(34,*) i, te2
+                    endif
+                    ! Write to time_elapsed
+                    t1 = mpi_wtime()
+                    write (*,*) i, t1-t0
+                    write (35,*) i, t1-t0
+                    close(32); close(33); close(34); close(35) ! Close files
+                endif
+            endif
+        enddo
+
+        write(*,*) "Monte Carlo Finished!"
+
+        ! The rmc loop finished. Write final data.
+        if(myid.eq.0)then
+            ! Write final vk
+            open(unit=54,file=outbase//"vk_update_final.txt",form='formatted',status='unknown')
+            do i=1, nk
+                write(54,*)k(i),vk(i)
+            enddo
+            close(54)
+            ! Write final model
+            open(unit=55,file=outbase//"model_update_final.txt",form='formatted',status='unknown')
+            write(55,*)"updated model"
+            write(55,*)m%lx,m%ly,m%lz
+            do i=1,m%natoms
+                write(55,*)m%znum%ind(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
+            enddo
+            write(55,*)"-1"; close(55)
+            ! Write final energy.
+            open(56,file=outbase//'energy_function.txt',form='formatted', status='unknown',access='append')
+            write(56,*) i, te2
+            close(56)
+            ! Write final time spent.
+            open(57,file=outbase//'time_elapsed.txt',form='formatted',status='unknown',access='append')
+            t1 = mpi_wtime()
+            write (57,*) i, t1-t0
+            close(57)
         endif
-    enddo
-
-    write(*,*) "Monte Carlo Finished!"
-
-    ! The rmc loop finished. Write final data.
-    if(myid.eq.0)then
-        ! Write final vk
-        open(unit=54,file=outbase//"vk_update_final.txt",form='formatted',status='unknown')
-        do i=1, nk
-            write(54,*)k(i),vk(i)
-        enddo
-        close(54)
-        ! Write final model
-        open(unit=55,file=outbase//"model_update_final.txt",form='formatted',status='unknown')
-        write(55,*)"updated model"
-        write(55,*)m%lx,m%ly,m%lz
-        do i=1,m%natoms
-            write(55,*)m%znum%ind(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
-        enddo
-        write(55,*)"-1"; close(55)
-        ! Write final energy.
-        open(56,file=outbase//'energy_function.txt',form='formatted', status='unknown',access='append')
-        write(56,*) i, te2
-        close(56)
-        ! Write final time spent.
-        open(57,file=outbase//'time_elapsed.txt',form='formatted',status='unknown',access='append')
-        t1 = mpi_wtime()
-        write (57,*) i, t1-t0
-        close(57)
-    endif
+    endif ! Use RMC
     call mpi_finalize(mpierr)
 
 end program rmc

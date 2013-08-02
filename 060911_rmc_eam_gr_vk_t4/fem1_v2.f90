@@ -518,7 +518,7 @@ contains
             int_sq = int_i*int_i
             do i=1, nk
                 Vk(i) = (sum(int_sq(i,1:pa%npix,1:nrot)/(pa%npix*nrot))/(sum(int_i(i,1:pa%npix,1:nrot)/(pa%npix*nrot))**2) ) - 1.0 !tempporally added by Feng Yi just for femsim
-                !write(*,*) k(i), Vk(i), sum(int_i(i,1:pa%npix,1:nrot)/(pa%npix*nrot))
+                Vk(i) = Vk(i) - v_background(i)  ! background subtraction   jjm 2030802
             enddo
 
         !***********************************************************
