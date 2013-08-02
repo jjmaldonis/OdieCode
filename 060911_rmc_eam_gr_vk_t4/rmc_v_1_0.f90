@@ -70,7 +70,7 @@ program rmc
     integer :: iseed2
     real :: randnum
     real :: te1, te2
-    logical :: square_pixel, use_femsim
+    logical :: square_pixel, use_femsim, accepted
     integer :: ipvd, nthr
     doubleprecision :: t0, t1 !timers
 
@@ -98,9 +98,11 @@ program rmc
 
     ! Read input parameters
     allocate(cutoff_r(m%nelements,m%nelements),stat=istat)
-    call read_inputs(param_filename,temperature, max_move, cutoff_r, used_data_sets, weights, gr_e, r_e, gr_e_err, gr_n, r_n, &
-    gr_x, r_x, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, scale_fac, Q, fem_algorithm, pixel_distance, total_steps, &
-    rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
+    call read_inputs(param_filename,temperature, max_move, cutoff_r, &
+        used_data_sets, weights, gr_e, r_e, gr_e_err, gr_n, r_n, gr_x, &
+        r_x, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, &
+        scale_fac, Q, fem_algorithm, pixel_distance, total_steps, &
+        rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
 
     res = 0.61/Q
     nk = size(k)
@@ -113,7 +115,6 @@ program rmc
 
     call read_eam(m)   
     call eam_initial(m, te1)
-    write(*,*)"te1=", te1
 
     call scatt_power(m,used_data_sets,istat)
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
@@ -138,7 +139,7 @@ program rmc
         close(52)
     endif
 
-stop ! Uncomment for femsim.
+!stop ! Uncomment for femsim.
 
     ! Initial chi2
     chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
@@ -148,23 +149,36 @@ stop ! Uncomment for femsim.
 
     e2 = e1
 
-    if(myid.eq.0)then
-        write(*,*)"initial"
-        write(*,*)"  i, chi2_gr, chi2_vk, te1, temperature"
-        write(*,*)  i, chi2_old, chi2_gr, chi2_vk, te1, temperature
-        write(*,*)
-        write(*,*)"Initialization complete. Starting Monte Carlo."
-        write(*,*)
-    endif
-
     ! RMC step begins
     t0 = mpi_wtime()
     i=1315708
+    if(myid.eq.0)then
+        write(*,*)
+        write(*,*) "Initialization complete. Starting Monte Carlo."
+        write(*,*) "Initial Conditions:"
+        write(*,*) "   Step =      ", i
+        write(*,*) "   Energy =     ", te1
+        write(*,*) "   Temperature =", temperature
+        write(*,*)
+    endif
+
+    ! Reset time_elapsed and energy_function
+    open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown')
+        t1 = mpi_wtime()
+        write (35,*) i, t1-t0
+    close(35)
+    open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown')
+        write(34,*) i, te1
+    close(34)
+
+
     ! Fortran's max int is 2147483647, and 2147483647 + 1 = -2147483648, so this
     ! loop will stop at i= one after i=2147483647.
     ! The loops also stops if the temperature goes below a certain temp (30.0).
     do while (i > 0)
         i=i+1
+
+        if( i - 1315708 > 100) stop ! Stop after 100 steps for timing runs.
 
         call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
         ! check_curoffs returns false if the new atom placement is too close to
@@ -200,6 +214,7 @@ stop ! Uncomment for femsim.
             e1 = e2
             call fem_accept_move(mpi_comm_world)
             chi2_old = chi2_new
+            accepted = .true.
             write(*,*) "MC move accepted outright."
         else
             ! Based on the random number above, even if del_chi is negative, decide
@@ -209,6 +224,7 @@ stop ! Uncomment for femsim.
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
                 chi2_old = chi2_new
+                accepted = .true.
                 if(myid.eq.0)then
                     write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                 endif
@@ -218,6 +234,7 @@ stop ! Uncomment for femsim.
                 call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                 call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                 call fem_reject_move(mpi_comm_world)
+                accepted = .false.
                 write(*,*) "MC move rejected."
             endif
         endif
@@ -240,33 +257,32 @@ stop ! Uncomment for femsim.
             endif
         endif
 
-        ! Periodically save data. Are we saving the energy here??? We should!
-        ! The energy will tell us if there is a steady decline, or if it
-        ! statistically jumped way up. We could also write del_chi (or instead).
-        if(mod(i,1000)==0)then
+        ! Periodically save data.
+        if(mod(i,1)==0)then
             if(myid.eq.0)then
-                open(31,file=outbase//'gr_update.txt',form='formatted',status='unknown')
                 open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
                 open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
-                open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown')
-                open(35,file=outbase//'time_elapsed.txt',form='formatted',status='unknown')
+                open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown',access='append')
+                open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown',access='append')
                 ! Write to vk_update
                 do j=1, nk
                     write(32,*)k(j),vk(j)
                 enddo
                 ! Write to model_update
-                write(33,*)"updated model"
-                write(33,*)m%lx,m%ly,m%lz
-                do j=1,m%natoms
-                    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
-                enddo
-                write(33,*)"-1"
-                ! Write to energy_function
-                write(34,*) i, te1
+                !write(33,*)"updated model"
+                !write(33,*)m%lx,m%ly,m%lz
+                !do j=1,m%natoms
+                !    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
+                !enddo
+                !write(33,*)"-1"
+                if(accepted) then
+                    ! Write to energy_function
+                    write(34,*) i, te2
+                endif
                 ! Write to time_elapsed
                 t1 = mpi_wtime()
-                write (34,*) i, t1-t0
-                close(31); close(32); close(33); close(34); close(35) ! Close files
+                write (35,*) i, t1-t0
+                close(32); close(33); close(34); close(35) ! Close files
             endif
         endif
     enddo
@@ -290,13 +306,13 @@ stop ! Uncomment for femsim.
         enddo
         write(55,*)"-1"; close(55)
         ! Write final energy.
-        open(56,file=outbase//'energy_function.txt',form='formatted', status='unknown')
-        write(56,*) te1, i
+        open(56,file=outbase//'energy_function.txt',form='formatted', status='unknown',access='append')
+        write(56,*) i, te2
         close(56)
         ! Write final time spent.
-        open(57,file=outbase//'time_elapsed.txt',form='formatted',status='unknown')
+        open(57,file=outbase//'time_elapsed.txt',form='formatted',status='unknown',access='append')
         t1 = mpi_wtime()
-        write (34,*) i, t1-t0
+        write (57,*) i, t1-t0
         close(57)
     endif
     call mpi_finalize(mpierr)

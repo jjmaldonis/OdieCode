@@ -545,6 +545,11 @@ contains
             call check_allocation(istat, 'Failed to rotate model')
             enddo
 
+            ! Initialize the copies from the rotated models for fem_accept/reject.
+            do i=myid+1, nrot, numprocs
+                call copy_model(mrot(i), mcopy(i))
+            enddo
+
             allocate(old_index(nrot), old_pos(nrot), stat=istat)
             call check_allocation(istat, 'Cannot allocate memory for old indices and positions in fem_initialize.')
             ! Initialize old_index and old_pos arrays. The if statements should
@@ -579,6 +584,7 @@ contains
             endif
 
             deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
+
         ENDIF !Femsim or RMC
 
         time_in_int = 0.0 ! Reset for RMC.
@@ -606,7 +612,7 @@ contains
         real :: sqrt1_2_res
         real :: k_1
         real :: timer1, timer2
-        integer :: nthr
+        integer :: nthr, thrnum
 
         call cpu_time(timer1)
 
@@ -648,12 +654,18 @@ contains
         ! never called we should automatically have the max number of
         ! threads available in any parallel loop.
 
+        !!$omp parallel do
+        !do i=1,1
+        !    nthr = omp_get_num_threads() !omp_get_max_threads()
+        !    thrnum = omp_get_thread_num()
+        !    write(*,*) "We are using", nthr, " thread(s) in Intensity."
+        !enddo
+        !!$omp end parallel do
+
         ! Calculate sum1 for gr_i calculation in next loop.
         if(pixel_square) then
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
-                !nthr = omp_get_num_threads() !omp_get_max_threads()
-                !write(*,*) "We are using", nthr, " thread(s) in Intensity."
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
                 x2=x2-m_int%lx*anint(x2/m_int%lx)
@@ -835,7 +847,7 @@ contains
         ! ------- Rotate models and call intensity on necessary pixels. ------- !
         !write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         
-        write(*,*) "We have", numprocs, "processor(s)."
+        !write(*,*) "We have", numprocs, "processor(s)."
         rotations: do i=myid+1, nrot, numprocs
 
             ! Store the current (soon to be old) intensities for fem_reject_move
@@ -996,8 +1008,8 @@ contains
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                    !call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                    !    int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo

@@ -12,7 +12,8 @@
 # request computational resources for this job as follows
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It's suggested use 12*integer processors here. 
-#$ -pe orte 16
+# If the queue is testqueue, specify the number of nodes you want to use instead of cores.
+#$ -pe orte 1
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=72:00:00
