@@ -13,7 +13,7 @@
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It's suggested use 12*integer processors here. 
 # If the queue is testqueue, specify the number of nodes you want to use instead of cores.
-#$ -pe orte 16
+#$ -pe orte 1
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=72:00:00
@@ -24,7 +24,7 @@
 #$ -o $JOB_NAME.o$JOB_ID
 #$ -e $JOB_NAME.e$JOB_ID
 # transfer all your environment variables. Uncomment only if you don't want the defults
-#$ -V
+##$ -V
 
 # The following is for reporting only. It is not really needed to run the job
 # It will show how many processors you get in your output file

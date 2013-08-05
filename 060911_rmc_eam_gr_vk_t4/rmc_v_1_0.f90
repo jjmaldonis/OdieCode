@@ -119,7 +119,8 @@ program rmc
     ! rmc loop in this file. I may remove the if statement in fem eventually,
     ! but for now I will just use two different variables.
     use_femsim = .FALSE.
-    use_rmc = .FALSE.
+    !use_rmc = .FALSE.
+    use_rmc = .TRUE.
 
     call read_eam(m)   
     call eam_initial(m, te1)
@@ -135,12 +136,12 @@ program rmc
 
     if(myid.eq.0)then
         ! Write initial gr
-        open(unit=51,file=outbase//"gr_initial.txt",form='formatted',status='unknown')
-            do i=1, mbin_x
-                R = del_r_x*(i)-del_r_x
-                write(51,*)R, gr_x_sim_cur(i)
-            enddo
-        close(51)
+        !open(unit=51,file=outbase//"gr_initial.txt",form='formatted',status='unknown')
+        !    do i=1, mbin_x
+        !        R = del_r_x*(i)-del_r_x
+        !        write(51,*)R, gr_x_sim_cur(i)
+        !    enddo
+        !close(51)
         ! Write initial vk 
         open(unit=52,file="vk_initial.txt",form='formatted',status='unknown')
             do i=1, nk
@@ -174,11 +175,11 @@ program rmc
         endif
 
         ! Reset time_elapsed and energy_function
-        open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown')
+        open(35,file=outbase//'time_elapsed.txt',form='formatted',status='unknown')
             t1 = mpi_wtime()
             write (35,*) i, t1-t0
         close(35)
-        open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown')
+        open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown')
             write(34,*) i, te1
         close(34)
 
@@ -272,9 +273,9 @@ program rmc
             if(mod(i,1)==0)then
                 if(myid.eq.0)then
                     open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
-                    open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
-                    open(34,file=outbase//'energy_function2.txt',form='formatted',status='unknown',access='append')
-                    open(35,file=outbase//'time_elapsed2.txt',form='formatted',status='unknown',access='append')
+                    !open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
+                    open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown',access='append')
+                    open(35,file=outbase//'time_elapsed.txt',form='formatted',status='unknown',access='append')
                     ! Write to vk_update
                     do j=1, nk
                         write(32,*)k(j),vk(j)
@@ -293,10 +294,13 @@ program rmc
                     endif
                     ! Write to time_elapsed
                     t1 = mpi_wtime()
-                    write (*,*) i, t1-t0
+                    write (*,*) "Step, time elapsed:", i, t1-t0
                     write (35,*) i, t1-t0
-                    close(32); close(33); close(34); close(35) ! Close files
-                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708)*50000 * log(30/temperature)/log(sqrt(0.7))
+                    close(32); close(34); close(35) !close(33); ! Close files
+                    write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
+                    ! Time per step * num steps before decreasing temp * num
+                    ! drops in temp necessary to get to temp=30.
+                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7))
                 endif
             endif
         enddo
@@ -306,13 +310,13 @@ program rmc
         ! The rmc loop finished. Write final data.
         if(myid.eq.0)then
             ! Write final vk
-            open(unit=54,file=outbase//"vk_update_final.txt",form='formatted',status='unknown')
+            open(unit=54,file=outbase//"vk_final.txt",form='formatted',status='unknown')
             do i=1, nk
                 write(54,*)k(i),vk(i)
             enddo
             close(54)
             ! Write final model
-            open(unit=55,file=outbase//"model_update_final.txt",form='formatted',status='unknown')
+            open(unit=55,file=outbase//"model_final.txt",form='formatted',status='unknown')
             write(55,*)"updated model"
             write(55,*)m%lx,m%ly,m%lz
             do i=1,m%natoms

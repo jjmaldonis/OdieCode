@@ -101,48 +101,6 @@ contains
         a1(0)=1.0
         j0(0)=1.0
 
-        ! Jason 20130722 Whether we are using square or round pixels, I think we
-        ! still want the centers to be in the same spot and therefore the number
-        ! of pixels the same. I am going to do this all in init_pix instead.
-        !IF(pixel_square) THEN
-        !    !dr = res ! condition 1, shift by res
-        !    !npix_x=CEILING(m%lx/dr) 
-        !    !npix_y=CEILING(m%ly/dr)  !integer of pixel number, shifted by dr
-        !    !dr = m%lx/npix_x !changed by Feng Yi, fractional number of pixel
-        !    !**********************
-        !    !dr = res * 2.0  !no overlap between pixels
-        !    !npix_x = ANINT(m%lx/dr)
-        !    !npix_y = ANINT(m%ly/dr)
-        !    !***********************
-        !    !dr = SQRT(2.0) * res !small pixel, inscribed in the Airy circle
-        !    dr = res ! Jason 20130722
-        !    pa%npix_1D = ANINT(m%lx/dr)
-        !    !pa%npix_y = ANINT(m%ly/dr)
-        !    !dr = SQRT(2.0) * res/2.0 !small pixel, inscribed in the Airy
-        !    !circle,shifted by half pixel size
-        !    !npix_x = ANINT(m%lx/dr)
-        !    !npix_y = ANINT(m%ly/dr)
-        !ELSE
-        !    !dr=2*res/1.414214   !resolution=pixel radius. dr=pixel spacing
-        !    !npix_x=int(m%lx/dr)
-        !    !npix_y=int(m%ly/dr)
-        !    !separated just by dr = res
-        !    dr = res ! USE THIS ONE IF res = 0.5*res IS NOT IN FEMSIM.F90
-        !    !dr = 2.0 *res ! USE THIS ONE IF res = 0.5*res IS IN FEMSIM.F90
-        !    pa%npix_1D=aint(m%lx/dr)
-        !    !pa%npix_y=aint(m%ly/dr)
-        !    !******************************
-        !    !npix_x=CEILING(m%lx/dr) + 1 !changed by Feng Yi on 06/02/2009,
-        !    !condition 1
-        !    !npix_y=CEILING(m%ly/dr) + 1
-        !    !dr = m%lx/(npix_x - 1.0) 
-        !    !***************************************************************
-        !    !npix_x=CEILING(m%lx/dr) ! changed by Feng Yi on 06/02/2009,
-        !    !condition 2
-        !    !npix_y=CEILING(m%ly/dr)
-        !    !dr = m%lx/npix_x 
-        !ENDIF
-
         nk = nki
         !pa%npix = pa%npix_1D*pa%npix_1D ! Jason commented on 20130722
         !nrot = ntheta*nphi*npsi
@@ -1008,8 +966,8 @@ contains
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
-                    !call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                    !    int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                    call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
+                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo
