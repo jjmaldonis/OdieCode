@@ -15,7 +15,7 @@ parameter file opened
 xrd_zr50_kramer_reduced.txt
 3290.0	!weight of xrd gr
 1.68  10.0
-fem_exp_jwh_t2.txt
+fem_exp_jwh.txt
 1.0	 !weight of fem
 28.637     !scaling factor for exp Vk
 1 40 20 	 !# of rotations(nphi, npsi, ntheta)

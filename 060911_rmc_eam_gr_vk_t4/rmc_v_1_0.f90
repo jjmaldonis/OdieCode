@@ -80,7 +80,7 @@ call mpi_init(mpierr)
 call mpi_comm_rank(mpi_comm_world, myid, mpierr)
 call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
-model_filename = 'model_040511c_t2_final.xyz'
+model_filename = 'model_1.xyz'
 param_filename = 'param_file.in'
 
 
@@ -296,7 +296,7 @@ DO WHILE (i >0)
     endif
 
     ! Periodically save data
-    if(mod(i,1000)==0)then
+    if(mod(i,1)==0)then
         if(myid.eq.0)then
             open(31,file='test_gr_update.txt',form='formatted',status='unknown')
             open(32,file='test_vk_update.txt',form='formatted',status='unknown')
@@ -321,6 +321,11 @@ DO WHILE (i >0)
             close(31)
             close(32)
             close(33)
+            t1 = mpi_wtime()
+            write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
+            ! Time per step * num steps before decreasing temp * num
+            ! drops in temp necessary to get to temp=30.
+            write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7))
         endif
     endif
 ENDDO
