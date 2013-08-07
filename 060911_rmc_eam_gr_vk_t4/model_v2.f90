@@ -26,14 +26,14 @@ module model_mod
     ! plus supporting information
     type hutch_array
         ! array of hutch objects
-        type(hutch), dimension(:,:,:), allocatable :: h
+        type(hutch), dimension(:,:,:), pointer :: h
         ! number of hutches in x, y, and z
         integer :: nhutch_x, nhutch_y, nhutch_z
         ! physical size of a hutch in Angstroms
         real :: hutch_size
         ! list of the hutch indices for every atom. we don't use it so im
         ! getting rid of it. Jason 20130729
-        integer, allocatable, dimension(:,:) :: atom_hutch
+        integer, pointer, dimension(:,:) :: atom_hutch
     end type hutch_array
 
     ! adjustable-size list of atom indices
@@ -636,7 +636,7 @@ contains
     ! Used by destroy_model.
         type(hutch_array), intent(inout) :: ha
         integer i, j, k
-        if(allocated(ha%h)) then
+        if(associated(ha%h)) then
             do i=1,ha%nhutch_x
                 do j=1,ha%nhutch_y
                     do k=1,ha%nhutch_z
@@ -647,7 +647,7 @@ contains
                 enddo
             enddo
             deallocate(ha%h, ha%atom_hutch)
-        endif !if allocated(ha%h)
+        endif !if associated(ha%h)
         ! I wonder if there is a memory leak because we dont actually delete the
         ! rest of the ha variables and ha itself. TODO
         ! This would occur for all the rot_atom models in fem_update.
@@ -757,7 +757,7 @@ contains
             endif
             atoms = temp_atoms(1:nlist-1)
         else
-            deallocate(atoms)
+            nullify(atoms)
             istat = -1
         endif
 
@@ -1341,7 +1341,7 @@ contains
         if (nlist > 1) then
             atoms = temp_atoms(1:nlist-1)
         else
-            deallocate(atoms)
+            nullify(atoms)
             istat = -1
         endif
 
@@ -1399,7 +1399,7 @@ contains
             endif
             atoms = temp_atoms
         else
-            deallocate(atoms)
+            nullify(atoms)
             istat = -1
         endif
 
@@ -1901,8 +1901,8 @@ contains
             enddo
         enddo
         mout%ha%hutch_size = m%ha%hutch_size
-        if(allocated(m%ha%atom_hutch)) then
-            if(allocated(mout%ha%atom_hutch)) then
+        if(associated(m%ha%atom_hutch)) then
+            if(associated(mout%ha%atom_hutch)) then
                 deallocate(mout%ha%atom_hutch)
             endif
             allocate(mout%ha%atom_hutch(mout%natoms, 3))
