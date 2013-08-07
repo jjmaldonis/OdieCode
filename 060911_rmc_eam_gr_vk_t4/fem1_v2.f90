@@ -32,9 +32,9 @@ module fem_mod
     real, save, dimension(:,:,:), pointer :: old_int, old_int_sq
     real, save, dimension(:), pointer :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
     real, save, allocatable, dimension(:) :: j0, A1                                               
-    type(model), save, dimension(:), pointer :: mrot  ! array of rotated models
-    type(model), save, dimension(:), pointer :: mcopy  ! array of rotated models
-    type(index_list), save, dimension(:), pointer :: old_index
+    type(model), save, dimension(:), allocatable :: mrot  ! array of rotated models
+    type(model), save, dimension(:), allocatable :: mcopy  ! array of rotated models
+    type(index_list), save, dimension(:), allocatable :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
     type(pix_array), save :: pa
 
@@ -52,7 +52,7 @@ contains
         real, intent(in) :: res
         real, dimension(:), intent(in) :: k 
         integer, intent(in) :: nki, ntheta, nphi, npsi 
-        real, dimension(:,:), pointer :: scatfact_e
+        real, dimension(:,:), allocatable :: scatfact_e
         integer, intent(out) :: istat
         LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
         !real :: dr ! Distance between pixels
@@ -111,7 +111,8 @@ contains
 
         allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
         int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
-        nullify(old_index, old_pos)
+        if(allocated(old_index)) deallocate(old_index)
+        if(associated(old_pos)) deallocate(old_pos)
         if (istat /= 0) then
             write (*,*) 'Cannot allocate memory in fem_initialize.'
             return
@@ -418,7 +419,7 @@ contains
         real, dimension(:), intent(in) :: k
         real, dimension(:), INTENT(OUT) :: Vk
         real, dimension(:), intent(in) :: v_background
-        real, dimension(:,:), pointer :: scatfact_e
+        real, dimension(:,:), allocatable :: scatfact_e
         integer, intent(out) :: istat
         logical, optional, intent(in) :: use_femsim
         logical, optional, intent(in) :: square_pixel
@@ -555,7 +556,7 @@ contains
         real, intent(in) :: res, px, py
         real, dimension(nk), intent(in) :: k
         real, dimension(nk), intent(out) :: int_i
-        real, dimension(:,:), pointer :: scatfact_e
+        real, dimension(:,:), allocatable :: scatfact_e
         integer, intent(out) :: istat
         logical,optional, intent(in) :: square_pixel
         real, dimension(:,:,:), allocatable :: gr_i   ! unneeded 'save' keyword removed pmv 03/18/09  !tr re-ok -jwh
@@ -563,6 +564,7 @@ contains
         real, dimension(:,:), allocatable :: sum1
         real :: x2, y2, rr, t1, t2, const1, const2, const3, pp, r_max
         integer, pointer, dimension(:) :: pix_atoms, znum_r
+        !integer, allocatable, dimension(:) :: pix_atoms, znum_r
         integer :: i,j,ii,jj,kk
         integer :: bin_max, size_pix_atoms
         logical pixel_square
@@ -724,21 +726,11 @@ contains
         end do
         !$omp end parallel do
 
-        if(allocated(gr_i)) then
-            deallocate(gr_i)
-        endif
-        if(allocated(x1)) then
-            deallocate(x1,y1, rr_a, znum_r)
-        endif
-        if(size(pix_atoms) .gt. 0) then
-            deallocate(pix_atoms)
-        endif
-        if(allocated(sum1)) then
-            deallocate(sum1)
-        endif
-        if(allocated(rr_x)) then
-            deallocate(rr_x, rr_y)
-        endif
+        if(allocated(gr_i))      deallocate(gr_i)
+        if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
+        if(associated(pix_atoms)) deallocate(pix_atoms)
+        if(allocated(sum1))      deallocate(sum1)
+        if(allocated(rr_x))      deallocate(rr_x, rr_y)
 
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
@@ -754,7 +746,7 @@ contains
         real, intent(in) :: res
         real, dimension(:), intent(in) :: k, v_background
         real, dimension(:), intent(out) :: vk
-        real, dimension(:,:), pointer :: scatfact_e
+        real, dimension(:,:), allocatable :: scatfact_e
         integer, intent(out) :: istat
         logical, optional, intent(in) :: square_pixel
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq    !mpi
@@ -1102,6 +1094,7 @@ contains
         ! lacking / overused in the simulation.
         logical, intent(in) :: square_pixel
         integer, pointer, dimension(:):: pix_atoms
+        !integer, allocatable, dimension(:):: pix_atoms
         integer :: i, j, istat
 
         allocate(sampled_atoms(m%natoms))
@@ -1109,9 +1102,9 @@ contains
 
         do i=1, pa%npix
             if(square_pixel) then
-                call hutch_list_pixel_sq(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
+                !call hutch_list_pixel_sq(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
             else
-                call hutch_list_pixel(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
+                !call hutch_list_pixel(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
             endif
             do j=1, size(pix_atoms)
                 sampled_atoms(j) = sampled_atoms(j) + 1
