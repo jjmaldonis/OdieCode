@@ -782,7 +782,8 @@ contains
             occ = 1.0
             wobble = 0.0
 
-            write (*,*) 'calling islice'
+            write(*,*)
+            write (*,*) 'Running multislice algorithm (islice):'
             !if(present(rot_index)) then
             !    cptr = islice(npc, m_int%natoms, C_LOC(Znum), C_LOC(x), C_LOC(y), C_LOC(z), C_LOC(occ), C_LOC(wobble), &
             !        m_int%lx, m_int%ly, m_int%lz, nx, ny, 200.0, slicez, res, pxc, pyc, rot_index, pix_index)
@@ -794,7 +795,7 @@ contains
             cptr = islice(m_int%natoms, C_LOC(Znum), C_LOC(x), C_LOC(y), C_LOC(z), C_LOC(occ), C_LOC(wobble), &
                 m_int%lx, m_int%ly, m_int%lz, nx, ny, 200.0, slicez, res, pxc, pyc)!, rot_index, pix_index)
 
-            write (*,*) 'islice complete'
+            write (*,*) 'islice complete.'
 
             aav_shape = (nx/4)
             call c_f_pointer(cptr, i_aav, aav_shape)
@@ -802,7 +803,7 @@ contains
             write (*,*) 'Full diffraction annular average:'
             dk = 2.0 / m_int%lx
             do i=1, size(i_aav)
-               write (*,*) dk*(i-1), i_aav(i)
+               !write (*,*) dk*(i-1), i_aav(i)
             enddo
 
             write (*,*) 'Interpolated diffraction annular average:'
@@ -814,7 +815,7 @@ contains
                else
                   int_i(i) = i_aav(ikl) + ( (k(i) - (ikl-1)*dk)/dk )*(i_aav(ikh) - i_aav(ikl))
                endif
-               write(*,*) k(i),int_i(i),ikl,ikh
+               !write(*,*) k(i),int_i(i),ikl,ikh
             enddo
 
             deallocate(Znum)

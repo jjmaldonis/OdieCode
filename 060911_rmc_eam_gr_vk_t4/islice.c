@@ -82,6 +82,7 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
     int DP_size; //DP image size
     int image_x, image_y;
     int DP_x, DP_y;
+    int verbose = 0; // set verbose to true or false
     /*  echo version date and get input file name */
 
     //for output diffraction image
@@ -104,7 +105,7 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
 
     lwobble = 0;
     if( lwobble == 1 ) {
-        printf( "Type the temperature in degrees K:\n");
+        if(verbose) printf( "Type the temperature in degrees K:\n");
         scanf( "%g", &temperature );
         /* get random number seed from time if available otherwise ask for a seed */
         if( lwobble == 1 ) {
@@ -115,19 +116,19 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
                 scanf("%ld", &iseed);
             }
         else
-            printf( "Random number seed initialized to %ld\n", iseed );
+            if(verbose) printf( "Random number seed initialized to %ld\n", iseed );
         }
     } else temperature = 0.0F;
 
 
     /*  calculate relativistic factor and electron wavelength */
     wavlen = (float) wavelength( v0 );
-    printf("electron wavelength = %g Angstroms\n", wavlen);
+    if(verbose) printf("electron wavelength = %g Angstroms\n", wavlen);
 
     /*  read in specimen coordinates and scattering factors */
-    printf("%d atomic coordinates read in\n", natom );
-    printf("Size in pixels Nx, Ny= %d x %d = %d beams\n", nx,ny, nx*ny);
-    printf("Lattice constant a,b = %12.4f, %12.4f\n", ax,by);
+    if(verbose) printf("%d atomic coordinates read in\n", natom );
+    if(verbose) printf("Size in pixels Nx, Ny= %d x %d = %d beams\n", nx,ny, nx*ny);
+    if(verbose) printf("Lattice constant a,b = %12.4f, %12.4f\n", ax,by);
 
     /*  calculate the total specimen volume and echo */
     xmin = xmax = x[0];
@@ -145,8 +146,8 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
         if( wobble[i] < wmin ) wmin = wobble[i];
         if( wobble[i] > wmax ) wmax = wobble[i];
     }
-    printf("Total specimen range is\n %g to %g in x\n %g to %g in y\n %g to %g in z\n", xmin, xmax, ymin, ymax, zmin, zmax );
-    if( lwobble == 1 ) printf("Range of thermal rms displacements (300K) = %g to %g\n", wmin, wmax );
+    if(verbose) printf("Total specimen range is\n %g to %g in x\n %g to %g in y\n %g to %g in z\n", xmin, xmax, ymin, ymax, zmin, zmax );
+    if(verbose){ if( lwobble == 1 ) printf("Range of thermal rms displacements (300K) = %g to %g\n", wmin, wmax ); }
 
     /*  calculate spatial frequencies and positions for future use */
     rx = 1.0F/ax;
@@ -172,7 +173,7 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
     waver = (float**) malloc2D( 2*nx, ny, sizeof(float), "waver" );
     wavei = waver + nx;
     apert = 1000.0*0.61*wavlen / res;
-    printf("wavelength = %g kV.  aperture size = %g mrad.\n", wavlen, apert);
+    if(verbose) printf("wavelength = %g kV.  aperture size = %g mrad.\n", wavlen, apert);
     probe(waver, wavei, nx, ny, ax, by, v0, apert, px, py);
 
     sum = 0.0;
@@ -180,7 +181,7 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
     for( iy=0; iy<ny; iy++)
     sum += waver[ix][iy]*waver[ix][iy] + wavei[ix][iy]*wavei[ix][iy];
 
-    printf("in islice, after probe, waver / wavei sum is: %g\n", sum);
+    if(verbose) printf("in islice, after probe, waver / wavei sum is: %g\n", sum);
 
     //debug
     //write probe image in gfx format
@@ -203,8 +204,8 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
     /*  calculate propagator function  */
     k2max = nx/(2.0F*ax);
     k2max = BW * k2max;
-    printf("Bandwidth limited to a real space resolution of %f Angstroms\n", 1.0F/k2max);
-    printf("   (= %.2f mrad)  for symmetrical anti-aliasing.\n", wavlen*k2max*1000.0F);
+    if(verbose) printf("Bandwidth limited to a real space resolution of %f Angstroms\n", 1.0F/k2max);
+    if(verbose) printf("   (= %.2f mrad)  for symmetrical anti-aliasing.\n", wavlen*k2max*1000.0F);
     k2max = k2max*k2max;
 
     propxr = (float*) malloc1D( nx, sizeof(float), "propxr" );
@@ -246,13 +247,13 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
         }
     }
 
-    printf( "Sorting atoms by depth...\n");
+    if(verbose) printf( "Sorting atoms by depth...\n");
     sortByZ( x, y, z, occ, Znum, natom );
 
     if( lwobble == 1 ){
         zmin = z[0];            /* reset zmin/max after wobble */
         zmax = z[natom-1];
-        printf("Thickness range with thermal displacements is %g to %g (in z)\n", zmin, zmax );
+        if(verbose) printf("Thickness range with thermal displacements is %g to %g (in z)\n", zmin, zmax );
     }
 
     scale = 1.0F / ( ((float)nx) * ((float)ny) );
@@ -290,7 +291,7 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
                        wavei[ix][iy]*wavei[ix][iy];
         sum = sum * scale;
 
-        printf("z= %f A, %ld beams, %d coord., \naver. phase= %f, total intensity = %f\n",
+        if(verbose) printf("z= %f A, %ld beams, %d coord., \naver. phase= %f, total intensity = %f\n",
         zslice, nbeams, na, phirms, sum );
 
         zslice += deltaz;
@@ -432,10 +433,10 @@ float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, fl
     for(ix=0; ix < ixmid/2; ix++) {
         i_aav[ix] /= npix[ix];
         i_aav[ix] *= scale;
-        printf("islice i_aav[%d] = %g\n", ix, i_aav[ix]);
+        if(verbose) printf("islice i_aav[%d] = %g\n", ix, i_aav[ix]);
     }
 
-    printf( "pix range %g to %g real,\n          %g to %g imag\n",  rmin,rmax,aimin,aimax );
+    if(verbose) printf( "pix range %g to %g real,\n          %g to %g imag\n",  rmin,rmax,aimin,aimax );
 
     /* free allocated memory */
     free(kx);
@@ -658,6 +659,7 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
     int ix, iy, ixmid, iymid, i, ismoth, npixels;
     double  kx, ky, ky2, k2, k2max, wavlen, rx, ry, rx2, ry2, scale, pixel,sum, chi0;
 	double **aber;
+    int verbose = 0; // set verbose to true or false
 
 	aber = (double**)malloc2D(12, 4, sizeof(double), "Aberrations array");
     for(i=0; i<12; i++) {
@@ -668,11 +670,11 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
 	}
 
     /*  Echo version date etc.  */
-    printf( "probe version dated 3-jul-2008 ejk\n");
-    printf( "calculate focused probe wave function\n\n");
+    if(verbose) printf( "probe version dated 3-jul-2008 ejk\n");
+    if(verbose) printf( "calculate focused probe wave function\n\n");
 
     if( (nx != powerof2(nx)) || (ny != powerof2(ny)) ) {
-        printf("Nx=%d, Ny=%d must be a power of 2,\ntry again.\n", nx, ny);
+        if(verbose) printf("Nx=%d, Ny=%d must be a power of 2,\ntry again.\n", nx, ny);
         exit( 0 );
     }
 	ismoth = 1;
@@ -685,7 +687,7 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
     ixmid = nx/2;
     iymid = ny/2;
     wavlen = wavelength( keV );
-    printf("electron wavelength = %g Angstroms\n", wavlen);
+    if(verbose) printf("electron wavelength = %g Angstroms\n", wavlen);
     k2max = apert*0.001/wavlen;
     k2max = k2max * k2max;
 
@@ -717,7 +719,7 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
                 chi0 = chi( aber, wavlen, kx, ky, dx, dy ); //added by Feng Yi on 12/26/2010
                 pixr[ix][iy]= (float) ( 0.5 * cos(chi0));
                 pixi[ix][iy]= (float) (-0.5 * sin(chi0));
-                printf("smooth by 0.5 at ix=%d, iy=%d\n", ix, iy );
+                if(verbose) printf("smooth by 0.5 at ix=%d, iy=%d\n", ix, iy );
             } else if ( k2 <= k2max ) {
                 chi0 = chi( aber, wavlen, kx, ky, dx, dy );
                 pixr[ix][iy]= (float)  cos(chi0);
@@ -728,7 +730,7 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
             }
        }
     }
-    printf("There were %d pixels inside the aperture\n", npixels );
+    if(verbose) printf("There were %d pixels inside the aperture\n", npixels );
     fft2d( pixr, pixi, nx, ny, -1);
 
     /*  Normalize probe intensity to unity  */
@@ -742,7 +744,7 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
     scale = scale * ((double)nx) * ((double)ny);
     scale = (double) sqrt( scale );
 
-	printf("probe sum = %g.  probe scale = %g.\n", sum, scale);
+	if(verbose) printf("probe sum = %g.  probe scale = %g.\n", sum, scale);
 
     for( ix=0; ix<nx; ix++) 
         for( iy=0; iy<ny; iy++) {
@@ -753,7 +755,7 @@ int probe(float **pixr, float **pixi, int nx, int ny, float ax,
 	/* free allocated memory */
 	free2D((void **)aber, 12);
 
-	printf("\n\n");
+	if(verbose) printf("\n\n");
     return 0;
 
 }  /* end probe() */
