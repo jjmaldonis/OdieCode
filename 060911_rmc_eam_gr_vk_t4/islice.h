@@ -21,7 +21,8 @@ void trlayer( const float x[], const float y[], const float occ[],
 
 double vzatomLUT( int Z, double r );
 
-float *islice(int npc, int natom, int *Znum, float *x, float *y, float *z, 
+//float *islice(int npc, int natom, int *Znum, float *x, float *y, float *z, 
+float *islice(int natom, int *Znum, float *x, float *y, float *z, 
 	      float *occ, float *wobble,  float ax, float by, float cz, 
 	   int nx, int ny, float v0, double deltaz, float apert, double px, double py);
 

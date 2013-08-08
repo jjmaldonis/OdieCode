@@ -624,7 +624,7 @@ contains
     subroutine destroy_model(m)
     ! Deallocates all the various allocatable arrays and sub-arrays in a model.
         type(model), intent(inout) :: m 
-        deallocate(m%xx%ind, m%yy%ind, m%zz%ind, m%znum%ind, m%znum_r%ind)
+        if(allocated(m%xx%ind)) deallocate(m%xx%ind, m%yy%ind, m%zz%ind, m%znum%ind, m%znum_r%ind)
         if(allocated(m%atom_type)) deallocate(m%atom_type)
         if(allocated(m%composition)) deallocate(m%composition)
         call destroy_hutch(m%ha)
@@ -1830,6 +1830,8 @@ contains
         type(model), intent(in) :: m
         type(model), intent(out) :: mout
         integer :: i, j, k
+
+        call destroy_model(mout)
         
         mout%lx = m%lx
         mout%ly = m%ly

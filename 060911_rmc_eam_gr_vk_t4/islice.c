@@ -54,7 +54,9 @@ wavei - imaginary part of the progagated wave function.  must be an unallocated 
 
 //use i_aav=(wr*wr + wi*wi) instead of sqrt(wr*wr +wi*wi) by FY on 12/29/2010
 
-float *islice(int npc, int natom, int *Znum, float *x, float *y, float *z, float *occ, float *wobble,
+//float *islice(int npc, int natom, int *Znum, float *x, float *y, float *z, float *occ, float *wobble,
+//	  float ax, float by, float cz, int nx, int ny, float v0, double deltaz, float res, double px, double py)  
+float *islice(int natom, int *Znum, float *x, float *y, float *z, float *occ, float *wobble,
 	  float ax, float by, float cz, int nx, int ny, float v0, double deltaz, float res, double px, double py)  
 {
     int lstart=0, lwobble=0;
@@ -86,8 +88,8 @@ float *islice(int npc, int natom, int *Znum, float *x, float *y, float *z, float
     DP_size = (int) ax; //up to 1 A^-1 in DP
     DP_image = (float**) malloc2D( 2*DP_size, 2*DP_size, sizeof(float), "DP_image" );
 
-    printf("perform multislice with automatic slicing for pixel %d\n\n", npc);
-    sprintf(fname, "model_%d.xyz", npc);
+    //printf("perform multislice with automatic slicing for pixel %d\n\n", npc);
+    //sprintf(fname, "model_%d.xyz", npc);
 
     pi = (float) (4.0 * atan( 1.0 ));
     ixmid = nx/2;

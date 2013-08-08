@@ -42,6 +42,7 @@ program rmc
     character (len=256) :: param_filename  
     character (len=256) :: outbase
     character (len=512) :: comment
+    character (len=26) :: time_elapsed
     logical, dimension(4) :: used_data_sets
     real :: temperature
     real :: max_move
@@ -74,6 +75,8 @@ program rmc
     integer :: ipvd, nthr
     doubleprecision :: t0, t1 !timers
 
+
+
     !call mpi_init(mpierr)
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
@@ -87,11 +90,12 @@ program rmc
         write(*,*)
     endif
 
-    call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
-
     model_filename = 'model_040511c_t2_final.xyz'
     param_filename = 'param_file.in'
     outbase = ""
+    write (time_elapsed, "(A12,I10,A4)") "time_elapsed", int(t0), ".txt"
+    time_elapsed = trim(time_elapsed)
+    write(*,*) time_elapsed
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -175,7 +179,8 @@ program rmc
         endif
 
         ! Reset time_elapsed and energy_function
-        open(35,file=outbase//'time_elapsed.txt',form='formatted',status='unknown')
+        open(35,file=outbase//time_elapsed,form='formatted',status='unknown')
+            write(35,*) "Number of processors is ", numprocs
             t1 = mpi_wtime()
             write (35,*) i, t1-t0
         close(35)
@@ -190,7 +195,10 @@ program rmc
         do while (i > 0)
             i=i+1
 
-            if( i - 1315708 > 100) stop ! Stop after 100 steps for timing runs.
+            !if( i - 1315708 > 100) then
+            !    write(*,*) "STOPPING MC AFTER 100 STEPS"
+            !    stop ! Stop after 100 steps for timing runs.
+            !endif
 
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
@@ -245,7 +253,7 @@ program rmc
                     e2 = e1
                     call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                    call fem_reject_move(mpi_comm_world)
+                    call fem_reject_move(m, mpi_comm_world)
                     accepted = .false.
                     write(*,*) "MC move rejected."
                 endif
@@ -272,35 +280,39 @@ program rmc
             ! Periodically save data.
             if(mod(i,1)==0)then
                 if(myid.eq.0)then
-                    open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
-                    !open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
-                    open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown',access='append')
-                    open(35,file=outbase//'time_elapsed.txt',form='formatted',status='unknown',access='append')
                     ! Write to vk_update
-                    do j=1, nk
-                        write(32,*)k(j),vk(j)
-                    enddo
+                    open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
+                        do j=1, nk
+                            write(32,*)k(j),vk(j)
+                        enddo
+                    close(32)
                     ! Write to model_update
-                    !write(33,*)"updated model"
-                    !write(33,*)m%lx,m%ly,m%lz
-                    !do j=1,m%natoms
-                    !    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
-                    !enddo
-                    !write(33,*)"-1"
-                    if(accepted) then
-                        ! Write to energy_function
-                        write(*,*) i, te2
-                        write(34,*) i, te2
-                    endif
+                    !open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
+                        !write(33,*)"updated model"
+                        !write(33,*)m%lx,m%ly,m%lz
+                        !do j=1,m%natoms
+                        !    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
+                        !enddo
+                        !write(33,*)"-1"
+                    !close(33)
+                    open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown',access='append')
+                        if(accepted) then
+                            ! Write to energy_function
+                            write(*,*) i, te2
+                            write(34,*) i, te2
+                        endif
+                    close(34)
                     ! Write to time_elapsed
-                    t1 = mpi_wtime()
-                    write (*,*) "Step, time elapsed:", i, t1-t0
-                    write (35,*) i, t1-t0
-                    close(32); close(34); close(35) !close(33); ! Close files
+                    open(35,file=outbase//time_elapsed,form='formatted',status='unknown',access='append')
+                        t1 = mpi_wtime()
+                        write (*,*) "Step, time elapsed:", i, t1-t0
+                        write (35,*) i, t1-t0
+                    close(35)
                     write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
                     ! Time per step * num steps before decreasing temp * num
                     ! drops in temp necessary to get to temp=30.
                     write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7))
+                    !write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * (100-(i-1315708))
                 endif
             endif
         enddo
@@ -328,9 +340,10 @@ program rmc
             write(56,*) i, te2
             close(56)
             ! Write final time spent.
-            open(57,file=outbase//'time_elapsed.txt',form='formatted',status='unknown',access='append')
+            open(57,file=outbase//time_elapsed,form='formatted',status='unknown',access='append')
             t1 = mpi_wtime()
             write (57,*) i, t1-t0
+            write(57,*) "Finshed.", numprocs, "processors."
             close(57)
         endif
     endif ! Use RMC
