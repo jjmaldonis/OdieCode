@@ -71,7 +71,7 @@ program rmc
     integer :: iseed2
     real :: randnum
     real :: te1, te2
-    logical :: square_pixel, use_femsim, accepted, use_rmc
+    logical :: square_pixel, use_femsim, accepted, use_rmc, use_multislice
     integer :: ipvd, nthr
     doubleprecision :: t0, t1 !timers
 
@@ -125,6 +125,7 @@ program rmc
     use_femsim = .FALSE.
     !use_rmc = .FALSE.
     use_rmc = .TRUE.
+    use_multislice = .FALSE. ! Initialize this to false. Multislice is used every 10k steps.
 
     call read_eam(m)   
     call eam_initial(m, te1)
@@ -214,7 +215,12 @@ program rmc
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
             call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
-            call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+            ! Use multislice every 10k steps if specified.
+            if(use_multislice .and. mod(i,10000) .eq. 0) then
+                call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
+            else
+                call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
+            endif
             !write(*,*) "Finished updating eam, gr, and fem data."
             
             chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &

@@ -18,19 +18,19 @@ module fem_mod
     !public :: print_image1, print_image2
     type pos_list
         integer :: nat
-        real, pointer, dimension(:,:) :: pos ! 3xnat array containing positions of atoms
+        real, allocatable, dimension(:,:) :: pos ! 3xnat array containing positions of atoms
     end type pos_list
     integer, save :: nk, nrot  ! number of k points, pixels, and rotations
     type pix_array
-        real, dimension(:,:), pointer :: pix ! npix x 2 list of pixel positions
+        real, dimension(:,:), allocatable :: pix ! npix x 2 list of pixel positions
         integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
         real :: phys_diam
         real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge. This is NOT the distance between the pixel centers. This is the distance between the edges of two different pixels. dr + phys_diam is the distance between the pixel centers!
     end type pix_array
-    real, save, dimension(:,:), pointer :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
-    real, save, dimension(:,:,:), pointer :: int_i, int_sq  ! nk x npix x nrot.  int_sq == int_i**2
-    real, save, dimension(:,:,:), pointer :: old_int, old_int_sq
-    real, save, dimension(:), pointer :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
+    real, save, dimension(:,:), allocatable :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
+    real, save, dimension(:,:,:), allocatable :: int_i, int_sq  ! nk x npix x nrot.  int_sq == int_i**2
+    real, save, dimension(:,:,:), allocatable :: old_int, old_int_sq
+    real, save, dimension(:), allocatable :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
     real, save, allocatable, dimension(:) :: j0, A1                                               
     type(model), save, dimension(:), pointer :: mrot  ! array of rotated models
     type(model), save, dimension(:), pointer :: mcopy  ! array of rotated models
@@ -54,22 +54,15 @@ contains
         integer, intent(in) :: nki, ntheta, nphi, npsi 
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        LOGICAL, OPTIONAL, INTENT(IN) :: square_pixel
+        logical, intent(in) :: square_pixel
         !real :: dr ! Distance between pixels
         real r_max, const1, const2, const3
         integer bin_max
         integer i, j 
         integer const4 
         double precision b_x, b_j0 , b_j1 
-        logical pixel_square
 
-        if(present(square_pixel)) then 
-            pixel_square = square_pixel
-        else 
-            pixel_square = .false.
-        endif
-
-        if(pixel_square) then 
+        if(square_pixel) then 
             !r_max = SQRT(8.0) * res !diagonal in a square
             r_max = 2 * res !small pixel inscribed in Airy circle
         else 
@@ -107,13 +100,13 @@ contains
 
         call init_rot(ntheta, nphi, npsi, nrot, istat)
         !if (istat /= 0) return
-        call init_pix(m, res, istat, pixel_square)
+        call init_pix(m, res, istat, square_pixel)
 
         allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
         int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
-        nullify(old_index, old_pos)
         !if(allocated(old_index)) deallocate(old_index)
         !if(associated(old_pos)) deallocate(old_pos)
+        !nullify(old_index, old_pos)
         if (istat /= 0) then
             write (*,*) 'Cannot allocate memory in fem_initialize.'
             return
@@ -329,17 +322,10 @@ contains
         type(model), intent(in) :: m
         real, intent(in) :: res ! Pixel width.
         integer, intent(out) :: istat
-        logical, optional, intent(in) :: square_pixel
+        logical, intent(in) :: square_pixel
         integer :: i, j, k
-        logical :: pixel_square
 
-        if(present(square_pixel)) then
-            pixel_square = square_pixel
-        else
-            pixel_square = .FALSE.
-        endif
-
-        if(pixel_square) then
+        if(square_pixel) then
             pa%phys_diam = res * sqrt(2.0)
         else
             pa%phys_diam = res
@@ -426,11 +412,11 @@ contains
         logical, optional, intent(in) :: square_pixel
         integer, optional, intent(in) :: rot_begin, rot_end
         logical femsim !added by Feng Yi on 03/19/2009
-        logical pixel_square !added by FY on 06/04/2009
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq  !mpi
         integer :: comm
         integer :: i, j
         integer begin_rot, end_rot
+        logical :: pixel_square
 
         if(present(square_pixel)) then
             pixel_square = square_pixel
@@ -468,7 +454,7 @@ contains
 
                 ! Calculate intensities and store them in int_i(1:nk, j, i).
                 do j=1, pa%npix
-                    call intensity(mrot(1), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+                    call intensity(mrot(1), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
                 enddo
                 call destroy_model(mrot(1)) !memory leak
                 deallocate(mrot) !memory leak
@@ -518,7 +504,7 @@ contains
                 old_index(i)%nat = 0
                 if( allocated(old_index(i)%ind) ) deallocate(old_index(i)%ind)
                 old_pos(i)%nat = 0
-                if( associated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
+                if( allocated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
             enddo
 
             ! Calculate intensities for every single pixel in every single model. This is very expensive.
@@ -526,7 +512,7 @@ contains
             do i=myid+1, nrot, numprocs
                 do j=1, pa%npix
                     !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
-                    call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+                    call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
                     int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                     psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                     psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
@@ -550,10 +536,10 @@ contains
         time_in_int = 0.0 ! Reset for RMC.
     end subroutine fem
 
-    subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel)
+    subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel, use_multislice)
     !subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, rot_index, pix_index)  !output image
     ! Calculates int_i for output.
-        !use  omp_lib
+        use  omp_lib
         use, intrinsic :: iso_c_binding
         type(model), intent(in) :: m_int
         real, intent(in) :: res, px, py
@@ -561,7 +547,8 @@ contains
         real, dimension(nk), intent(out) :: int_i
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical,optional, intent(in) :: square_pixel
+        logical, intent(in) :: square_pixel
+        logical, intent(in) :: use_multislice
         real, dimension(:,:,:), allocatable :: gr_i   ! unneeded 'save' keyword removed pmv 03/18/09  !tr re-ok -jwh
         real, dimension(:), allocatable ::x1, y1, rr_a
         real, dimension(:,:), allocatable :: sum1
@@ -570,13 +557,11 @@ contains
         !integer, allocatable, dimension(:) :: pix_atoms, znum_r
         integer :: i,j,ii,jj,kk
         integer :: bin_max, size_pix_atoms
-        logical pixel_square
         real, allocatable, dimension(:) :: rr_x, rr_y
         real :: sqrt1_2_res
         real :: k_1
         real :: timer1, timer2
         integer :: nthr, thrnum
-        logical :: multislice = .false. ! Use multislice once every 10k moves.
 
         ! --- Multislice variables. --- !
         !INTEGER, OPTIONAL,  INTENT(IN) :: rot_index
@@ -618,11 +603,8 @@ contains
 
         call cpu_time(timer1)
 
-        if(.not. multislice) then
-            if(present(square_pixel)) then; pixel_square = square_pixel
-            else; pixel_square = .FALSE.; endif
-
-            if(pixel_square) then
+        if(.not. use_multislice) then
+            if(square_pixel) then
                 sqrt1_2_res = SQRT(0.5) * res
                 !r_max = sqrt(8.0) * res
                 r_max = 2*res !small pixel inscribed in airy circle
@@ -666,7 +648,7 @@ contains
             !!$omp end parallel do
 
             ! Calculate sum1 for gr_i calculation in next loop.
-            if(pixel_square) then
+            if(square_pixel) then
                 !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
                 do i=1,size_pix_atoms
                     x2=m_int%xx%ind(pix_atoms(i))-px
@@ -706,7 +688,7 @@ contains
             endif
 
             ! Calculate gr_i for int_i in next loop.
-            if(pixel_square) then
+            if(square_pixel) then
                 !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
                 do i=1,size_pix_atoms
                     if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
@@ -754,7 +736,7 @@ contains
                     endif
                 enddo
                 !$omp end parallel do
-            endif !pixel_square
+            endif
 
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
             do i=1,nk
@@ -850,7 +832,7 @@ contains
     end subroutine intensity
 
 
-    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel)
+    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel, use_multislice)
         use mpi
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
@@ -859,19 +841,16 @@ contains
         real, dimension(:), intent(out) :: vk
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical, optional, intent(in) :: square_pixel
+        logical, intent(in) :: square_pixel
+        logical, intent(in) :: use_multislice
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq    !mpi
         integer :: comm
         type(model) :: moved_atom, rot_atom
         integer :: i, j, m, n, ntpix
-        logical :: pixel_square
         logical, dimension(:,:), allocatable :: update_pix
         type(index_list) :: pix_il
 
         istat = 0
-
-        if( present(square_pixel)) then; pixel_square = square_pixel
-        else; pixel_square = .FALSE.; endif
 
         allocate(update_pix(nrot,pa%npix)) !TODO add error message
         update_pix = .FALSE.
@@ -1070,7 +1049,7 @@ contains
             do m=1, pa%npix
                 if(update_pix(i,m)) then
                     call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        int_i(1:nk, m, i), scatfact_e,istat,pixel_square)
+                        int_i(1:nk, m, i), scatfact_e,istat, square_pixel, use_multislice)
                     int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
                 endif
             enddo
@@ -1106,7 +1085,8 @@ contains
         use mpi
         integer :: comm, j
         do j=myid+1, nrot, numprocs ! Added by Jason 20130731
-            !call copy_model(mrot(j), mcopy(j))
+            call destroy_model(mcopy(j))
+            call copy_model(mrot(j), mcopy(j))
         enddo
         call fem_reset_old(comm)
     end subroutine fem_accept_move
@@ -1115,10 +1095,10 @@ contains
         use mpi
         integer :: i, comm
         do i=myid+1, nrot, numprocs
-            if(allocated(old_index(i)%ind)) deallocate(old_index(i)%ind)
             old_index(i)%nat = 0
-            if(associated(old_pos(i)%pos)) deallocate(old_pos(i)%pos)
+            if(allocated(old_index(i)%ind)) deallocate(old_index(i)%ind)
             old_pos(i)%nat = 0
+            if(allocated(old_pos(i)%pos)) deallocate(old_pos(i)%pos)
         enddo
     end subroutine fem_reset_old
 
@@ -1129,41 +1109,13 @@ contains
         type(model), intent(inout) :: m
         integer :: i, j, istat
         integer :: comm
-
         do i=myid+1, nrot, numprocs
-            ! If the rotated atom wasn't in the model, this model doesn't need
-            ! to be changed.
-            !if(old_index(i)%nat == 0) cycle
-            !! the move changed the number of atoms in the model, so the model
-            !! must be re-rotated
-            !! from scratch
-            !if(old_index(i)%nat == -1) then
-            !    call destroy_model(mrot(i))
-            !    call rotate_model(rot(i,1), rot(i,2), rot(i,3), m, mrot(i), istat)
-            !    cycle
-            !endif
-
-            !! otherwise, copy the old positions back into the model at the
-            !! correct indices
-            !do j=1,old_index(i)%nat
-            !    mrot(i)%xx%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,1)
-            !    mrot(i)%yy%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,2)
-            !    mrot(i)%zz%ind(old_index(i)%ind(j)) = old_pos(i)%pos(j,3)
-            !enddo
-
-            !!The saved intensity values must return to their old values - JWH
-            !!03/05/09
-            !do j=1, pa%npix
-            !    int_i(1:nk, j, i) = old_int(1:nk, j, i)
-            !    int_sq(1:nk, j, i) = old_int_sq(1:nk, j, i)
-            !enddo
             if(.not. old_index(i)%nat == 0) then
                 ! If the move changed the number of atoms in the model, the model
                 ! must be re-rotated from scratch.
                 if(old_index(i)%nat == -1) then
                     call destroy_model(mrot(i))
-                    call rotate_model(rot(i,1), rot(i,2), rot(i,3), m, mrot(i), istat)
-                    !call copy_model(mcopy(i), mrot(i)) ! Added by Jason 20130731. Commented out destroy_model and rotate_model.
+                    call copy_model(mcopy(i), mrot(i)) ! Added by Jason 20130731. Commented out rotate_model.
                 else
                 ! Otherwise, copy the old positions back into the model at the
                 ! correct indices.

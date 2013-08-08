@@ -19,7 +19,7 @@ module model_mod
     ! this hutch
     type hutch
         integer, dimension(:), allocatable :: at
-        integer :: nat
+        integer :: nat = 0
     end type hutch
 
     ! derived data type for the hutch array: contains an array of hutches,
@@ -1826,87 +1826,99 @@ contains
     subroutine copy_model(m, mout)
         ! Copies model m to mout. If mout already contains information, it is
         ! deallocated and reallocated.
-        ! Hopefully this function is faster than destroying m and re-rotating it
+        ! There is a memory leak in here somewhere so you have to call destroy
+        ! model on mout before this function is called. Even calling destroy
+        ! model from within this function on mout does not get rid of the memory
+        ! leak. I don't understand why.
         type(model), intent(in) :: m
         type(model), intent(out) :: mout
         integer :: i, j, k
 
-        call destroy_model(mout)
-        
-        mout%lx = m%lx
-        mout%ly = m%ly
-        mout%lz = m%lz
-
-        mout%natoms = m%natoms
+        ! Deallocation:
         if(allocated(mout%xx%ind)) deallocate(mout%xx%ind)
         if(allocated(mout%yy%ind)) deallocate(mout%xx%ind)
         if(allocated(mout%zz%ind)) deallocate(mout%xx%ind)
         if(allocated(mout%znum%ind)) deallocate(mout%znum%ind)
         if(allocated(mout%znum_r%ind)) deallocate(mout%znum_r%ind)
-        allocate(mout%xx%ind(m%natoms), mout%yy%ind(m%natoms), mout%zz%ind(m%natoms), mout%znum%ind(m%natoms), mout%znum_r%ind(m%natoms))
+        if(allocated(mout%rot_i)) then
+            do i=1,mout%unrot_natoms
+                if(allocated(mout%rot_i(i)%ind)) deallocate(mout%rot_i(i)%ind)
+                mout%rot_i(i)%nat = 0
+            enddo
+        endif
+        ! mout%rot_i is still allocated but we don't need to change its size and
+        ! we want to keep it, so we will not deallocate it.
+        do i=1,mout%ha%nhutch_x
+            do j=1,mout%ha%nhutch_y
+                do k=1,mout%ha%nhutch_z
+                    if(allocated(mout%ha%h(i,j,k)%at)) deallocate(mout%ha%h(i,j,k)%at)
+                    mout%ha%h(i,j,k)%nat = 0
+                enddo
+            enddo
+        enddo
+        ! The pointer array mout%ha%h is still allocated but we don't need to
+        ! change its size either, so we will not deallocate it.
+        ! Deallocate mout's atom_hutch.
+        if(associated(mout%ha%atom_hutch)) deallocate(mout%ha%atom_hutch)
+
+        ! Set integer and real variables.
+        mout%natoms = m%natoms
+        mout%lx = m%lx
+        mout%ly = m%ly
+        mout%lz = m%lz
+        mout%nelements = m%nelements
+        mout%rotated = m%rotated
+        mout%unrot_natoms = m%unrot_natoms
+        mout%ha%nhutch_x = m%ha%nhutch_x
+        mout%ha%nhutch_y = m%ha%nhutch_y
+        mout%ha%nhutch_z = m%ha%nhutch_z
+        mout%ha%hutch_size = m%ha%hutch_size
         mout%xx%nat = m%xx%nat
         mout%yy%nat = m%yy%nat
         mout%zz%nat = m%zz%nat
         mout%znum%nat = m%znum%nat
         mout%znum_r%nat = m%znum_r%nat
+
+        ! Reallocate arrays and set them.
+        allocate(mout%xx%ind(mout%natoms), mout%yy%ind(mout%natoms), mout%zz%ind(mout%natoms), mout%znum%ind(mout%natoms), mout%znum_r%ind(mout%natoms))
         mout%xx%ind = m%xx%ind
         mout%yy%ind = m%yy%ind
         mout%zz%ind = m%zz%ind
         mout%znum%ind = m%znum%ind
         mout%znum_r%ind = m%znum_r%ind
 
-        mout%nelements = m%nelements
         if(allocated(mout%atom_type)) deallocate(mout%atom_type)
         if(allocated(mout%composition)) deallocate(mout%composition)
         allocate(mout%atom_type(mout%nelements), mout%composition(mout%nelements))
         mout%atom_type = m%atom_type
         mout%composition = m%composition
 
-        mout%rotated = m%rotated
-        mout%unrot_natoms = m%unrot_natoms
-        if(allocated(mout%rot_i)) then
-            do i=1,m%unrot_natoms
-                if(allocated(mout%rot_i(i)%ind)) then
-                    deallocate(mout%rot_i(i)%ind)
+        if(allocated(m%rot_i)) then
+            if(.not. allocated(mout%rot_i)) allocate(mout%rot_i(mout%unrot_natoms))
+            do i=1,mout%unrot_natoms
+                if(m%rot_i(i)%nat .gt. 0) then
+                    allocate(mout%rot_i(i)%ind(m%rot_i(i)%nat))
+                    mout%rot_i(i)%nat = m%rot_i(i)%nat
+                    mout%rot_i(i)%ind = m%rot_i(i)%ind
                 endif
             enddo
         endif
-        if(allocated(mout%rot_i)) deallocate(mout%rot_i)
-        allocate(mout%rot_i(mout%unrot_natoms))
-        do i=1,m%unrot_natoms
-            mout%rot_i(i)%nat = m%rot_i(i)%nat
-            if(allocated(m%rot_i(i)%ind)) then
-                allocate(mout%rot_i(i)%ind(mout%rot_i(i)%nat))
-                mout%rot_i(i)%ind = m%rot_i(i)%ind
-            endif
-        enddo
 
-        ! Destroy the old hutch, if necessary.
-        call destroy_hutch(mout%ha)
-       
-        mout%ha%nhutch_x = m%ha%nhutch_x
-        mout%ha%nhutch_y = m%ha%nhutch_y
-        mout%ha%nhutch_z = m%ha%nhutch_z
-        allocate(mout%ha%h(mout%ha%nhutch_x, mout%ha%nhutch_y,mout%ha%nhutch_y))
-        do i=1,mout%ha%nhutch_x
-            do j=1,mout%ha%nhutch_y
-                do k=1,mout%ha%nhutch_z
-                    mout%ha%h(i,j,k)%nat = m%ha%h(i,j,k)%nat
-                    if(allocated(m%ha%h(i,j,k)%at)) then
-                        if(allocated(mout%ha%h(i,j,k)%at)) then
-                            deallocate(mout%ha%h(i,j,k)%at)
+        if(associated(m%ha%h)) then
+            if(.not. associated(mout%ha%h)) allocate(mout%ha%h(mout%ha%nhutch_x, mout%ha%nhutch_y, mout%ha%nhutch_z))
+            do i=1,mout%ha%nhutch_x
+                do j=1,mout%ha%nhutch_y
+                    do k=1,mout%ha%nhutch_z
+                        mout%ha%h(i,j,k)%nat = m%ha%h(i,j,k)%nat
+                        if(mout%ha%h(i,j,k)%nat .gt. 0) then
+                            allocate(mout%ha%h(i,j,k)%at(mout%ha%h(i,j,k)%nat))
+                            mout%ha%h(i,j,k)%at = m%ha%h(i,j,k)%at
                         endif
-                        allocate(mout%ha%h(i,j,k)%at(mout%ha%h(i,j,k)%nat))
-                        mout%ha%h(i,j,k)%at = m%ha%h(i,j,k)%at
-                    endif
+                    enddo
                 enddo
             enddo
-        enddo
-        mout%ha%hutch_size = m%ha%hutch_size
+        endif
         if(associated(m%ha%atom_hutch)) then
-            if(associated(mout%ha%atom_hutch)) then
-                deallocate(mout%ha%atom_hutch)
-            endif
             allocate(mout%ha%atom_hutch(mout%natoms, 3))
             mout%ha%atom_hutch = m%ha%atom_hutch
         else
