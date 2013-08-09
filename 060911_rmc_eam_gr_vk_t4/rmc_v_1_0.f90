@@ -182,7 +182,7 @@ program rmc
 
         ! Reset time_elapsed and energy_function
         open(35,file=outbase//time_elapsed,form='formatted',status='unknown')
-            write(35,*) numprocs, "processors being used. MPI only."
+            write(35,*) numprocs, "processors being used. OpenMP + MPI."
             t1 = mpi_wtime()
             write (35,*) i, t1-t0
         close(35)
