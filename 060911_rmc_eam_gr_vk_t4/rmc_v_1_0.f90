@@ -182,7 +182,7 @@ program rmc
 
         ! Reset time_elapsed and energy_function
         open(35,file=outbase//time_elapsed,form='formatted',status='unknown')
-            write(35,*) "Number of processors is ", numprocs
+            write(35,*) numprocs, "processors being used. MPI only."
             t1 = mpi_wtime()
             write (35,*) i, t1-t0
         close(35)
@@ -318,8 +318,8 @@ program rmc
                     write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
                     ! Time per step * num steps before decreasing temp * num
                     ! drops in temp necessary to get to temp=30.
-                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7))
-                    !write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * (100-(i-1315708))
+                    !write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7))
+                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * (100-(i-1315708))
                 endif
             endif
         enddo
