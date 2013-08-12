@@ -41,8 +41,9 @@ program rmc
     character (len=256) :: model_filename
     character (len=256) :: param_filename  
     character (len=256) :: outbase
+    character (len=256) :: jobID, c
     character (len=512) :: comment
-    character (len=26) :: time_elapsed
+    character (len=256) :: time_elapsed, vki_fn, vku_fn, vkf_fn, output_model_fn, energy_fn, final_model_fn, gri_fn
     logical, dimension(4) :: used_data_sets
     real :: temperature
     real :: max_move
@@ -66,7 +67,7 @@ program rmc
     integer :: nk
     integer :: ntheta, nphi, npsi
     integer :: fem_algorithm
-    integer :: istat, status2
+    integer :: istat, status2, length
     integer :: total_steps
     integer :: iseed2
     real :: randnum
@@ -76,7 +77,6 @@ program rmc
     doubleprecision :: t0, t1 !timers
 
 
-
     !call mpi_init(mpierr)
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
@@ -84,18 +84,43 @@ program rmc
     
     t0 = mpi_wtime()
 
+    call get_command_argument(1, c, length, istat)
+    if (istat == 0) then
+        jobID = "_"//trim(c)
+    else
+        write (*,*) 'No jobID given.'
+        jobID = ''
+    end if
+
     if(myid.eq.0)then
         write(*,*)
         write(*,*) "This is the dev version of rmc!"
         write(*,*)
     endif
 
+    ! Set input filenames.
     model_filename = 'model_040511c_t2_final.xyz'
+    !model_filename = 'al50k_paul.xyz'
     param_filename = 'param_file.in'
+
+    ! Set output filenames.
     outbase = ""
-    write(time_elapsed, "(A12,I10,A4)") "time_elapsed", int(t0), ".txt"
-    time_elapsed = trim(time_elapsed)
-    !write(*,*) time_elapsed
+    write(time_elapsed, "(A12)") "time_elapsed"
+    time_elapsed = trim(trim(time_elapsed)//jobID)//".txt"
+    write(vki_fn, "(A9)") "vk_inital"
+    vki_fn = trim(trim(vki_fn)//jobID)//".txt"
+    write(vku_fn, "(A9)") "vk_update"
+    vku_fn = trim(trim(vku_fn)//jobID)//".txt"
+    write(vkf_fn, "(A8)") "vk_final"
+    vkf_fn = trim(trim(vkf_fn)//jobID)//".txt"
+    write(output_model_fn, "(A12)") "model_update"
+    output_model_fn = trim(trim(output_model_fn)//jobID)//".txt"
+    write(final_model_fn, "(A11)") "model_final"
+    final_model_fn = trim(trim(final_model_fn)//jobID)//".txt"
+    write(energy_fn, "(A6)") "energy"
+    energy_fn = trim(trim(energy_fn)//jobID)//".txt"
+    write(gri_fn, "(A10)") "gr_initial"
+    gri_fn = trim(trim(gri_fn)//jobID)//".txt"
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -123,8 +148,8 @@ program rmc
     ! rmc loop in this file. I may remove the if statement in fem eventually,
     ! but for now I will just use two different variables.
     use_femsim = .FALSE.
-    !use_rmc = .FALSE.
-    use_rmc = .TRUE.
+    use_rmc = .FALSE.
+    !use_rmc = .TRUE.
     !use_multislice = .TRUE.
     use_multislice = .FALSE.
 
@@ -142,17 +167,18 @@ program rmc
 
     if(myid.eq.0)then
         ! Write initial gr
-        !open(unit=51,file=outbase//"gr_initial.txt",form='formatted',status='unknown')
+        !open(unit=51,file=trim(gri_fn),form='formatted',status='unknown')
         !    do i=1, mbin_x
         !        R = del_r_x*(i)-del_r_x
         !        write(51,*)R, gr_x_sim_cur(i)
         !    enddo
         !close(51)
         ! Write initial vk 
-        open(unit=52,file="vk_initial.txt",form='formatted',status='unknown')
+        open(unit=52,file=trim(vki_fn),form='formatted',status='unknown')
+            write(*,*) "Writing V(k)."
             do i=1, nk
-                !write (*,*) k(i),vk(i)
-                write(52,*)k(i),vk(i)
+                write (*,*) k(i),vk(i)
+                write(52,*) k(i),vk(i)
             enddo
         close(52)
     endif
@@ -181,12 +207,12 @@ program rmc
         endif
 
         ! Reset time_elapsed and energy_function
-        open(35,file=outbase//time_elapsed,form='formatted',status='unknown')
-            write(35,*) numprocs, "processors being used. OpenMP + MPI."
+        open(35,file=trim(time_elapsed),form='formatted',status='unknown')
+            write(35,*) numprocs, "processors being used. OpenMP + MPI. Model is al50k.xyz"
             t1 = mpi_wtime()
             write (35,*) i, t1-t0
         close(35)
-        open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown')
+        open(34,file=trim(energy_fn),form='formatted',status='unknown')
             write(34,*) i, te1
         close(34)
 
@@ -288,13 +314,13 @@ program rmc
             if(mod(i,1)==0)then
                 if(myid.eq.0)then
                     ! Write to vk_update
-                    open(32,file=outbase//'vk_update.txt',form='formatted',status='unknown')
+                    open(32,file=trim(vku_fn),form='formatted',status='unknown')
                         do j=1, nk
                             write(32,*)k(j),vk(j)
                         enddo
                     close(32)
                     ! Write to model_update
-                    !open(33,file=outbase//'model_update.txt',form='formatted',status='unknown')
+                    !open(33,file=trim(output_model_fn),form='formatted',status='unknown')
                         !write(33,*)"updated model"
                         !write(33,*)m%lx,m%ly,m%lz
                         !do j=1,m%natoms
@@ -302,7 +328,7 @@ program rmc
                         !enddo
                         !write(33,*)"-1"
                     !close(33)
-                    open(34,file=outbase//'energy_function.txt',form='formatted',status='unknown',access='append')
+                    open(34,file=trim(energy_fn),form='formatted',status='unknown',access='append')
                         if(accepted) then
                             ! Write to energy_function
                             write(*,*) i, te2
@@ -310,7 +336,7 @@ program rmc
                         endif
                     close(34)
                     ! Write to time_elapsed
-                    open(35,file=outbase//time_elapsed,form='formatted',status='unknown',access='append')
+                    open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
                         t1 = mpi_wtime()
                         write (*,*) "Step, time elapsed:", i, t1-t0
                         write (35,*) i, t1-t0
@@ -329,25 +355,25 @@ program rmc
         ! The rmc loop finished. Write final data.
         if(myid.eq.0)then
             ! Write final vk
-            open(unit=54,file=outbase//"vk_final.txt",form='formatted',status='unknown')
+            open(unit=54,file=trim(vkf_fn),form='formatted',status='unknown')
             do i=1, nk
                 write(54,*)k(i),vk(i)
             enddo
             close(54)
             ! Write final model
-            open(unit=55,file=outbase//"model_final.txt",form='formatted',status='unknown')
-            write(55,*)"updated model"
+            open(unit=55,file=trim(final_model_fn),form='formatted',status='unknown')
+            write(55,*)"final model"
             write(55,*)m%lx,m%ly,m%lz
             do i=1,m%natoms
                 write(55,*)m%znum%ind(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
             enddo
             write(55,*)"-1"; close(55)
             ! Write final energy.
-            open(56,file=outbase//'energy_function.txt',form='formatted', status='unknown',access='append')
+            open(56,file=trim(energy_fn),form='formatted', status='unknown',access='append')
             write(56,*) i, te2
             close(56)
             ! Write final time spent.
-            open(57,file=outbase//time_elapsed,form='formatted',status='unknown',access='append')
+            open(57,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
             t1 = mpi_wtime()
             write (57,*) i, t1-t0
             write(57,*) "Finshed.", numprocs, "processors."

@@ -13,7 +13,7 @@
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It's suggested use 12*integer processors here. 
 # If the queue is testqueue, specify the number of nodes you want to use instead of cores.
-#$ -pe orte 16
+#$ -pe orte 15
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=72:00:00
@@ -41,4 +41,4 @@ echo "Got $NSLOTS processors."
 # MPI_HOME is probably the same as the already-set MPIHOME.
 MPI_HOME=/share/apps/openmpi_intel_20130712/bin
 
-$MPI_HOME/mpiexec -n $NSLOTS rmc
+$MPI_HOME/mpiexec -n $NSLOTS rmc $JOB_ID
