@@ -335,7 +335,10 @@ contains
             do hy = 1, m%ha%nhutch_y
                 do hz = 1, m%ha%nhutch_z
                     ! I don't think we need the line below.
-                    if(allocated(m%ha%h(hx,hy,hz)%at)) deallocate(m%ha%h(hx,hy,hz)%at)
+                    if(allocated(m%ha%h(hx,hy,hz)%at)) then
+                        deallocate(m%ha%h(hx,hy,hz)%at)
+                        m%ha%h(hx,hy,hz)%nat = 0
+                    endif
                     m%ha%h(hx, hy, hz)%nat = 0
                 end do
             end do
@@ -378,6 +381,9 @@ contains
         ! thought they were too. I could definitely be wrong here.
         ! Maybe due to rounding errors if an atom is on the far right edge.
         ! But if thats the case, then hx = m%ha%nhutch_x not hx = 1, etc.
+        if(xx .ge. m%lx/2.0) write(*,*) "xx", xx, hx
+        if(yy .ge. m%ly/2.0) write(*,*) "yy", yy, hy
+        if(zz .ge. m%lz/2.0) write(*,*) "zz", zz, hz
         !if(xx .ge. m%lx/2.0) hx = 1
         !if(yy .ge. m%ly/2.0) hy = 1
         !if(zz .ge. m%lz/2.0) hz = 1
@@ -667,7 +673,11 @@ contains
         if(allocated(ri)) deallocate(ri)
     end subroutine destroy_rot_indices
 
+
     subroutine hutch_list_pixel(m, px, py, diameter, atoms, istat)
+    ! Makes a list of atom indices (in atoms) of the atoms in a rectangular
+    ! prism with side length diameter in x and y, through the model thickness
+    ! in z, centered on the hutch containing the point (px, py).
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, diameter
         integer, pointer, dimension(:) :: atoms
@@ -680,6 +690,7 @@ contains
         real, dimension(3) :: hcenter
         real :: dist
         integer :: i_start, i_end, j_start, j_end, trash
+        real :: x_start, x_end, y_start, y_end
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", ha%nhutch_x, ha%nhutch_y, ha%nhutch_z
 
@@ -718,8 +729,16 @@ contains
         ! still in the square.
 
         ! Jason 20130722 Made this part much better.
-        call hutch_position(m, px-diameter/2.0, py-diameter/2.0, 0.0, i_start, j_start, trash)
-        call hutch_position(m, px+diameter/2.0, py+diameter/2.0, 0.0, i_end, j_end, trash)
+        x_start = px-diameter/2.0
+        x_end = px+diameter/2.0
+        y_start = py-diameter/2.0
+        y_end = py+diameter/2.0
+        if(x_start < -m%lx/2.0) x_start = m%lx/2.0
+        if(x_end > m%lx/2.0) x_end = m%lx/2.0
+        if(y_start < -m%ly/2.0) y_start = m%ly/2.0
+        if(y_end > m%ly/2.0) y_end = m%ly/2.0
+        call hutch_position(m, x_start, y_start, 0.0, i_start, j_start, trash)
+        call hutch_position(m, x_end, y_end, 0.0, i_end, j_end, trash)
         !write(*,*) "i_start, i_end=", i_start, i_end
         !write(*,*) "j_start, j_end=", j_start, j_end
         !nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z) ! This wont work in the function.
@@ -730,14 +749,15 @@ contains
             do j=j_start, j_end
                 do k=1, m%ha%nhutch_z
                     ! Calculate hutch centers.
-                    hcenter(1) = -m%lx/2.0 + m%ha%hutch_size/2.0 + i*m%ha%hutch_size
-                    hcenter(2) = -m%ly/2.0 + m%ha%hutch_size/2.0 + j*m%ha%hutch_size
-                    hcenter(3) = -m%lz/2.0 + m%ha%hutch_size/2.0 + k*m%ha%hutch_size
+                    hcenter(1) = -m%lx/2.0 + m%ha%hutch_size/2.0 + (i-1)*m%ha%hutch_size
+                    hcenter(2) = -m%ly/2.0 + m%ha%hutch_size/2.0 + (j-1)*m%ha%hutch_size
+                    hcenter(3) = -m%lz/2.0 + m%ha%hutch_size/2.0 + (k-1)*m%ha%hutch_size
                     ! Calculate distance.
                     dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 )
                     if( dist < diameter/2.0 + m%ha%hutch_size/sqrt(2.0) ) then
                         call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
+                        !if(allocated(m%ha%h(hx, hy, hz)%at)) then
                             temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
                             nlist = nlist + m%ha%h(hx, hy, hz)%nat
                         endif
@@ -746,7 +766,6 @@ contains
                 enddo
             enddo
         enddo
-
 
         ! Copy all the atoms we found in the previous loop into atoms.
         if (nlist > 1) then
@@ -1361,6 +1380,7 @@ contains
         integer :: i, j, k      ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
         integer :: i_start, i_end, j_start, j_end, trash
+        real :: x_start, x_end, y_start, y_end
         !logical :: found
 
         !write(*,*) "Number of hutches in the x, y, and z directions:", m%ha%nhutch_x, m%ha%nhutch_y, m%ha%nhutch_z
@@ -1371,8 +1391,16 @@ contains
         end if
 
         ! Jason 20130722 Made this part much better.
-        call hutch_position(m, px-diameter/2.0, py-diameter/2.0, 0.0, i_start, j_start, trash)
-        call hutch_position(m, px+diameter/2.0, py+diameter/2.0, 0.0, i_end, j_end, trash)
+        x_start = px-diameter/2.0
+        x_end = px+diameter/2.0
+        y_start = py-diameter/2.0
+        y_end = py+diameter/2.0
+        if(x_start < -m%lx/2.0) x_start = m%lx/2.0
+        if(x_end > m%lx/2.0) x_end = m%lx/2.0
+        if(y_start < -m%ly/2.0) y_start = m%ly/2.0
+        if(y_end > m%ly/2.0) y_end = m%ly/2.0
+        call hutch_position(m, x_start, y_start, 0.0, i_start, j_start, trash)
+        call hutch_position(m, x_end, y_end, 0.0, i_end, j_end, trash)
         !write(*,*) "i_start, i_end=", i_start, i_end
         !write(*,*) "j_start, j_end=", j_start, j_end
         nh = (i_end-i_start+1)*(j_end-j_start+1)*(m%ha%nhutch_z)

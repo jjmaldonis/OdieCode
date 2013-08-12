@@ -1171,7 +1171,7 @@ contains
     end subroutine add_pos
 
 
-    subroutine print_sampled_map(m, square_pixel)
+    subroutine print_sampled_map(m, res, square_pixel)
     ! Prints a "map" of the model with the numbers pertaining to the number of
     ! times atom i will be sampled in the femsim algorithm over the entire
     ! model (using pixels). Ideally, all numbers will be 1. A 0 means that atom
@@ -1179,17 +1179,40 @@ contains
     ! sampled twice as much as an atom with a 1.
     ! Currently not working.
         type(model), intent(in) :: m
+        real, intent(in) :: res
+        logical, intent(in) :: square_pixel
+        integer, dimension(:,:), allocatable :: map
         integer, dimension(:), allocatable :: sampled_atoms ! This array is of size natoms,
         ! is initialized to 0, and position i is incremented every time atom i is used
         ! in the intensity calcuation. This is to see which parts of the model are
         ! lacking / overused in the simulation.
-        logical, intent(in) :: square_pixel
         integer, pointer, dimension(:):: pix_atoms
         !integer, allocatable, dimension(:):: pix_atoms
-        integer :: i, j, istat
+        integer :: i, j, istat, x, y
+        character(len=256) :: buffer
+        character(len=2) :: str
+        real, dimension(:), allocatable :: rr_a
+        real, allocatable, dimension(:) :: rr_x, rr_y
+        real :: sqrt1_2_res
+        real :: x2, y2!, rr, t1, t2, const1, const2, const3, pp, r_max
+
+        if(square_pixel) then
+            sqrt1_2_res = SQRT(0.5) * res
+        else
+            sqrt1_2_res = res
+        endif
 
         allocate(sampled_atoms(m%natoms))
         sampled_atoms = 0
+
+        allocate(map( ceiling(m%lx), ceiling(m%ly) ))
+        map = 0
+
+        write(*,*)
+        write(*,*) "Each row and column below represent", m%lx/ceiling(m%lx), "Angstroms."
+        write(*,*) "Dashes represent 0's (for easier viewing) and *'s represent numbers over 9."
+        write(*,*) "Numbers indicate the number of atoms at that physical location in the model that are being sampled by a single femsim run."
+        if(.not. square_pixel) write(*,*) "The hard cutoffs along the edges are probably due to the hard cutoff of the hutches. You might get an atom sneak in if it's right on the inner edge of a hutch I'm guessing. I could be wrong here, however."
 
         do i=1, pa%npix
             if(square_pixel) then
@@ -1197,15 +1220,60 @@ contains
             else
                 call hutch_list_pixel(m, pa%pix(i,1), pa%pix(i,2), pa%phys_diam, pix_atoms, istat)
             endif
+
+            if(allocated(rr_x)) deallocate(rr_x)
+            if(allocated(rr_y)) deallocate(rr_y)
+            if(allocated(rr_a)) deallocate(rr_a)
+            allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), rr_a(size(pix_atoms)), stat=istat)
+
             do j=1, size(pix_atoms)
-                sampled_atoms(j) = sampled_atoms(j) + 1
+                x2=m%xx%ind(pix_atoms(j))-pa%pix(i,1)
+                y2=m%yy%ind(pix_atoms(j))-pa%pix(i,2)
+                x2=x2-m%lx*anint(x2/m%lx)
+                y2=y2-m%ly*anint(y2/m%ly)
+                rr_x(j) = ABS(x2)
+                rr_y(j) = ABS(y2)
+                rr_a(j)=sqrt(x2*x2 + y2*y2)
+
+                if(square_pixel) then
+                    if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le.  sqrt1_2_res))then
+                        sampled_atoms(pix_atoms(j)) = sampled_atoms(pix_atoms(j)) + 1
+                        x = floor( ( m%xx%ind(pix_atoms(j)) + (m%lx/2.0) ) / ( m%lx / ceiling(m%lx) ) ) + 1
+                        y = floor( ( m%yy%ind(pix_atoms(j)) + (m%ly/2.0) ) / ( m%ly / ceiling(m%ly) ) ) + 1
+                        map(x,y) = map(x,y) + 1
+                    endif
+                else
+                    if(rr_a(j) .le. res) then
+                        sampled_atoms(pix_atoms(j)) = sampled_atoms(pix_atoms(j)) + 1
+                        x = floor( ( m%xx%ind(pix_atoms(j)) + (m%lx/2.0) ) / ( m%lx / ceiling(m%lx) ) ) + 1
+                        y = floor( ( m%yy%ind(pix_atoms(j)) + (m%ly/2.0) ) / ( m%ly / ceiling(m%ly) ) ) + 1
+                        map(x,y) = map(x,y) + 1
+                    endif 
+                endif
             enddo
         enddo
-
-        do i=1, m%natoms
-            !write(*,'(I0)',advance='no') sampled_atoms(i)
-            write(*,*) sampled_atoms(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
+        do i=1, ceiling(m%lx)
+            buffer = ''
+            do j=1, ceiling(m%ly)
+                str = ''
+                if(map(i,j) .eq. 0) then
+                    !write(str, "(A2)") " -"
+                    write(str, "(A1)") "-"
+                    buffer = trim(buffer)//str
+                else if(map(i,j) .lt. 10 ) then
+                    !write(str, "(A1,I1)") " ", map(i,j)
+                    write(str, "(I1)") map(i,j)
+                    buffer = trim(buffer)//str
+                else
+                    !write(str, "(A2)") " *"
+                    write(str, "(A1)") "*"
+                    buffer = trim(buffer)//str
+                endif
+            enddo
+            write(*,*) trim(buffer)
         enddo
+
+        write(*,*)
     end subroutine print_sampled_map
 
 

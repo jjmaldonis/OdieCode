@@ -160,6 +160,7 @@ program rmc
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)))
+    !call print_sampled_map(m, res, square_pixel)
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
     t1 = mpi_wtime()
