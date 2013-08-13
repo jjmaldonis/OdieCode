@@ -523,7 +523,7 @@ contains
         m%xx%ind(w) = xx_new
         m%yy%ind(w) = yy_new
         m%zz%ind(w) = zz_new
-        deallocate(atoms) !added by Feng Yi on 03/04/2009
+        if(associated(atoms)) deallocate(atoms) !added by Feng Yi on 03/04/2009
 
         call hutch_list_3D(m, m%xx%ind(w), m%yy%ind(w), m%zz%ind(w), radius, atoms, istat, nlist)
 
@@ -659,7 +659,7 @@ contains
             !close(911)
         endif
         
-        deallocate(atoms)
+        if(associated(atoms)) deallocate(atoms)
     end subroutine gr_hutch_mc
 
 
@@ -826,7 +826,7 @@ contains
                 endif
             enddo !do k
             !WRITE(*,*) 'Size of atoms is: ', size(atoms, 1)
-            DEALLOCATE(atoms) !added by Feng Yi on 03/03/2009
+            if(associated(atoms)) DEALLOCATE(atoms) !added by Feng Yi on 03/03/2009
 
             !*******The following is for debug
             do j=m%natoms + 1, m%natoms

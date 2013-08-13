@@ -82,7 +82,7 @@ program rmc
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
     
-    t0 = mpi_wtime()
+    t0 = omp_get_wtime()
 
     call get_command_argument(1, c, length, istat)
     if (istat == 0) then
@@ -99,15 +99,15 @@ program rmc
     endif
 
     ! Set input filenames.
-    !model_filename = 'model_040511c_t2_final.xyz'
-    model_filename = 'al50k_paul.xyz'
-    param_filename = 'param_file.in'
+    model_filename = 'model_040511c_t2_final.xyz'
+    !model_filename = 'al50k_paul.xyz'
+    param_filename = 'param_file_BAK.in'
 
     ! Set output filenames.
     outbase = ""
     write(time_elapsed, "(A12)") "time_elapsed"
     time_elapsed = trim(trim(time_elapsed)//jobID)//".txt"
-    write(vki_fn, "(A9)") "vk_inital"
+    write(vki_fn, "(A10)") "vk_initial"
     vki_fn = trim(trim(vki_fn)//jobID)//".txt"
     write(vku_fn, "(A9)") "vk_update"
     vku_fn = trim(trim(vku_fn)//jobID)//".txt"
@@ -163,7 +163,7 @@ program rmc
     call print_sampled_map(m, res, square_pixel)
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
-    t1 = mpi_wtime()
+    t1 = omp_get_wtime()
     write(*,*) "Femsim took", t1-t0, "seconds."
 
     if(myid.eq.0)then
@@ -195,7 +195,7 @@ program rmc
         e2 = e1
 
         ! RMC step begins
-        t0 = mpi_wtime()
+        t0 = omp_get_wtime()
         i=1315708
         if(myid.eq.0)then
             write(*,*)
@@ -210,7 +210,7 @@ program rmc
         ! Reset time_elapsed and energy_function
         open(35,file=trim(time_elapsed),form='formatted',status='unknown')
             write(35,*) numprocs, "processors being used. OpenMP + MPI. Model is al50k.xyz"
-            t1 = mpi_wtime()
+            t1 = omp_get_wtime()
             write (35,*) i, t1-t0
         close(35)
         open(34,file=trim(energy_fn),form='formatted',status='unknown')
@@ -338,7 +338,7 @@ program rmc
                     close(34)
                     ! Write to time_elapsed
                     open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
-                        t1 = mpi_wtime()
+                        t1 = omp_get_wtime()
                         write (*,*) "Step, time elapsed:", i, t1-t0
                         write (35,*) i, t1-t0
                     close(35)
@@ -375,7 +375,7 @@ program rmc
             close(56)
             ! Write final time spent.
             open(57,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
-            t1 = mpi_wtime()
+            t1 = omp_get_wtime()
             write (57,*) i, t1-t0
             write(57,*) "Finshed.", numprocs, "processors."
             close(57)

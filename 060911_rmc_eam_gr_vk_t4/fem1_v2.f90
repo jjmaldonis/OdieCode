@@ -320,7 +320,7 @@ contains
 
     subroutine init_pix(m, res, istat, square_pixel)
         type(model), intent(in) :: m
-        real, intent(in) :: res ! Pixel width.
+        real, intent(in) :: res
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
         integer :: i, j, k
@@ -361,6 +361,7 @@ contains
                 enddo
             enddo
             write(*,*) "with a distance between pixels of", pa%dr
+            write(*,*) "and a diameter of", pa%phys_diam
         endif
     end subroutine init_pix
 
@@ -853,7 +854,8 @@ contains
 
         istat = 0
 
-        allocate(update_pix(nrot,pa%npix)) !TODO add error message
+        allocate(update_pix(nrot,pa%npix),stat=istat) !TODO add error message
+        call check_allocation(istat, 'Cannot allocate memory for pixel update array in fem.')
         update_pix = .FALSE.
 
         ! Create a new model (moved_atom) with only one atom in it and put the
@@ -916,8 +918,10 @@ contains
             ! Note, also, that if the change in the number of times atom appears
             ! in the model is greater than 1 then we are reallocating and
             ! deallocating and potentially performing array deletion
-            ! unnecessarily a bit, but this should happen rarely and it
-            ! shouldn't be THAT much slower. I should probably check. TODO
+            ! unnecessarily a bit, but this should happen semi rarely and it
+            ! shouldn't be THAT much slower. I should probably check. However,
+            ! once if we change the reallocation to 10% instead of just a single
+            ! spot then it's much less big of a deal. TODO
 
             ! First check to see if:
             ! (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0).

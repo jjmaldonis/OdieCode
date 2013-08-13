@@ -245,7 +245,7 @@ contains
             else
                 e1(i) = f(m%znum_r%ind(i), rhobin) + 0.5*phi2
             endif
-            deallocate(atoms)
+            if(associated(atoms)) deallocate(atoms)
         enddo
 
         te1=0.0
@@ -358,7 +358,7 @@ contains
                 e2(atoms1(i)) = f(m%znum_r%ind(atoms1(i)), rhobin) + 0.5*phi2
             endif
             not_counted(atoms1(i)) = .false.
-            deallocate(atoms2)
+            if(associated(atoms2)) deallocate(atoms2)
         enddo
 
         call hutch_list_3D(m, xx_new, yy_new, zz_new, eam_max_r, atoms3, istat, nlist3)
@@ -394,7 +394,7 @@ contains
                 else
                     e2(atoms3(i)) = f(m%znum_r%ind(atoms3(i)), rhobin) + 0.5*phi2
                 endif
-                deallocate(atoms4)
+                if(associated(atoms4)) deallocate(atoms4)
             endif
         enddo
 
@@ -402,7 +402,8 @@ contains
         do i=1, m%natoms
             te2 = te2 + e2(i)
         enddo
-        deallocate(atoms1, atoms3)
+        if(associated(atoms1)) deallocate(atoms1)
+        if(associated(atoms3)) deallocate(atoms3)
     end subroutine eam_mc
 
 end module eam_mod
