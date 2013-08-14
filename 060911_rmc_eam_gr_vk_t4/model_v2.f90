@@ -841,8 +841,8 @@ contains
 
         deallocate(temp_atoms)
 
-        write(*,*) "Sphere (", px,py,pz, ") with radius", radius, "contains", nlist, "atoms and ", nh, &
-            "hutches !<= ", ( (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) ) ! debug
+        !write(*,*) "Sphere (", px,py,pz, ") with radius", radius, "contains", nlist, "atoms and ", nh, &
+            !"hutches !<= ", ( (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) ) ! debug
     end subroutine hutch_list_3d
 
 
