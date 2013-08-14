@@ -82,6 +82,9 @@ program rmc
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
     
+    nthr = omp_get_max_threads()
+    write(*,*) "Max number of threads is", nthr
+    
     t0 = omp_get_wtime()
 
     call get_command_argument(1, c, length, istat)
@@ -345,8 +348,8 @@ program rmc
                     write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
                     ! Time per step * num steps before decreasing temp * num
                     ! drops in temp necessary to get to temp=30.
-                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7))
-                    write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/(i-1315708) * (100-(i-1315708))
+                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7)) / nthr
+                    write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/(i-1315708) * (100-(i-1315708)) / nthr
                 endif
             endif
         enddo

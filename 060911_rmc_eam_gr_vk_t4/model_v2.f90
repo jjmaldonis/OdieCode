@@ -812,17 +812,16 @@ contains
                     hcenter(2) = -m%ly/2.0 + m%ha%hutch_size/2.0 + (j-1)*m%ha%hutch_size
                     hcenter(3) = -m%lz/2.0 + m%ha%hutch_size/2.0 + (k-1)*m%ha%hutch_size
                     ! Calculate distance.
-                    dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 + (pz-hcenter(3))**2 )
-                    if( dist < radius + m%ha%hutch_size/sqrt(2.0) ) then
+                    !dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 + (pz-hcenter(3))**2 )
+                    !if( dist < radius + m%ha%hutch_size/sqrt(2.0) .or. dist > (m%lx-radius)*sqrt(3.0) ) then ! The 2nd part is for PBC. It only works if the world is a cube.
                         call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
                         !if(allocated(m%ha%h(hx, hy, hz)%at)) then
                             temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
                             nlist = nlist + m%ha%h(hx, hy, hz)%nat
                         endif
-                        !nh = nh + 1
-                    endif
                         nh = nh + 1
+                    !endif
                 enddo
             enddo
         enddo
@@ -841,6 +840,9 @@ contains
         endif
 
         deallocate(temp_atoms)
+
+        write(*,*) "Sphere (", px,py,pz, ") with radius", radius, "contains", nlist, "atoms and ", nh, &
+            "hutches !<= ", ( (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) ) ! debug
     end subroutine hutch_list_3d
 
 
@@ -958,7 +960,7 @@ contains
         deallocate(temp_atoms)
 
         !write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, &
-            !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
+            !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)) * (ceiling(diameter/m%ha%hutch_size)) * 11 ) ! debug
 
     end subroutine hutch_list_pixel
 
@@ -1035,7 +1037,7 @@ contains
         endif
 
         !write(*,*) "pixel (", px,py, ") has diameter", diameter, "and contains", nlist, "atoms and ", nh, &
-            !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)+1) * (ceiling(diameter/m%ha%hutch_size)+1) * 11 ) ! debug
+            !"hutches !<= ", ( (ceiling(diameter/m%ha%hutch_size)) * (ceiling(diameter/m%ha%hutch_size)) * 11 ) ! debug
 
         if(allocated(temp_atoms)) deallocate(temp_atoms)
 !do i=1, m%natoms
