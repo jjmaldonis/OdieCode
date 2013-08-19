@@ -196,3 +196,18 @@ You now need to set up the queue. Talk to Xing about this if you are having prob
 
 Feng had this in his setup as well, but I havent gotten there yet:  
 Parallel jobs:  `qsub .pe mpich # of cores submit.sh`
+
+
+
+Further Notes
+=============
+
+1. You can re-install compute node 0 (compute-0-0) using:
+
+> rocks set host boot compute-0-0 action=install
+
+And then rebooting the node.
+
+
+2. There are monitor and keyboard jacks on each of the nodes in the cluster room. You can see what is going on on each node using these.
+
