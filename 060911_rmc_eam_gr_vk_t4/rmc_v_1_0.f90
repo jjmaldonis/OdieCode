@@ -227,10 +227,10 @@ program rmc
         do while (i > 0)
             i=i+1
 
-            if( i - 1315708 > 100) then
-                write(*,*) "STOPPING MC AFTER 100 STEPS"
-                stop ! Stop after 100 steps for timing runs.
-            endif
+            !if( i - 1315708 > 100) then
+            !    write(*,*) "STOPPING MC AFTER 100 STEPS"
+            !    stop ! Stop after 100 steps for timing runs.
+            !endif
 
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
