@@ -736,6 +736,9 @@ contains
     ! position (px,py,pz) in the list 'atoms'. Stores in nlist the number of
     ! atoms in this radius (i.e. size(atoms)+1 because of the original atom).
     ! Returns 1 in istat if memory allocation fails and -1 if no atoms are found.
+    ! I checked this function by hand on one of the models and it works exactly
+    ! how it should - i.e. it does return exactly the correct hutches/atoms. You
+    ! can check by uncommenting the used_hutches lines.
 
         type(model), target, intent(in) :: m
         real, intent(in) :: px, py, pz, radius
@@ -750,6 +753,7 @@ contains
         real :: dist
         integer :: i_start, i_end, j_start, j_end, k_start, k_end
         real :: x_start, x_end, y_start, y_end, z_start, z_end
+        !integer, dimension(11,11,11) :: used_hutches
         !integer i2, j2, k2 !consider the hutch across the box boundary
 
         ! Allocatae temp_atoms with the max number of atoms so that no matter
@@ -785,6 +789,7 @@ contains
         !write(*,*) "j_start, j_end=", j_start, j_end
         !write(*,*) "k_start, k_end=", k_start, k_end
 
+        !used_hutches = 0
         nh = 0
         nlist = 1
         ! There will be a major problem here if i_start > i_end due to the pixel
@@ -815,6 +820,7 @@ contains
                     !dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 + (pz-hcenter(3))**2 )
                     !if( dist < radius + m%ha%hutch_size/sqrt(2.0) .or. dist > (m%lx-radius)*sqrt(3.0) ) then ! The 2nd part is for PBC. It only works if the world is a cube.
                         call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
+                        used_hutches(hx,hy,hz) = 1
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
                         !if(allocated(m%ha%h(hx, hy, hz)%at)) then
                             temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
@@ -843,6 +849,15 @@ contains
 
         !write(*,*) "Sphere (", px,py,pz, ") with radius", radius, "contains", nlist, "atoms and ", nh, &
             !"hutches !<= ", ( (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) * (ceiling(radius*2/m%ha%hutch_size)) ) ! debug
+        !write(*,*) "used_hutches: has", sum(used_hutches), "hutches in it. These are:"
+        !do i=1, 11
+        !    do j=1, 11
+        !        do k=1, 11
+        !            if(used_hutches(i,j,k) .eq. 1) write(*,*) "(",i,j,k,")"
+        !        enddo
+        !    enddo
+        !enddo
+        !if(abs(px) < 7.5 .and. abs(py) < 7.5 .and. abs(pz) < 7.5) call sleep(10)
     end subroutine hutch_list_3d
 
 
