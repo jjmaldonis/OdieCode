@@ -351,7 +351,7 @@ contains
         enddo
 
         if(myid.eq.0)then
-            write(*,*)"pixels=", pa%npix_1D, "by", pa%npix_1D
+            write(*,*)"Pixel configuration: ", pa%npix_1D, "by", pa%npix_1D
             write(*,*) "They are centered at:"
             k=1
             do i=1, pa%npix_1D

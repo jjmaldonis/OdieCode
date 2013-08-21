@@ -820,7 +820,7 @@ contains
                     !dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 + (pz-hcenter(3))**2 )
                     !if( dist < radius + m%ha%hutch_size/sqrt(2.0) .or. dist > (m%lx-radius)*sqrt(3.0) ) then ! The 2nd part is for PBC. It only works if the world is a cube.
                         call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
-                        used_hutches(hx,hy,hz) = 1
+                        !used_hutches(hx,hy,hz) = 1
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
                         !if(allocated(m%ha%h(hx, hy, hz)%at)) then
                             temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)

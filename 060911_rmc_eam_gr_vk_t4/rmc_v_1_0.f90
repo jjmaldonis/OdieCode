@@ -76,6 +76,11 @@ program rmc
     integer :: ipvd, nthr
     doubleprecision :: t0, t1 !timers
 
+    if(myid.eq.0)then
+        write(*,*)
+        write(*,*) "This is the dev version of rmc!"
+        write(*,*)
+    endif
 
     !call mpi_init(mpierr)
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
@@ -83,7 +88,10 @@ program rmc
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
     
     nthr = omp_get_max_threads()
-    write(*,*) "Max number of threads is", nthr
+    if(myid.eq.0) then
+        write(*,*) "OMP found a max number of threads of", nthr
+        write(*,*)
+    endif
     
     t0 = omp_get_wtime()
 
@@ -92,14 +100,9 @@ program rmc
         jobID = "_"//trim(c)
     else
         write (*,*) 'No jobID given.'
+        write(*,*)
         jobID = ''
     end if
-
-    if(myid.eq.0)then
-        write(*,*)
-        write(*,*) "This is the dev version of rmc!"
-        write(*,*)
-    endif
 
     ! Set input filenames.
     model_filename = 'model_040511c_t2_final.xyz'
@@ -163,11 +166,11 @@ program rmc
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)))
-    call print_sampled_map(m, res, square_pixel)
-    call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+    if(myid.eq.0) call print_sampled_map(m, res, square_pixel)
+        call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
     t1 = omp_get_wtime()
-    write(*,*) "Femsim took", t1-t0, "seconds."
+    write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
 
     if(myid.eq.0)then
         ! Write initial gr
@@ -229,6 +232,7 @@ program rmc
 
             !if( i - 1315708 > 100) then
             !    write(*,*) "STOPPING MC AFTER 100 STEPS"
+            !    call mpi_finalize(mpierr)
             !    stop ! Stop after 100 steps for timing runs.
             !endif
 
