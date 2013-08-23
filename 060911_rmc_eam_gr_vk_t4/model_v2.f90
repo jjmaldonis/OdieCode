@@ -287,6 +287,7 @@ contains
         m%rotated = .FALSE.
 
         call recenter_model(0.0, 0.0, 0.0, m)
+        call check_model(m,istat)
 
         ! Calls hutch_position and hutch_add_atom in loops.
         ! It does some allocation too.
@@ -302,7 +303,7 @@ contains
         real, intent(in) :: xc, yc, zc
         type(model), intent(inout) :: m
         real :: xshift, yshift, zshift
-        ! maxval calculates the maximum value in the array. There are some
+        ! maxval gets the maximum value in the array. There are some
         ! nice parameters for it described online by the way.
         xshift = xc*m%lx - (maxval(m%xx%ind) + minval(m%xx%ind))/2.0
         yshift = yc*m%ly - (maxval(m%yy%ind) + minval(m%yy%ind))/2.0
@@ -321,6 +322,7 @@ contains
     ! More should be added as we think of it.
         type(model), intent(in) :: m 
         integer, intent(out) :: istat
+        integer :: i, j
         real xlen, ylen, zlen 
         istat = 0
 
@@ -352,6 +354,17 @@ contains
             write (*,*) 'Maximum atomic number of ', maxval(m%znum%ind, 1), 'is greater than 103.'
             istat = 1
         end if
+
+        !do i=1, m%natoms
+        !    do j=1, m%natoms
+        !        if( i /= j) then
+        !            if( sqrt( (m%xx%ind(i) - m%xx%ind(j))**2 + (m%yy%ind(i) - m%yy%ind(j))**2 + (m%zz%ind(i) - m%zz%ind(j))**2 ) < 1.76 ) then
+        !                write(*,*) 'Atom', i, 'and atom', j, 'are too close together:', sqrt( (m%xx%ind(i) - m%xx%ind(j))**2 + (m%yy%ind(i) - m%yy%ind(j))**2 + (m%zz%ind(i) - m%zz%ind(j))**2 )
+        !                istat = 1
+        !            endif
+        !        endif
+        !    enddo
+        !enddo
     end subroutine check_model
 
 
@@ -444,6 +457,25 @@ contains
                 !if(min%natoms /= 1425) write(*,*) "Atom outside world."
             endif
         enddo
+
+
+
+        !open(101,file="doubled_model.xyz",form='formatted',status='unknown')
+        !write(101,*) "doubled model"
+        !write(101,*) min%lx*2, min%ly*2, min%lz*2
+        !do i=1, mt%natoms
+        !    if((mt%xx%ind(i) <= lx2*2 .AND. mt%xx%ind(i) >= -1.0*lx2*2) .and. &
+        !       (mt%yy%ind(i) <= ly2*2 .AND. mt%yy%ind(i) >= -1.0*ly2*2) .and. &
+        !       (mt%zz%ind(i) <= lz2*2 .AND. mt%zz%ind(i) >= -1.0*lz2*2)) then
+        !    write(101,*) mt%znum%ind(i), mt%xx%ind(i), mt%yy%ind(i), mt%zz%ind(i)
+        !    endif
+        !enddo
+        !write(101,*) "-1"
+        !close(101)
+        !write(*,*) "WRITE DOUBLED MODEL COMPLETE."
+        !stop
+
+
         ! Allocate memory for the new atoms.
         mrot%unrot_natoms = min%natoms
         allocate(mrot%xx%ind(mrot%natoms), mrot%yy%ind(mrot%natoms), mrot%zz%ind(mrot%natoms), &
@@ -507,6 +539,8 @@ contains
         if(allocated(orig_indices)) then !added by feng yi on 3/14/2009
             deallocate(orig_indices)
         endif
+
+        call check_model(mrot, istat)
     end subroutine rotate_model
 
 

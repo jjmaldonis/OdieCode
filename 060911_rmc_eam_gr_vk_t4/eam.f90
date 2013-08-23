@@ -238,7 +238,6 @@ contains
                     endif
                 endif
             enddo
-
             rhobin = int(rho2/drho)+1
             if(rhobin.le.0)then
                 e1(i) = 0.5*phi2

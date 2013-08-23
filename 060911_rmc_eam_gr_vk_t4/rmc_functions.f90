@@ -42,7 +42,7 @@ CONTAINS
     !gr_e electron G(r) data
     !gr_n neutron G(r) data
     !gr_x X-ray G(r) data
-    !V=FEM intensity variance
+    !V=FEM intensity variance from input file
     !V_err=FEM measurement variance error
     !gr_e_sim=simulated g(r) for electron scattering
     !gr_n_sim=simulated g(r) for neutron scattering

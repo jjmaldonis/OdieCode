@@ -105,7 +105,8 @@ program rmc
     end if
 
     ! Set input filenames.
-    model_filename = 'model_040511c_t2_final.xyz'
+    !model_filename = 'model_040511c_t2_final.xyz'
+    model_filename = 'double_model.xyz'
     !model_filename = 'al50k_paul.xyz'
     param_filename = 'param_file_BAK.in'
 
@@ -154,20 +155,20 @@ program rmc
     ! rmc loop in this file. I may remove the if statement in fem eventually,
     ! but for now I will just use two different variables.
     use_femsim = .FALSE. ! This is always set to false for now.
-    !use_rmc = .FALSE.
-    use_rmc = .TRUE.
+    use_rmc = .FALSE.
+    !use_rmc = .TRUE.
     !use_multislice = .TRUE.
     use_multislice = .FALSE.
 
     call read_eam(m)   
-    call eam_initial(m, te1)
 
     call scatt_power(m,used_data_sets,istat)
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)))
     if(myid.eq.0) call print_sampled_map(m, res, square_pixel)
-        call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+    ! Fem updates vk based on the intensity calculations and v_background.
+    call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
     t1 = omp_get_wtime()
     write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
@@ -300,8 +301,8 @@ program rmc
                 endif
             endif
 
-            ! Every 50,000 steps lower the temp, max_move, and reset beta.
-            if(mod(i,50000)==0)then
+            ! Every 150,000 steps lower the temp, max_move, and reset beta.
+            if(mod(i,150000)==0)then
                 temperature = temperature * sqrt(0.7)
                 if(myid.eq.0)then
                     write(*,*) "Lowering temp to", temperature, "at step", i
@@ -346,14 +347,14 @@ program rmc
                     ! Write to time_elapsed
                     open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
                         t1 = omp_get_wtime()
-                        write (*,*) "Step, time elapsed:", i, t1-t0
+                        write (*,*) "Step, time elapsed, temp:", i-1315708, t1-t0, temperature
                         write (35,*) i, t1-t0
                     close(35)
                     write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
                     ! Time per step * num steps before decreasing temp * num
                     ! drops in temp necessary to get to temp=30.
-                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 50000 * log(30/temperature)/log(sqrt(0.7)) / nthr
-                    write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/(i-1315708) * (100-(i-1315708)) / nthr
+                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 150000 * log(30/temperature)/log(sqrt(0.7))! / nthr
+                    !write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/(i-1315708) * (100-(i-1315708))! / nthr
                 endif
             endif
         enddo
