@@ -105,8 +105,8 @@ program rmc
     end if
 
     ! Set input filenames.
-    !model_filename = 'model_040511c_t2_final.xyz'
-    model_filename = 'double_model.xyz'
+    model_filename = 'model_040511c_t2_final.xyz'
+    !model_filename = 'double_model.xyz'
     !model_filename = 'al50k_paul.xyz'
     param_filename = 'param_file_BAK.in'
 
@@ -155,12 +155,13 @@ program rmc
     ! rmc loop in this file. I may remove the if statement in fem eventually,
     ! but for now I will just use two different variables.
     use_femsim = .FALSE. ! This is always set to false for now.
-    use_rmc = .FALSE.
-    !use_rmc = .TRUE.
+    !use_rmc = .FALSE.
+    use_rmc = .TRUE.
     !use_multislice = .TRUE.
     use_multislice = .FALSE.
 
-    call read_eam(m)   
+    call read_eam(m)
+    call eam_initial(m,te1)
 
     call scatt_power(m,used_data_sets,istat)
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
