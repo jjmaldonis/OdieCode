@@ -16,13 +16,13 @@
 #$ -pe orte 16
 
 # request 48 hours of wall time, if you need longer time please contact system admin
-#$ -l h_rt=72:00:00
+#$ -l h_rt=INFINITY
 
 # run the job from the directory of submission. Uncomment only if you don't want the defaults.
 #$ -cwd
 # combine SGE standard output and error files
-#$ -o $JOB_NAME.o$JOB_ID
-#$ -e $JOB_NAME.e$JOB_ID
+#$ -o $JOB_NAME.$JOB_ID.out
+#$ -e $JOB_NAME.$JOB_ID.err
 # transfer all your environment variables. Uncomment only if you don't want the defults
 #$ -V
 
