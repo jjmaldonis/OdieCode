@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=rmc                  # job name
 #SBATCH --partition=univ                # default "univ" if not specified
-#SBATCH --error=/home/maldonis/060911_rmc_eam_gr_vk_t4/job.%J.err
-#SBATCH --output=/home/maldonis/060911_rmc_eam_gr_vk_t4/job.%J.out
+#SBATCH --error=job.%J.err              # error file
+#SBATCH --output=job.%J.out             # output file
 
 #SBATCH --time=0-04:30:00               # run time in days-hh:mm:ss
 

@@ -53,11 +53,11 @@ program rmc
     real, pointer, dimension(:) :: gr_e,r_e,gr_e_err
     real, pointer, dimension(:) :: gr_n,r_n
     real, pointer, dimension(:) :: gr_x,r_x
-    real, pointer, dimension(:) :: vk, vk_exp, k, vk_exp_err, v_background
+    real, pointer, dimension(:) :: vk, vk_exp, k, vk_exp_err, v_background, vk_as !vk_as is for autoslice/multislice (whatever it's called)
     real, pointer, dimension(:,:) :: cutoff_r 
     real, pointer, dimension(:,:) :: scatfact_e
     real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
-    real :: chi2_old, chi2_new, scale_fac, del_chi, beta, chi2_gr, chi2_vk
+    real :: chi2_old, chi2_new, scale_fac, scale_fac_initial, del_chi, beta, chi2_gr, chi2_vk
     real :: rmin_e, rmax_e
     real :: rmin_n, rmax_n
     real :: rmin_x, rmax_x
@@ -105,8 +105,8 @@ program rmc
     end if
 
     ! Set input filenames.
-    model_filename = 'model_040511c_t2_final.xyz'
-    !model_filename = 'double_model.xyz'
+    !model_filename = 'model_040511c_t2_final.xyz'
+    model_filename = 'double_model.xyz'
     !model_filename = 'al50k_paul.xyz'
     param_filename = 'param_file_BAK.in'
 
@@ -139,9 +139,10 @@ program rmc
     call read_inputs(param_filename,temperature, max_move, cutoff_r, &
         used_data_sets, weights, gr_e, r_e, gr_e_err, gr_n, r_n, gr_x, &
         r_x, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, &
-        scale_fac, Q, fem_algorithm, pixel_distance, total_steps, &
+        scale_fac_initial, Q, fem_algorithm, pixel_distance, total_steps, &
         rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
 
+    scale_fac = scale_fac_initial
     res = 0.61/Q
     nk = size(k)
     beta=1./((8.6171e-05)*temperature)
@@ -167,6 +168,7 @@ program rmc
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)))
+    allocate(vk_as(size(vk_exp)))
     if(myid.eq.0) call print_sampled_map(m, res, square_pixel)
     ! Fem updates vk based on the intensity calculations and v_background.
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
@@ -232,11 +234,11 @@ program rmc
         do while (i > 0)
             i=i+1
 
-            !if( i - 1315708 > 100) then
-            !    write(*,*) "STOPPING MC AFTER 100 STEPS"
-            !    call mpi_finalize(mpierr)
-            !    stop ! Stop after 100 steps for timing runs.
-            !endif
+            if( i - 1315708 > 100) then
+                write(*,*) "STOPPING MC AFTER 100 STEPS"
+                call mpi_finalize(mpierr)
+                stop ! Stop after 100 steps for timing runs.
+            endif
 
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
@@ -254,15 +256,16 @@ program rmc
             call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
             ! Use multislice every 10k steps if specified.
             if(use_multislice .and. mod(i,10000) .eq. 0) then
-                call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
+                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
+                call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
             else
-                call fem_update(m, w, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
+                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
             endif
             !write(*,*) "Finished updating eam, gr, and fem data."
             
             chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
                 gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
-                gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
+                gr_x_sim_new, vk, vk_as, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
                 rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
             chi2_new = chi2_new + te2
