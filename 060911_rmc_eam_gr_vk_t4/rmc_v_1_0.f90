@@ -108,7 +108,7 @@ program rmc
     !model_filename = 'model_040511c_t2_final.xyz'
     model_filename = 'double_model.xyz'
     !model_filename = 'al50k_paul.xyz'
-    param_filename = 'param_file_BAK.in'
+    param_filename = 'param_file.in'
 
     ! Set output filenames.
     outbase = ""
