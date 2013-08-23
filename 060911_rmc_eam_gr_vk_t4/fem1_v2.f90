@@ -28,7 +28,7 @@ module fem_mod
         real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge. This is NOT the distance between the pixel centers. This is the distance between the edges of two different pixels. dr + phys_diam is the distance between the pixel centers!
     end type pix_array
     real, save, dimension(:,:), allocatable :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
-    real, save, dimension(:,:,:), allocatable :: int_i, int_sq  ! nk x npix x nrot.  int_sq == int_i**2
+    real, save, dimension(:,:,:), allocatable :: int_i, int_sq, int_i_as, int_as_sq  ! nk x npix x nrot.  int_sq == int_i**2. int_i_as is for autoslice/multislice (whatever its called)
     real, save, dimension(:,:,:), allocatable :: old_int, old_int_sq
     real, save, dimension(:), allocatable :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
     real, save, allocatable, dimension(:) :: j0, A1                                               
@@ -103,7 +103,8 @@ contains
         call init_pix(m, res, istat, square_pixel)
 
         allocate(int_i(nk, pa%npix, nrot), old_int(nk, pa%npix, nrot), old_int_sq(nk, pa%npix, nrot), &
-        int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
+        int_sq(nk, pa%npix, nrot), int_sum(nk), int_sq_sum(nk), int_i_as(nk, pa%npix, nrot), &
+        int_as_sq(nk, pa%npix, nrot), stat=istat)
         !if(allocated(old_index)) deallocate(old_index)
         !if(associated(old_pos)) deallocate(old_pos)
         !nullify(old_index, old_pos)
@@ -455,7 +456,7 @@ contains
 
                 ! Calculate intensities and store them in int_i(1:nk, j, i).
                 do j=1, pa%npix
-                    call intensity(mrot(1), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
+                    call intensity(mrot(1), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
                 enddo
                 call destroy_model(mrot(1)) !memory leak
                 deallocate(mrot) !memory leak
@@ -513,7 +514,7 @@ contains
             do i=myid+1, nrot, numprocs
                 do j=1, pa%npix
                     !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
-                    call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
+                    call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
                     int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                     psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                     psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
@@ -537,7 +538,7 @@ contains
         time_in_int = 0.0 ! Reset for RMC.
     end subroutine fem
 
-    subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, square_pixel, use_multislice)
+    subroutine intensity(m_int, res, px, py, k, int_i, int_i_as, scatfact_e, istat, square_pixel, use_multislice)
     !subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, rot_index, pix_index)  !output image
     ! Calculates int_i for output.
         use  omp_lib
@@ -545,7 +546,7 @@ contains
         type(model), intent(in) :: m_int
         real, intent(in) :: res, px, py
         real, dimension(nk), intent(in) :: k
-        real, dimension(nk), intent(out) :: int_i
+        real, dimension(nk), intent(out) :: int_i, int_i_as
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
@@ -604,161 +605,162 @@ contains
 
         call cpu_time(timer1)
 
-        if(.not. use_multislice) then
-            if(square_pixel) then
-                sqrt1_2_res = SQRT(0.5) * res
-                !r_max = sqrt(8.0) * res
-                r_max = 2*res !small pixel inscribed in airy circle
-                call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
-                allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
-            else
-                sqrt1_2_res = res
-                r_max = 2*res     !assuming resolution=radius
-                call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
-            endif
-            size_pix_atoms = size(pix_atoms)
-            !r_max = 6*res    !check cut-off effect on 05/11/2009
-            bin_max = int(r_max/fem_bin_width)+1
+        ! Regardless of whether or not we use autoslice (multislice) do the
+        ! normal, fast intensity calculation for comparison.
+        if(square_pixel) then
+            sqrt1_2_res = SQRT(0.5) * res
+            !r_max = sqrt(8.0) * res
+            r_max = 2*res !small pixel inscribed in airy circle
+            call hutch_list_pixel_sq(m_int, px, py, pa%phys_diam, pix_atoms, istat)
+            allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
+        else
+            sqrt1_2_res = res
+            r_max = 2*res     !assuming resolution=radius
+            call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
+        endif
+        size_pix_atoms = size(pix_atoms)
+        !r_max = 6*res    !check cut-off effect on 05/11/2009
+        bin_max = int(r_max/fem_bin_width)+1
 
-            allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
-            allocate(x1(size_pix_atoms),y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
-            allocate(sum1(m_int%nelements,size_pix_atoms), stat=istat)
-            allocate(znum_r(size_pix_atoms), stat=istat)
+        allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
+        allocate(x1(size_pix_atoms),y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
+        allocate(sum1(m_int%nelements,size_pix_atoms), stat=istat)
+        allocate(znum_r(size_pix_atoms), stat=istat)
 
-            do i=1, size_pix_atoms
-                znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
+        do i=1, size_pix_atoms
+            znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
+        enddo
+
+        gr_i = 0.0; int_i = 0.0; int_i_as = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0
+
+        x2 = 0.0; y2 = 0.0
+        const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q)
+        const2 = 1/fem_bin_width
+        const3 = TWOPI
+
+        !call omp_set_num_threads(4) ! We don't need this. As long as it is
+        ! never called we should automatically have the max number of
+        ! threads available in any parallel loop.
+
+        !!$omp parallel do
+        !do i=1,1
+        !    nthr = omp_get_num_threads() !omp_get_max_threads()
+        !    thrnum = omp_get_thread_num()
+        !    write(*,*) "We are using", nthr, " thread(s) in Intensity."
+        !enddo
+        !!$omp end parallel do
+
+        ! Calculate sum1 for gr_i calculation in next loop.
+        if(square_pixel) then
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            do i=1,size_pix_atoms
+                x2=m_int%xx%ind(pix_atoms(i))-px
+                y2=m_int%yy%ind(pix_atoms(i))-py
+                x2=x2-m_int%lx*anint(x2/m_int%lx)
+                y2=y2-m_int%ly*anint(y2/m_int%ly)
+                rr_x(i) = ABS(x2)
+                rr_y(i) = ABS(y2)
+                rr_a(i)=sqrt(x2*x2 + y2*y2)
+                !if((rr_x(i).le.res) .AND. (rr_y(i) .le. res))then
+                if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le.  sqrt1_2_res))then !small pixel inscribed in Airy circle
+                    k_1=0.82333
+                    x1(i)=x2
+                    y1(i)=y2
+                    j=int(const1*rr_a(i))
+                    sum1(znum_r(i),i)=A1(j)
+                endif
             enddo
-
-            gr_i = 0.0; int_i = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0
-
-            x2 = 0.0; y2 = 0.0
-            const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q)
-            const2 = 1/fem_bin_width
-            const3 = TWOPI
-
-            !call omp_set_num_threads(4) ! We don't need this. As long as it is
-            ! never called we should automatically have the max number of
-            ! threads available in any parallel loop.
-
-            !!$omp parallel do
-            !do i=1,1
-            !    nthr = omp_get_num_threads() !omp_get_max_threads()
-            !    thrnum = omp_get_thread_num()
-            !    write(*,*) "We are using", nthr, " thread(s) in Intensity."
-            !enddo
-            !!$omp end parallel do
-
-            ! Calculate sum1 for gr_i calculation in next loop.
-            if(square_pixel) then
-                !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-                do i=1,size_pix_atoms
-                    x2=m_int%xx%ind(pix_atoms(i))-px
-                    y2=m_int%yy%ind(pix_atoms(i))-py
-                    x2=x2-m_int%lx*anint(x2/m_int%lx)
-                    y2=y2-m_int%ly*anint(y2/m_int%ly)
-                    rr_x(i) = ABS(x2)
-                    rr_y(i) = ABS(y2)
-                    rr_a(i)=sqrt(x2*x2 + y2*y2)
-                    !if((rr_x(i).le.res) .AND. (rr_y(i) .le. res))then
-                    if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le.  sqrt1_2_res))then !small pixel inscribed in Airy circle
-                        k_1=0.82333
-                        x1(i)=x2
-                        y1(i)=y2
-                        j=int(const1*rr_a(i))
-                        sum1(znum_r(i),i)=A1(j)
-                    endif
-                enddo
-                !$omp end parallel do
-            else
-                !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-                do i=1,size_pix_atoms
-                    x2=m_int%xx%ind(pix_atoms(i))-px
-                    y2=m_int%yy%ind(pix_atoms(i))-py
-                    x2=x2-m_int%lx*anint(x2/m_int%lx)
-                    y2=y2-m_int%ly*anint(y2/m_int%ly)
-                    rr_a(i)=sqrt(x2*x2 + y2*y2)
-                    if(rr_a(i).le.res)then
-                        !if(rr_a(i) .le. res*3.0)then !check cut-off effect
-                        x1(i)=x2
-                        y1(i)=y2
-                        j=int(const1*rr_a(i))
-                        sum1(znum_r(i),i)=A1(j)
-                    endif
-                enddo
-                !$omp end parallel do
-            endif
-
-            ! Calculate gr_i for int_i in next loop.
-            if(square_pixel) then
-                !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-                do i=1,size_pix_atoms
-                    if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
-                        do j=i,size_pix_atoms
-                            if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le. sqrt1_2_res))then
-                                x2=x1(i)-x1(j)
-                                y2=y1(i)-y1(j)
-                                rr=sqrt(x2*x2 + y2*y2)
-                                kk=int(const2*rr)
-                                if(i == j)then
-                                    t1=sum1(znum_r(i),i)
-                                    gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
-                                else
-                                    t1=sum1(znum_r(i),i)
-                                    t2=sum1(znum_r(j),j)
-                                    gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2 !changed by FY on 05/04/2009
-                                endif
-                            endif
-                        enddo
-                    endif
-                enddo
-                !$omp end parallel do
-            else
-                !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
-                do i=1,size_pix_atoms
-                    if(rr_a(i).le.res)then
-                        !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
-                        do j=i,size_pix_atoms
-                            if(rr_a(j).le.res)then
-                                !if(rr_a(j) .le. res*3.0)then  !check cut-off effect
-                                x2=x1(i)-x1(j)
-                                y2=y1(i)-y1(j)
-                                rr=sqrt(x2*x2 + y2*y2)
-                                kk=int(const2*rr)
-                                if(i == j)then
-                                    t1=sum1(znum_r(i),i)
-                                    gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
-                                else
-                                    t1=sum1(znum_r(i),i)
-                                    t2=sum1(znum_r(j),j)
-                                    gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2 !changed by FY on 05/04/2009
-                                endif
-                            endif
-                        enddo
-                    endif
-                enddo
-                !$omp end parallel do
-            endif
-
-            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
-            do i=1,nk
-                do j=0,bin_max
-                    do ii=1,m_int%nelements
-                        do jj=1,m_int%nelements
-                            pp=const3*j*k(i)
-                            int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
-                        enddo
-                    enddo
-                end do
-            end do
             !$omp end parallel do
+        else
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            do i=1,size_pix_atoms
+                x2=m_int%xx%ind(pix_atoms(i))-px
+                y2=m_int%yy%ind(pix_atoms(i))-py
+                x2=x2-m_int%lx*anint(x2/m_int%lx)
+                y2=y2-m_int%ly*anint(y2/m_int%ly)
+                rr_a(i)=sqrt(x2*x2 + y2*y2)
+                if(rr_a(i).le.res)then
+                    !if(rr_a(i) .le. res*3.0)then !check cut-off effect
+                    x1(i)=x2
+                    y1(i)=y2
+                    j=int(const1*rr_a(i))
+                    sum1(znum_r(i),i)=A1(j)
+                endif
+            enddo
+            !$omp end parallel do
+        endif
 
-            if(allocated(gr_i))      deallocate(gr_i)
-            if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
-            if(size(pix_atoms).gt.0) deallocate(pix_atoms)
-            if(allocated(sum1))      deallocate(sum1)
-            if(allocated(rr_x))      deallocate(rr_x, rr_y)
+        ! Calculate gr_i for int_i in next loop.
+        if(square_pixel) then
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            do i=1,size_pix_atoms
+                if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
+                    do j=i,size_pix_atoms
+                        if((rr_x(j).le.sqrt1_2_res) .and. (rr_y(j) .le. sqrt1_2_res))then
+                            x2=x1(i)-x1(j)
+                            y2=y1(i)-y1(j)
+                            rr=sqrt(x2*x2 + y2*y2)
+                            kk=int(const2*rr)
+                            if(i == j)then
+                                t1=sum1(znum_r(i),i)
+                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
+                            else
+                                t1=sum1(znum_r(i),i)
+                                t2=sum1(znum_r(j),j)
+                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2 !changed by FY on 05/04/2009
+                            endif
+                        endif
+                    enddo
+                endif
+            enddo
+            !$omp end parallel do
+        else
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            do i=1,size_pix_atoms
+                if(rr_a(i).le.res)then
+                    !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
+                    do j=i,size_pix_atoms
+                        if(rr_a(j).le.res)then
+                            !if(rr_a(j) .le. res*3.0)then  !check cut-off effect
+                            x2=x1(i)-x1(j)
+                            y2=y1(i)-y1(j)
+                            rr=sqrt(x2*x2 + y2*y2)
+                            kk=int(const2*rr)
+                            if(i == j)then
+                                t1=sum1(znum_r(i),i)
+                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+t1*t1
+                            else
+                                t1=sum1(znum_r(i),i)
+                                t2=sum1(znum_r(j),j)
+                                gr_i(znum_r(i),znum_r(j),kk)=gr_i(znum_r(i),znum_r(j),kk)+2.0*t1*t2 !changed by FY on 05/04/2009
+                            endif
+                        endif
+                    enddo
+                endif
+            enddo
+            !$omp end parallel do
+        endif
 
-        else ! Use multislice
+        !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
+        do i=1,nk
+            do j=0,bin_max
+                do ii=1,m_int%nelements
+                    do jj=1,m_int%nelements
+                        pp=const3*j*k(i)
+                        int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
+                    enddo
+                enddo
+            end do
+        end do
+        !$omp end parallel do
+
+        if(allocated(gr_i))      deallocate(gr_i)
+        if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
+        if(size(pix_atoms).gt.0) deallocate(pix_atoms)
+        if(allocated(sum1))      deallocate(sum1)
+        if(allocated(rr_x))      deallocate(rr_x, rr_y)
+
+        if(use_multislice) then ! Use multislice
             !npc = npc + 1
             !write (*,*) 'Inside intensity, for pixel ',npc
 
@@ -804,7 +806,7 @@ contains
             write (*,*) 'Full diffraction annular average:'
             dk = 2.0 / m_int%lx
             do i=1, size(i_aav)
-               !write (*,*) dk*(i-1), i_aav(i)
+               write (*,*) dk*(i-1), i_aav(i)
             enddo
 
             write (*,*) 'Interpolated diffraction annular average:'
@@ -812,11 +814,11 @@ contains
                ikl = floor(k(i) / dk) + 1
                ikh = ceiling(k(i) / dk) + 1
                if (ikl == ikh) then
-                  int_i(i) = i_aav(ikl)
+                  int_i_as(i) = i_aav(ikl)
                else
-                  int_i(i) = i_aav(ikl) + ( (k(i) - (ikl-1)*dk)/dk )*(i_aav(ikh) - i_aav(ikl))
+                  int_i_as(i) = i_aav(ikl) + ( (k(i) - (ikl-1)*dk)/dk )*(i_aav(ikh) - i_aav(ikl))
                endif
-               !write(*,*) k(i),int_i(i),ikl,ikh
+               write(*,*) k(i),int_i_as(i),ikl,ikh
             enddo
 
             deallocate(Znum)
@@ -834,18 +836,18 @@ contains
     end subroutine intensity
 
 
-    subroutine fem_update(m_in, atom, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel, use_multislice)
+    subroutine fem_update(m_in, atom, res, k, vk, vk_as, v_background, scatfact_e, comm, istat, square_pixel, use_multislice)
         use mpi
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
         real, intent(in) :: res
         real, dimension(:), intent(in) :: k, v_background
-        real, dimension(:), intent(out) :: vk
+        real, dimension(:), intent(out) :: vk, vk_as
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
         logical, intent(in) :: use_multislice
-        real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq    !mpi
+        real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq, sum_int_as    !mpi
         integer :: comm
         type(model) :: moved_atom, rot_atom
         integer :: i, j, m, n, ntpix
@@ -881,7 +883,7 @@ contains
 
         ! Initialize the intensity arrays.
         allocate(psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), &
-        sum_int_sq(size(k)), stat=istat)
+        sum_int_sq(size(k)), sum_int_as(size(k)), stat=istat)
 
         old_int=0.0; old_int_sq=0.0
         sum_int = 0.0; sum_int_sq = 0.0
@@ -1054,8 +1056,11 @@ contains
             do m=1, pa%npix
                 if(update_pix(i,m)) then
                     call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        int_i(1:nk, m, i), scatfact_e,istat, square_pixel, use_multislice)
-                    int_sq(1:nk, m, i) = int_i(1:nk, m,i)**2
+                        int_i(1:nk, m, i), int_i_as(1:nk, m, i), scatfact_e,istat, square_pixel, use_multislice)
+                    if(use_multislice) then
+                        int_as_sq(1:nk, m, i) = int_i_as(1:nk, m, i)**2
+                    endif
+                    int_sq(1:nk, m, i) = int_i(1:nk, m, i)**2
                 endif
             enddo
         enddo
@@ -1077,6 +1082,13 @@ contains
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                 Vk(i) = Vk(i) - v_background(i)   !background subtraction 052210 JWH
             end do
+        endif
+        ! TODO MAKE SURE THIS IS RIGHT.
+        if(use_multislice) then
+            do i=1, nk
+                Vk_as(i) = (sum_int_as(i)**2/(pa%npix*nrot))/((sum_int_as(i)**2/(pa%npix*nrot))**2)-1.0
+                Vk_as(i) = Vk_as(i) - v_background(i)   !background subtraction 052210 JWH
+            enddo
         endif
 
         deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)

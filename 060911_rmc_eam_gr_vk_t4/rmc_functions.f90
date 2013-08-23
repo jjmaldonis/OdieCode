@@ -121,6 +121,35 @@ CONTAINS
   end function chi_square
 
 
+    subroutine update_scale_factor(sf, sf_initial, vsim, vas)
+    ! Compute chi2(vsim*x, vas) for variable x to minimize chi2.
+    ! (Note, I mean "variable" as in "changing", not the noun.)
+    ! Set sf = sf/x.
+    ! This isn't going to work because calling this multiple times will
+    ! eventually monotonically change sf because vsim vs. vas will always be a
+    ! little smaller or a little bigger (likely) and therefore sf will get worse
+    ! and worse after teh first call. I need another variable I think.
+        real, intent(out) :: sf
+        real, intent(in) :: sf_initial
+        ! vsim is the simulated vk as computed by the fast intensity algorithm. 
+        ! vas is the simulated vk as computed by autoslice.
+        real, pointer, dimension(:) :: vsim, vas 
+        real :: x! This is the parameter we will use to fit vsim to vas.
+        integer :: i
+
+        ! Below is the numerical solved solution to mimize
+        ! chi2 = summation( (vsim(i)*x - vas(i))**2/vas(i), i=1, i=size(vsim) )
+        ! by varying x. x will then be the weighting factor that gets vsim as
+        ! close to vas as possible. I.e. vsim*x ~= vas.
+        x = 0
+        do i=1, size(vsim)
+            x = x + vas(i)/vsim(i)
+        enddo
+
+        sf = sf_initial/x ! We need to divide because vk_exp ~= vsim/sf
+    end subroutine update_scale_factor
+
+
 !*******************************************************
 !*********A new function************************
 !*******************************************************

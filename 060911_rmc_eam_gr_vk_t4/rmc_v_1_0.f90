@@ -265,7 +265,7 @@ program rmc
             
             chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
                 gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
-                gr_x_sim_new, vk, vk_as, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
+                gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
                 rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
             chi2_new = chi2_new + te2
