@@ -4,7 +4,6 @@ import sys
 from decimal import *
 
 def main():
-    xyz_to_dat(sys.argv[1])
     try:
         xyz_to_dat(sys.argv[1])
     except:
