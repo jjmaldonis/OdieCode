@@ -4,12 +4,13 @@ import sys
 from decimal import *
 
 def main():
+    xyz_to_dat(sys.argv[1])
     try:
         xyz_to_dat(sys.argv[1])
     except:
         print("\nMini help printout:\nThe first (and only) argument must be the .xyz file you want to convert to .dat.")
         print(".dat to .xyz is currently not supported due to the different syntax in .dat files.")
-        print("Note also, that no blank lines in the .xyz file are allowed. The format MUST be:\n\nA comment line\nxsize ysize zsize\nList of atoms on following lines\n-1\n")
+        print("Note also, that no blank lines in the .xyz file are allowed. The format MUST be:\n\nA comment line (CANNOT be blank)\nxsize ysize zsize\nList of atoms on following lines\n-1\n")
 
 def dat_to_xyz(name):
     df = open( name, 'r' )
@@ -50,26 +51,37 @@ def dat_to_xyz(name):
 def xyz_to_dat(name):
     xyzf = open( name, 'r' )
     line = xyzf.readline() #Comment line.
+    while(len(line.strip()) == 0):
+        line = xyzf.readline() #Comment line.
     line = xyzf.readline() #Model size line.
+    while(len(line.strip()) == 0):
+        line = xyzf.readline() #Model size line.
     line = xyzf.readline() #First atom line.
+    while(len(line.strip()) == 0):
+        line = xyzf.readline() #First atom line.
     xyzf = open( name, 'r' )
     dat = open(name[:-3] + 'dat', 'w')
     line = xyzf.readline() #Get comment line
+    while(len(line.strip()) == 0):
+        line = xyzf.readline() #Get comment line
     dat.write(line) #Write comment line
     dat.write('\n') #Write blank line
     natoms = 0
     line = xyzf.readline() #Get model size
+    while(len(line.strip()) == 0):
+        line = xyzf.readline() #Get model size
     sline = line.split(' ')
     while( '' in sline): sline.pop('')
     xsize = float(sline[0])
     ysize = float(sline[1])
     zsize = float(sline[2])
-    print xsize, ysize, zsize
 
     # Atoms start now.
     atoms = []
     elements = []
     line = xyzf.readline()
+    while(len(line.strip()) == 0):
+        line = xyzf.readline()
     while(line!= '-1\n'):
         natoms += 1
         sline = line.split(" ")
@@ -85,6 +97,8 @@ def xyz_to_dat(name):
         #print sline
         atoms.append(" ".join(sline) + '\n')
         line = xyzf.readline() #Get another atom.
+        while(len(line.strip()) == 0):
+            line = xyzf.readline() #Get another atom.
 
     dat.write('    '+str(natoms)+' atoms\n')
     dat.write('    '+str(len(elements))+' atom types\n')
