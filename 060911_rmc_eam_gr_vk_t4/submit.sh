@@ -26,6 +26,9 @@
 # transfer all your environment variables. Uncomment only if you don't want the defults
 #$ -V
 
+#$ -M jjmaldonis@gmail.com
+#$ -m abe
+
 # Write the date and time to outfile.
 echo "Submitted on:"
 date

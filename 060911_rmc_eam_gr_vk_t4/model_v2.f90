@@ -193,8 +193,9 @@ contains
         ! Set the number of atoms in the model m and allocate space for each
         ! coordinate.
         m%natoms = nat
-        !TODO change nat to nat + ceiling(nat*0.02) in the following line.
-        allocate(m%xx%ind(nat), m%yy%ind(nat), m%zz%ind(nat), m%znum%ind(nat), stat=istat)
+        ! Allocate the model to twice its necessary size so that we never have
+        ! to reallocate ever.
+        allocate(m%xx%ind(nat*2), m%yy%ind(nat*2), m%zz%ind(nat*2), m%znum%ind(nat*2), stat=istat)
         m%xx%nat = nat
         m%yy%nat = nat
         m%zz%nat = nat
@@ -273,7 +274,7 @@ contains
 
         ! For each atom i, add a parameter znum_r(i) that corresponds to
         ! m%atom_type and m%composition for fast lookup.
-        allocate(m%znum_r%ind(m%natoms), stat=istat)
+        allocate(m%znum_r%ind(m%natoms*2), stat=istat)
         call check_allocation(istat, 'Unable to allocate memory for m%znum_r.')
         m%znum_r%ind = 0.0
         do i=1, m%natoms
@@ -305,9 +306,9 @@ contains
         real :: xshift, yshift, zshift
         ! maxval gets the maximum value in the array. There are some
         ! nice parameters for it described online by the way.
-        xshift = xc*m%lx - (maxval(m%xx%ind) + minval(m%xx%ind))/2.0
-        yshift = yc*m%ly - (maxval(m%yy%ind) + minval(m%yy%ind))/2.0
-        zshift = zc*m%lz - (maxval(m%zz%ind) + minval(m%zz%ind))/2.0
+        xshift = xc*m%lx - (maxval(m%xx%ind(1:m%natoms)) + minval(m%xx%ind(1:m%natoms)))/2.0
+        yshift = yc*m%ly - (maxval(m%yy%ind(1:m%natoms)) + minval(m%yy%ind(1:m%natoms)))/2.0
+        zshift = zc*m%lz - (maxval(m%zz%ind(1:m%natoms)) + minval(m%zz%ind(1:m%natoms)))/2.0
 
         m%xx%ind = m%xx%ind+xshift
         m%yy%ind = m%yy%ind+yshift
@@ -326,9 +327,9 @@ contains
         real xlen, ylen, zlen 
         istat = 0
 
-        xlen = maxval(m%xx%ind) - minval(m%xx%ind)
-        ylen = maxval(m%yy%ind) - minval(m%yy%ind)
-        zlen = maxval(m%zz%ind) - minval(m%zz%ind)
+        xlen = maxval(m%xx%ind(1:m%natoms)) - minval(m%xx%ind(1:m%natoms))
+        ylen = maxval(m%yy%ind(1:m%natoms)) - minval(m%yy%ind(1:m%natoms))
+        zlen = maxval(m%zz%ind(1:m%natoms)) - minval(m%zz%ind(1:m%natoms))
 
         if ( xlen > m%lx ) then 
             write (*,*) 'Maximum x distance of ',xlen,' Ang exceeds box size ',m%lx,' Ang.'
@@ -345,12 +346,12 @@ contains
             istat = 1
         end if
 
-        if (minval(m%znum%ind) < 1) then 
-            write (*,*) 'Minimum atomic number of ', minval(m%znum%ind, 1), 'is less than zero.'
+        if (minval(m%znum%ind(1:m%znum%nat)) < 1) then 
+            write (*,*) 'Minimum atomic number of ', minval(m%znum%ind, 1), 'is less than 1.'
             istat = 1
         end if
 
-        if (maxval(m%znum%ind) > 103) then 
+        if (maxval(m%znum%ind(1:m%znum%nat)) > 103) then 
             write (*,*) 'Maximum atomic number of ', maxval(m%znum%ind, 1), 'is greater than 103.'
             istat = 1
         end if
@@ -478,8 +479,8 @@ contains
 
         ! Allocate memory for the new atoms.
         mrot%unrot_natoms = min%natoms
-        allocate(mrot%xx%ind(mrot%natoms), mrot%yy%ind(mrot%natoms), mrot%zz%ind(mrot%natoms), &
-            mrot%znum%ind(mrot%natoms),  mrot%rot_i(mrot%unrot_natoms), mrot%znum_r%ind(mrot%natoms), stat=istat) !add mrot%znum_r here by Feng Yi on 03/19/2009
+        allocate(mrot%xx%ind(mrot%natoms*2), mrot%yy%ind(mrot%natoms*2), mrot%zz%ind(mrot%natoms*2), &
+            mrot%znum%ind(mrot%natoms*2),  mrot%rot_i(mrot%unrot_natoms*2), mrot%znum_r%ind(mrot%natoms*2), stat=istat) !add mrot%znum_r here by Feng Yi on 03/19/2009
         mrot%xx%nat = mrot%natoms
         mrot%yy%nat = mrot%natoms
         mrot%zz%nat = mrot%natoms
@@ -856,7 +857,6 @@ contains
                         call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
                         !used_hutches(hx,hy,hz) = 1
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
-                        !if(allocated(m%ha%h(hx, hy, hz)%at)) then
                             temp_atoms(nlist:nlist+m%ha%h(hx, hy, hz)%nat-1) = m%ha%h(hx, hy, hz)%at(1:m%ha%h(hx, hy, hz)%nat)
                             nlist = nlist + m%ha%h(hx, hy, hz)%nat
                         endif
@@ -1136,14 +1136,20 @@ contains
         ! like this. That would be ideal.
         nat = ha%h(hx,hy,hz)%nat
         if(nat > 0) then
-            scratch_atoms(1:nat) = ha%h(hx, hy, hz)%at
-            scratch_atoms(nat+1) = atom
-            ! Reallocate with new size
-            deallocate(ha%h(hx,hy,hz)%at)
-            allocate(ha%h(hx,hy,hz)%at(1:nat+1)) ! +1 for extra atom
-            ha%h(hx,hy,hz)%at = scratch_atoms
+            if(size(ha%h(hx,hy,hz)%at) > nat) then
+                ha%h(hx,hy,hz)%at(nat+1) = atom
+            else
+                scratch_atoms(1:nat) = ha%h(hx, hy, hz)%at
+                scratch_atoms(nat+1) = atom
+                ! Reallocate with new size
+                deallocate(ha%h(hx,hy,hz)%at)
+                allocate(ha%h(hx,hy,hz)%at(1:nat+1)) ! +1 for extra atom
+                ha%h(hx,hy,hz)%at = scratch_atoms
+            endif
         else
-            allocate(ha%h(hx,hy,hz)%at(1:1))
+            if(size(ha%h(hx,hy,hz)%at) .eq. 0) then
+                allocate(ha%h(hx,hy,hz)%at(1:5)) ! Start with 5 spots for atoms.
+            endif
             ha%h(hx,hy,hz)%at(1) = atom
         end if
 
@@ -1169,9 +1175,10 @@ contains
     ! array by one, so it should only be used in conjunction with hutch_add_atom.
         type(model), target, intent(inout) :: m
         integer, intent(in) :: atom
-        integer, dimension(m%ha%h(m%ha%atom_hutch(atom,1),m%ha%atom_hutch(atom,2),m%ha%atom_hutch(atom,3))%nat) :: scratch_atoms
+        !integer, dimension(m%ha%h(m%ha%atom_hutch(atom,1),m%ha%atom_hutch(atom,2),m%ha%atom_hutch(atom,3))%nat) :: scratch_atoms
         integer :: hx, hy, hz, i, j
         type(hutch_array), pointer :: ha
+        logical :: found = .false. ! safety feature
         ha => m%ha
 
         !call hutch_position(m, m%xx%ind(atom), m%yy%ind(atom), m%zz%ind(atom), hx, hy, hz)
@@ -1187,29 +1194,43 @@ contains
         hz = ha%atom_hutch(atom,3)
         !write(*,*) "hx,hy,hz=", hx, hy, hz
 
-        scratch_atoms = ha%h(hx,hy,hz)%at
-        deallocate(ha%h(hx,hy,hz)%at)
+        !scratch_atoms = ha%h(hx,hy,hz)%at
+        !deallocate(ha%h(hx,hy,hz)%at)
 
-        if(ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
-            allocate(ha%h(hx,hy,hz)%at( ha%h(hx,hy,hz)%nat-1 ))
-            j=1
-            do i=1, ha%h(hx,hy,hz)%nat
-                if (scratch_atoms(i) /= atom) then
-                    ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
-                    j=j+1
-                end if
-            enddo
+        do i=1, ha%h(hx,hy,hz)%nat
+            if (ha%h(hx,hy,hz)%at(i) .eq. atom) then
+                ha%h(hx,hy,hz)%at( i:ha%h(hx,hy,hz)%nat-1 ) = ha%h(hx,hy,hz)%at( i+1:ha%h(hx,hy,hz)%nat )
+                found = .true.
+            end if
+        enddo
+        ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
 
-            ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
-            ! I technically should reallocate here but I am going to do it in
-            ! remove_atom because move_atom calls this, and if thats the case I
-            ! dont need to reallocate.
-            ha%atom_hutch(atom,1) = 0
-            ha%atom_hutch(atom,2) = 0
-            ha%atom_hutch(atom,3) = 0
-        else
-            ha%h(hx,hy, hz)%nat = 0
-        endif
+        ha%atom_hutch(atom,1) = 0
+        ha%atom_hutch(atom,2) = 0
+        ha%atom_hutch(atom,3) = 0
+
+        if(.not. found) write(*,*) "WARNING: Trying to remove an atom from this hutch that doesn't exist in this hutch!"
+
+        !if(ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
+        !    allocate(ha%h(hx,hy,hz)%at( ha%h(hx,hy,hz)%nat-1 ))
+        !    j=1
+        !    do i=1, ha%h(hx,hy,hz)%nat
+        !        if (scratch_atoms(i) /= atom) then
+        !            ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
+        !            j=j+1
+        !        end if
+        !    enddo
+
+        !    ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
+        !    ! I technically should reallocate here but I am going to do it in
+        !    ! remove_atom because move_atom calls this, and if thats the case I
+        !    ! dont need to reallocate.
+        !    ha%atom_hutch(atom,1) = 0
+        !    ha%atom_hutch(atom,2) = 0
+        !    ha%atom_hutch(atom,3) = 0
+        !else
+        !    ha%h(hx,hy, hz)%nat = 0
+        !endif
     end subroutine hutch_remove_atom
 
 
@@ -1369,21 +1390,20 @@ contains
             else
                 allocate(scratch(il%nat))
                 scratch = il%ind
-                ! Increase the size by 2%. For the rot_i's this won't matter, but for
+                ! Increase the size by 200%. For the rot_i's this won't matter, but for
                 ! the model lists it will increase them by a few atoms so that when
                 ! we rotate in and out we don't need to reallocate every single time.
-                ! 2% is barely a waste of space for the speed increase we will get.
                 ! But only increment nat by 1. This is the size for the algorithm.
                 il%nat = il%nat + 1
                 deallocate(il%ind)
-                !allocate(il%ind( il%nat + ceiling(il%nat*0.02) ))
-                allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
+                allocate(il%ind( il%nat*2 ))
+                !allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
                 il%ind(1:il%nat-1) = scratch
                 il%ind(il%nat) = i
             endif
         else
             il%nat = 1
-            allocate(il%ind(1))
+            if(.not. allocated(il%ind)) allocate(il%ind(1*5)) ! Start it with space for 5 atoms.
             il%ind(1) = i
         endif
         if(allocated(scratch)) then
@@ -1408,21 +1428,20 @@ contains
             else
                 allocate(scratch(il%nat))
                 scratch = il%ind
-                ! Increase the size by 2%. For the rot_i's this won't matter, but for
+                ! Increase the size by 200%. For the rot_i's this won't matter, but for
                 ! the model lists it will increase them by a few atoms so that when
                 ! we rotate in and out we don't need to reallocate every single time.
-                ! 2% is barely a waste of space for the speed increase we will get.
                 ! But only increment nat by 1. This is the size for the algorithm.
                 il%nat = il%nat + 1
                 deallocate(il%ind)
-                !allocate(il%ind( il%nat + ceiling(il%nat*0.02) ))
-                allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
+                allocate(il%ind( il%nat + il%nat*2 ))
+                !allocate(il%ind( il%nat + 1 )) !temp for debugging jason 20130729
                 il%ind(1:il%nat-1) = scratch
                 il%ind(il%nat) = i
             endif
         else
             il%nat = 1
-            allocate(il%ind(1))
+            if(.not. allocated(il%ind)) allocate(il%ind(1*5)) !Start it with space for 5 atoms.
             il%ind(1) = i
         endif
         if(allocated(scratch)) then
@@ -1437,22 +1456,23 @@ contains
     ! However, I would still need to do array deletion.
         type(index_list), intent(inout) :: il
         integer, intent(in) :: ind
-        integer, dimension(:), allocatable :: scratch
-        if( il%nat .gt. 1) then
-            allocate(scratch(il%nat-1))
+        !integer, dimension(:), allocatable :: scratch
+        !if( il%nat .gt. 1) then
+            !allocate(scratch(il%nat-1))
             ! First half
-            scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
+            !scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
             ! Second half
-            scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
-            deallocate(il%ind)
-            allocate(il%ind( il%nat-1 ))
-            il%ind = scratch
-            deallocate(scratch)
+            !scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
+            !deallocate(il%ind)
+            !allocate(il%ind( il%nat-1 ))
+            !il%ind = scratch
+            !deallocate(scratch)
+            il%ind( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
             il%nat = il%nat - 1
-        else
-            deallocate(il%ind)
-            il%nat = 0
-        endif
+        !else
+            !deallocate(il%ind)
+            !il%nat = 0
+        !endif
     end subroutine remove_index
 
     subroutine remove_index_real(il, ind)
@@ -1462,21 +1482,22 @@ contains
         type(real_index_list), intent(inout) :: il
         integer, intent(in) :: ind
         integer, dimension(:), allocatable :: scratch
-        if( il%nat .gt. 1) then
-            allocate(scratch(il%nat-1))
-            ! First half
-            scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
-            ! Second half
-            scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
-            deallocate(il%ind)
-            allocate(il%ind( il%nat-1 ))
-            il%ind = scratch
-            deallocate(scratch)
+        !if( il%nat .gt. 1) then
+            !allocate(scratch(il%nat-1))
+            !! First half
+            !scratch( 1:ind-1 ) = il%ind( 1:ind-1 )
+            !! Second half
+            !scratch( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
+            !deallocate(il%ind)
+            !allocate(il%ind( il%nat-1 ))
+            !il%ind = scratch
+            !deallocate(scratch)
+            il%ind( ind:il%nat-1 ) = il%ind( ind+1:il%nat )
             il%nat = il%nat - 1
-        else
-            deallocate(il%ind)
-            il%nat = 0
-        endif
+        !else
+            !deallocate(il%ind)
+            !il%nat = 0
+        !endif
     end subroutine remove_index_real
 
 
@@ -1537,7 +1558,7 @@ contains
         mout%znum_r%nat = m%znum_r%nat
 
         ! Reallocate arrays and set them.
-        allocate(mout%xx%ind(mout%natoms), mout%yy%ind(mout%natoms), mout%zz%ind(mout%natoms), mout%znum%ind(mout%natoms), mout%znum_r%ind(mout%natoms))
+        allocate(mout%xx%ind(size(m%xx%ind)), mout%yy%ind(size(m%yy%ind)), mout%zz%ind(size(m%zz%ind)), mout%znum%ind(size(m%znum%ind)), mout%znum_r%ind(size(m%znum_r%ind)))
         mout%xx%ind = m%xx%ind
         mout%yy%ind = m%yy%ind
         mout%zz%ind = m%zz%ind
@@ -1551,10 +1572,10 @@ contains
         mout%composition = m%composition
 
         if(allocated(m%rot_i)) then
-            if(.not. allocated(mout%rot_i)) allocate(mout%rot_i(mout%unrot_natoms))
+            if(.not. allocated(mout%rot_i)) allocate(mout%rot_i(mout%unrot_natoms*2))
             do i=1,mout%unrot_natoms
                 if(m%rot_i(i)%nat .gt. 0) then
-                    allocate(mout%rot_i(i)%ind(m%rot_i(i)%nat))
+                    allocate(mout%rot_i(i)%ind(size(m%rot_i(i)%ind)))
                     mout%rot_i(i)%nat = m%rot_i(i)%nat
                     mout%rot_i(i)%ind = m%rot_i(i)%ind
                 endif
@@ -1568,7 +1589,7 @@ contains
                     do k=1,mout%ha%nhutch_z
                         mout%ha%h(i,j,k)%nat = m%ha%h(i,j,k)%nat
                         if(mout%ha%h(i,j,k)%nat .gt. 0) then
-                            allocate(mout%ha%h(i,j,k)%at(mout%ha%h(i,j,k)%nat))
+                            allocate(mout%ha%h(i,j,k)%at(size(m%ha%h(i,j,k)%at)))
                             mout%ha%h(i,j,k)%at = m%ha%h(i,j,k)%at
                         endif
                     enddo
@@ -1579,7 +1600,7 @@ contains
             allocate(mout%ha%atom_hutch(mout%natoms, 3))
             mout%ha%atom_hutch = m%ha%atom_hutch
         else
-            write(*,*) "There might be a problem. Atom_hutch should be associated for every input model."
+            write(*,*) "WARNING: There might be a problem. Atom_hutch should be associated for every input model."
         endif
     end subroutine copy_model
 

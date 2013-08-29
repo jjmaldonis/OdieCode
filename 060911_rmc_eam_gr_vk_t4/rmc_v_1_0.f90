@@ -72,9 +72,9 @@ program rmc
     integer :: iseed2
     real :: randnum
     real :: te1, te2
-    logical :: square_pixel, use_femsim, accepted, use_rmc, use_multislice
+    logical :: square_pixel, accepted, use_rmc, use_multislice
     integer :: ipvd, nthr
-    doubleprecision :: t0, t1 !timers
+    doubleprecision :: t0, t1, t2 !timers
 
     if(myid.eq.0)then
         write(*,*)
@@ -105,8 +105,8 @@ program rmc
     end if
 
     ! Set input filenames.
-    !model_filename = 'model_040511c_t2_final.xyz'
-    model_filename = 'double_model.xyz'
+    model_filename = 'model_040511c_t2_final.xyz'
+    !model_filename = 'double_model.xyz'
     !model_filename = 'al50k_paul.xyz'
     param_filename = 'param_file.in'
 
@@ -150,15 +150,7 @@ program rmc
     iseed2 = 104756
 
     square_pixel = .TRUE. ! RMC uses square pixels, not round.
-    ! It would make sense for the two below to always be opposites, but due to
-    ! the code in subroutine fem I don't want to do that right now. I want to
-    ! always do the rmc if statement in fem - but I dont always want to do the
-    ! rmc loop in this file. I may remove the if statement in fem eventually,
-    ! but for now I will just use two different variables.
-    use_femsim = .FALSE. ! This is always set to false for now.
-    !use_rmc = .FALSE.
     use_rmc = .TRUE.
-    !use_multislice = .TRUE.
     use_multislice = .FALSE.
 
     call read_eam(m)
@@ -170,6 +162,13 @@ program rmc
     allocate(vk(size(vk_exp)))
     allocate(vk_as(size(vk_exp)))
     if(myid.eq.0) call print_sampled_map(m, res, square_pixel)
+    if(myid.eq.0) then
+        if(pa%npix /= 1) then
+            if(numprocs > 3*nrot) write(*,*) "WARNING: You are using too many cores!"
+        else
+            if(numprocs > nrot) write(*,*) "WARNING: You are using too many cores!"
+        endif
+    endif
     ! Fem updates vk based on the intensity calculations and v_background.
     call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
@@ -206,7 +205,7 @@ program rmc
 
         ! RMC step begins
         t0 = omp_get_wtime()
-        i=1315708
+        i=1
         if(myid.eq.0)then
             write(*,*)
             write(*,*) "Initialization complete. Starting Monte Carlo."
@@ -228,18 +227,18 @@ program rmc
         close(34)
 
 
-        ! Fortran's max int is 2147483647, and 2147483647 + 1 = -2147483648, so this
-        ! loop will stop at i= one after i=2147483647.
-        ! The loops also stops if the temperature goes below a certain temp (30.0).
+        ! The loops stops if the temperature goes below a certain temp (30.0).
         do while (i > 0)
             i=i+1
+            t2 = omp_get_wtime()
 
-            if( i - 1315708 > 100) then
-                write(*,*) "STOPPING MC AFTER 100 STEPS"
-                call mpi_finalize(mpierr)
-                stop ! Stop after 100 steps for timing runs.
-            endif
+            !if( i > 100) then
+            !    write(*,*) "STOPPING MC AFTER 100 STEPS"
+            !    call mpi_finalize(mpierr)
+            !    stop ! Stop after 100 steps for timing runs.
+            !endif
 
+write(*,*) "DEBUG 1"
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
             ! another atom. Returns true if the move is okay. (hard shere cutoff)
@@ -251,9 +250,12 @@ program rmc
                 call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             end do
 
+write(*,*) "DEBUG 2"
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
+write(*,*) "DEBUG 3"
             call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+write(*,*) "DEBUG 4"
             ! Use multislice every 10k steps if specified.
             if(use_multislice .and. mod(i,10000) .eq. 0) then
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
@@ -261,6 +263,7 @@ program rmc
             else
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
             endif
+write(*,*) "DEBUG 5"
             !write(*,*) "Finished updating eam, gr, and fem data."
             
             chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
@@ -271,11 +274,15 @@ program rmc
             chi2_new = chi2_new + te2
             del_chi = chi2_new - chi2_old
 
+write(*,*) "DEBUG 6"
             call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
+write(*,*) "DEBUG 7"
                
             randnum = ran2(iseed2)
             ! Test if the move should be accepted or rejected based on del_chi
             if(del_chi <0.0)then
+            !if(.true.)then !For timing purposes, always accept the move.
+write(*,*) "DEBUG 8"
                 ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
@@ -286,6 +293,7 @@ program rmc
                 ! Based on the random number above, even if del_chi is negative, decide
                 ! whether to move or not (statistically).
                 if(log(1.-randnum)<-del_chi*beta)then
+write(*,*) "DEBUG 9"
                     ! Accept move
                     e1 = e2
                     call fem_accept_move(mpi_comm_world)
@@ -296,14 +304,19 @@ program rmc
                     endif
                 else
                     ! Reject move
+write(*,*) "DEBUG 10"
                     e2 = e1
                     call reject_position(m, w, xx_cur, yy_cur, zz_cur)
+write(*,*) "DEBUG 11"
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
+write(*,*) "DEBUG 12"
                     call fem_reject_move(m, mpi_comm_world)
+write(*,*) "DEBUG 13"
                     accepted = .false.
                     write(*,*) "MC move rejected."
                 endif
             endif
+write(*,*) "DEBUG 14"
 
             ! Every 150,000 steps lower the temp, max_move, and reset beta.
             if(mod(i,150000)==0)then
@@ -351,14 +364,15 @@ program rmc
                     ! Write to time_elapsed
                     open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
                         t1 = omp_get_wtime()
-                        write (*,*) "Step, time elapsed, temp:", i-1315708, t1-t0, temperature
+                        write (*,*) "Step, time elapsed, temp:", i, t1-t0, temperature
                         write (35,*) i, t1-t0
                     close(35)
-                    write(*,*) "Time per step = ", (t1-t0)/(i-1315708)
+                    write(*,*) "Time per step = ", (t1-t0)/(i)
+                    write(*,*) "This step's time = ", t1-t2
                     ! Time per step * num steps before decreasing temp * num
                     ! drops in temp necessary to get to temp=30.
-                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/(i-1315708) * 150000 * log(30/temperature)/log(sqrt(0.7))! / nthr
-                    !write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/(i-1315708) * (100-(i-1315708))! / nthr
+                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/i * (150000 * log(30/temperature)/log(sqrt(0.7)) - i)! / nthr
+                    !write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/i * (100-i)! / nthr
                 endif
             endif
         enddo

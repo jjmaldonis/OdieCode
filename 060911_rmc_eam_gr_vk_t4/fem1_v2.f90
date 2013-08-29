@@ -20,7 +20,8 @@ module fem_mod
         integer :: nat
         real, allocatable, dimension(:,:) :: pos ! 3xnat array containing positions of atoms
     end type pos_list
-    integer, save :: nk, nrot  ! number of k points, pixels, and rotations
+    integer, save :: nk  ! number of k points
+    integer, save, public :: nrot  ! number of rotations
     type pix_array
         real, dimension(:,:), allocatable :: pix ! npix x 2 list of pixel positions
         integer :: npix, npix_1D ! number of pixels and number of pixels in 1 dimension
@@ -28,7 +29,7 @@ module fem_mod
         real :: dr ! Distance between pixels. Note, therefore, that there is half this distance between the pixels and the world edge. This is NOT the distance between the pixel centers. This is the distance between the edges of two different pixels. dr + phys_diam is the distance between the pixel centers!
     end type pix_array
     real, save, dimension(:,:), allocatable :: rot ! nrot x 3 list of (phi, psi, theta) rotation angles
-    real, save, dimension(:,:,:), allocatable :: int_i, int_sq, int_i_as, int_as_sq  ! nk x npix x nrot.  int_sq == int_i**2. int_i_as is for autoslice/multislice (whatever its called)
+    real, save, dimension(:,:,:), allocatable :: int_i, int_sq, int_i_as, int_as_sq  ! nk x npix x nrot.  int_sq == int_i**2. int_i_as is for autoslice
     real, save, dimension(:,:,:), allocatable :: old_int, old_int_sq
     real, save, dimension(:), allocatable :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
     real, save, allocatable, dimension(:) :: j0, A1                                               
@@ -36,7 +37,7 @@ module fem_mod
     type(model), save, dimension(:), pointer :: mcopy  ! array of rotated models
     type(index_list), save, dimension(:), pointer :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
-    type(pix_array), save :: pa
+    type(pix_array), save, public :: pa
 
     real, save :: time_in_int = 0.0
 
@@ -400,7 +401,7 @@ contains
         enddo
     end subroutine i_average
 
-    subroutine fem(m, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel, use_femsim, rot_begin, rot_end)
+    subroutine fem(m, res, k, vk, v_background, scatfact_e, comm, istat, square_pixel, rot_begin, rot_end)
         use mpi
         implicit none
         type(model), intent(in) :: m
@@ -410,10 +411,8 @@ contains
         real, dimension(:), intent(in) :: v_background
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
-        logical, optional, intent(in) :: use_femsim
         logical, optional, intent(in) :: square_pixel
         integer, optional, intent(in) :: rot_begin, rot_end
-        logical femsim !added by Feng Yi on 03/19/2009
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq  !mpi
         integer :: comm
         integer :: i, j
@@ -424,12 +423,6 @@ contains
             pixel_square = square_pixel
         else
             pixel_square = .FALSE.
-        endif
-
-        if(present(use_femsim)) then
-            femsim = use_femsim
-        else
-            femsim = .FALSE.
         endif
 
         if(present(rot_begin)) then
@@ -444,102 +437,71 @@ contains
             end_rot = nrot ! This is set in fem_initialize->init_rot
         endif
 
-        if(femsim) then   !this is added by feng yi on 03/19/2009 only for femsim calculation
+        allocate (psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), sum_int_sq(size(k)), stat=istat)
+        sum_int = 0.0
+        sum_int_sq = 0.0
+        psum_int = 0.0
+        psum_int_sq = 0.0
 
-            write(*,*) "Rotating ", end_rot, " models."
-            do i=begin_rot, end_rot
-            ! initialize the rotated models
-                allocate(mrot(1), stat=istat) !debug memory leak
-                call check_allocation(istat, 'Cannot allocate rotated model array.')
-                call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(1), istat) !memory leak
-                call check_allocation(istat, 'Failed to rotate model.')
+        ! initialize the rotated models
+        ! Also allocate room for mcopy - Jason 20130731
+        allocate(mcopy(nrot), stat=istat)
+        call check_allocation(istat, 'Cannot allocate copy model array.')
+        allocate(mrot(nrot), stat=istat)
+        call check_allocation(istat, 'Cannot allocate rotated model array.')
 
-                ! Calculate intensities and store them in int_i(1:nk, j, i).
-                do j=1, pa%npix
-                    call intensity(mrot(1), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
-                enddo
-                call destroy_model(mrot(1)) !memory leak
-                deallocate(mrot) !memory leak
-            enddo !end i=1, nrot
-            write(*,*) "Model rotation completed."
+        ! Calculate all the rotated models and save them in mrot.
+        ! This is actually really fast.
+        do i=myid+1, nrot, numprocs
+            call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
+        call check_allocation(istat, 'Failed to rotate model')
+        enddo
 
-            int_sq = int_i*int_i
+        ! Initialize the copies from the rotated models for fem_accept/reject.
+        do i=myid+1, nrot, numprocs
+            call copy_model(mrot(i), mcopy(i))
+        enddo
+
+        allocate(old_index(nrot), old_pos(nrot), stat=istat)
+        call check_allocation(istat, 'Cannot allocate memory for old indices and positions in fem_initialize.')
+        ! Initialize old_index and old_pos arrays. The if statements should
+        ! be unnecessary, but they don't hurt. Better safe than sorry.
+        do i=myid+1, nrot, numprocs
+            old_index(i)%nat = 0
+            if( allocated(old_index(i)%ind) ) deallocate(old_index(i)%ind)
+            old_pos(i)%nat = 0
+            if( allocated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
+        enddo
+
+        ! Calculate intensities for every single pixel in every single model. This is very expensive.
+        write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
+        do i=myid+1, nrot, numprocs
+            do j=1, pa%npix
+                !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
+                call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
+                int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
+                psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
+                psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
+            enddo
+        enddo
+
+        call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
+        call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
+
+        if(myid.eq.0)then
             do i=1, nk
-                Vk(i) = (sum(int_sq(i,1:pa%npix,1:nrot)/(pa%npix*nrot))/(sum(int_i(i,1:pa%npix,1:nrot)/(pa%npix*nrot))**2) ) - 1.0 !tempporally added by Feng Yi just for femsim
-                Vk(i) = Vk(i) - v_background(i)  ! background subtraction   jjm 2030802
-            enddo
+                Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
+                Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
+                write(*,*) "sum_int_sq(i)=", sum_int_sq(i)
+            end do
+        endif
 
-        !***********************************************************
-        ELSE        !RMC
-        !*************************************
-
-            allocate (psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), sum_int_sq(size(k)), stat=istat)
-            sum_int = 0.0
-            sum_int_sq = 0.0
-            psum_int = 0.0
-            psum_int_sq = 0.0
-
-            ! initialize the rotated models
-            ! Also allocate room for mcopy - Jason 20130731
-            allocate(mcopy(nrot), stat=istat)
-            call check_allocation(istat, 'Cannot allocate copy model array.')
-            allocate(mrot(nrot), stat=istat)
-            call check_allocation(istat, 'Cannot allocate rotated model array.')
-
-            ! Calculate all the rotated models and save them in mrot.
-            ! This is actually really fast.
-            do i=myid+1, nrot, numprocs
-                call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
-            call check_allocation(istat, 'Failed to rotate model')
-            enddo
-
-            ! Initialize the copies from the rotated models for fem_accept/reject.
-            do i=myid+1, nrot, numprocs
-                call copy_model(mrot(i), mcopy(i))
-            enddo
-
-            allocate(old_index(nrot), old_pos(nrot), stat=istat)
-            call check_allocation(istat, 'Cannot allocate memory for old indices and positions in fem_initialize.')
-            ! Initialize old_index and old_pos arrays. The if statements should
-            ! be unnecessary, but they don't hurt. Better safe than sorry.
-            do i=myid+1, nrot, numprocs
-                old_index(i)%nat = 0
-                if( allocated(old_index(i)%ind) ) deallocate(old_index(i)%ind)
-                old_pos(i)%nat = 0
-                if( allocated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
-            enddo
-
-            ! Calculate intensities for every single pixel in every single model. This is very expensive.
-            write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
-            do i=myid+1, nrot, numprocs
-                do j=1, pa%npix
-                    !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
-                    call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
-                    int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
-                    psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
-                    psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
-                enddo
-            enddo
-
-            call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
-            call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
-
-            if(myid.eq.0)then
-                do i=1, nk
-                    Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
-                    Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
-                end do
-            endif
-
-            deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
-
-        ENDIF !Femsim or RMC
+        deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
 
         time_in_int = 0.0 ! Reset for RMC.
     end subroutine fem
 
-    subroutine intensity(m_int, res, px, py, k, int_i, int_i_as, scatfact_e, istat, square_pixel, use_multislice)
-    !subroutine intensity(m_int, res, px, py, k, int_i, scatfact_e, istat, rot_index, pix_index)  !output image
+    subroutine intensity(m_int, res, px, py, k, int_i, int_i_as, scatfact_e, istat, square_pixel, use_autoslice)
     ! Calculates int_i for output.
         use  omp_lib
         use, intrinsic :: iso_c_binding
@@ -550,7 +512,7 @@ contains
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
-        logical, intent(in) :: use_multislice
+        logical, intent(in) :: use_autoslice
         real, dimension(:,:,:), allocatable :: gr_i   ! unneeded 'save' keyword removed pmv 03/18/09  !tr re-ok -jwh
         real, dimension(:), allocatable ::x1, y1, rr_a
         real, dimension(:,:), allocatable :: sum1
@@ -565,17 +527,17 @@ contains
         real :: timer1, timer2
         integer :: nthr, thrnum
 
-        ! --- Multislice variables. --- !
+        ! --- Autoslice variables. --- !
         !INTEGER, OPTIONAL,  INTENT(IN) :: rot_index
         !INTEGER, OPTIONAL,  INTENT(IN) :: pix_index
         ! C-compatible variables for the model data
         integer(C_INT), dimension(:), allocatable, target :: Znum
         real (C_FLOAT), dimension(:), allocatable, target :: x, y, z, occ, wobble
-        ! C-compatiable variables for multislice parameters
+        ! C-compatiable variables for autoslice parameters
         integer (C_INT) :: nx, ny      ! pixels in wave function; must be a power of 2
         real (C_DOUBLE) :: pxc, pyc    ! probe position
         real (C_DOUBLE) :: slicez       ! slice thickness.  1-3 Angstroms is good
-        ! variables to retrieve the results of multislice calculation
+        ! variables to retrieve the results of autoslice calculation
         type (C_PTR) :: cptr
         real (C_FLOAT), dimension(:), pointer :: i_aav
         integer, dimension(1) :: aav_shape
@@ -605,8 +567,9 @@ contains
 
         call cpu_time(timer1)
 
-        ! Regardless of whether or not we use autoslice (multislice) do the
+        ! Regardless of whether or not we use autoslice, do the
         ! normal, fast intensity calculation for comparison.
+write(*,*) "DEBUG 4.20.1"
         if(square_pixel) then
             sqrt1_2_res = SQRT(0.5) * res
             !r_max = sqrt(8.0) * res
@@ -618,19 +581,23 @@ contains
             r_max = 2*res     !assuming resolution=radius
             call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         endif
+write(*,*) "DEBUG 4.20.2"
         size_pix_atoms = size(pix_atoms)
         !r_max = 6*res    !check cut-off effect on 05/11/2009
         bin_max = int(r_max/fem_bin_width)+1
 
+write(*,*) "DEBUG 4.20.3"
         allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
         allocate(x1(size_pix_atoms),y1(size_pix_atoms),rr_a(size_pix_atoms), stat=istat)
         allocate(sum1(m_int%nelements,size_pix_atoms), stat=istat)
         allocate(znum_r(size_pix_atoms), stat=istat)
+write(*,*) "DEBUG 4.20.4"
 
         do i=1, size_pix_atoms
             znum_r(i) = m_int%znum_r%ind(pix_atoms(i))
         enddo
 
+write(*,*) "DEBUG 4.20.5"
         gr_i = 0.0; int_i = 0.0; int_i_as = 0.0; x1 = 0.0; y1 = 0.0; rr_a = 0.0
 
         x2 = 0.0; y2 = 0.0
@@ -642,16 +609,18 @@ contains
         ! never called we should automatically have the max number of
         ! threads available in any parallel loop.
 
-        !!$omp parallel do
-        !do i=1,1
-        !    nthr = omp_get_num_threads() !omp_get_max_threads()
-        !    thrnum = omp_get_thread_num()
-        !    write(*,*) "We are using", nthr, " thread(s) in Intensity."
-        !enddo
-        !!$omp end parallel do
+        !$omp parallel do
+        do i=1,1
+            nthr = omp_get_num_threads() !omp_get_max_threads()
+            thrnum = omp_get_thread_num()
+            !write(*,*) "We are using", nthr, " thread(s) in Intensity."
+        enddo
+        !$omp end parallel do
 
+write(*,*) "DEBUG 4.20.6"
         ! Calculate sum1 for gr_i calculation in next loop.
         if(square_pixel) then
+write(*,*) "DEBUG 4.20.6.1"
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
@@ -672,6 +641,7 @@ contains
             enddo
             !$omp end parallel do
         else
+write(*,*) "DEBUG 4.20.6.2"
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
@@ -692,6 +662,7 @@ contains
 
         ! Calculate gr_i for int_i in next loop.
         if(square_pixel) then
+write(*,*) "DEBUG 4.20.6.3"
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
@@ -715,6 +686,7 @@ contains
             enddo
             !$omp end parallel do
         else
+write(*,*) "DEBUG 4.20.6.4"
             !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if(rr_a(i).le.res)then
@@ -741,6 +713,7 @@ contains
             !$omp end parallel do
         endif
 
+write(*,*) "DEBUG 4.20.6.5"
         !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
@@ -753,6 +726,7 @@ contains
             end do
         end do
         !$omp end parallel do
+write(*,*) "DEBUG 4.20.7"
 
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
@@ -760,7 +734,7 @@ contains
         if(allocated(sum1))      deallocate(sum1)
         if(allocated(rr_x))      deallocate(rr_x, rr_y)
 
-        if(use_multislice) then ! Use multislice
+        if(use_autoslice) then ! Use autoslice
             !npc = npc + 1
             !write (*,*) 'Inside intensity, for pixel ',npc
 
@@ -786,7 +760,7 @@ contains
             wobble = 0.0
 
             write(*,*)
-            write (*,*) 'Running multislice algorithm (islice):'
+            write (*,*) 'Running autoslice algorithm (islice):'
             !if(present(rot_index)) then
             !    cptr = islice(npc, m_int%natoms, C_LOC(Znum), C_LOC(x), C_LOC(y), C_LOC(z), C_LOC(occ), C_LOC(wobble), &
             !        m_int%lx, m_int%ly, m_int%lz, nx, ny, 200.0, slicez, res, pxc, pyc, rot_index, pix_index)
@@ -798,7 +772,7 @@ contains
             cptr = islice(m_int%natoms, C_LOC(Znum), C_LOC(x), C_LOC(y), C_LOC(z), C_LOC(occ), C_LOC(wobble), &
                 m_int%lx, m_int%ly, m_int%lz, nx, ny, 200.0, slicez, res, pxc, pyc)!, rot_index, pix_index)
 
-            write (*,*) 'islice complete.'
+            write (*,*) 'Autoslice complete.'
 
             aav_shape = (nx/4)
             call c_f_pointer(cptr, i_aav, aav_shape)
@@ -827,16 +801,16 @@ contains
             deallocate(z)
             deallocate(occ)
             deallocate(wobble)
-        endif ! ?Mulitslice?
+        endif ! Use autoslice?
 
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
-        !write ( *, * ) 'Total Elapsed CPU time in Intensity= ', time_in_int
-        !write ( *, * ) 'Elapsed CPU time = ', timer2 - timer1
+        !write (*,*) 'Total Elapsed CPU time in Intensity= ', time_in_int
+        write (*,*) 'Intesity call took', timer2 - timer1, 'seconds on processor', myid, 'and core', thrnum
     end subroutine intensity
 
 
-    subroutine fem_update(m_in, atom, res, k, vk, vk_as, v_background, scatfact_e, comm, istat, square_pixel, use_multislice)
+    subroutine fem_update(m_in, atom, res, k, vk, vk_as, v_background, scatfact_e, comm, istat, square_pixel, use_autoslice)
         use mpi
         type(model), intent(in) :: m_in
         integer, intent(in) :: atom
@@ -846,7 +820,7 @@ contains
         real, dimension(:,:), pointer :: scatfact_e
         integer, intent(out) :: istat
         logical, intent(in) :: square_pixel
-        logical, intent(in) :: use_multislice
+        logical, intent(in) :: use_autoslice
         real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq, sum_int_as    !mpi
         integer :: comm
         type(model) :: moved_atom, rot_atom
@@ -856,7 +830,7 @@ contains
 
         istat = 0
 
-        allocate(update_pix(nrot,pa%npix),stat=istat) !TODO add error message
+        allocate(update_pix(nrot,pa%npix),stat=istat)
         call check_allocation(istat, 'Cannot allocate memory for pixel update array in fem.')
         update_pix = .FALSE.
 
@@ -888,11 +862,13 @@ contains
         old_int=0.0; old_int_sq=0.0
         sum_int = 0.0; sum_int_sq = 0.0
         psum_int = 0.0; psum_int_sq = 0.0
+        sum_int_as = 0.0!; sum_in_as_sq = 0.0
 
         ! ------- Rotate models and call intensity on necessary pixels. ------- !
         !write(*,*) "Rotating, etc ", nrot, " single atom models in fem_update."
         
         !write(*,*) "We have", numprocs, "processor(s)."
+write(*,*) "DEBUG 4.1"
         rotations: do i=myid+1, nrot, numprocs
 
             ! Store the current (soon to be old) intensities for fem_reject_move
@@ -933,6 +909,7 @@ contains
             if( .not. ((rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)) ) then
             !write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
 
+write(*,*) "DEBUG 4.2"
                 ! Store the original index and position in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
                     call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
@@ -945,6 +922,7 @@ contains
 
                 ! Now check if the original position of the moved atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
+write(*,*) "DEBUG 4.3"
                 do n=1, mrot(i)%rot_i(atom)%nat
                     call pixel_positions(old_pos(i)%pos(n,1), &
                         old_pos(i)%pos(n,2), pix_il)
@@ -954,6 +932,7 @@ contains
                 enddo
                 ! Now check if the position of the rotated atom is inside
                 ! each pixel. If so, that intensity must be recalculated.
+write(*,*) "DEBUG 4.4"
                 do n=1, rot_atom%natoms
                     call pixel_positions(rot_atom%xx%ind(n), &
                         rot_atom%yy%ind(n), pix_il)
@@ -962,17 +941,21 @@ contains
                     enddo
                 enddo
 
+write(*,*) "DEBUG 4.5"
                 ! ------- Update atoms in the rotated model. ------- !
                 if( mrot(i)%rot_i(atom)%nat .eq. rot_atom%natoms ) then
                 ! The atom simply moved. It is still in the rotated model the
                 ! same number of times as before.
+write(*,*) "DEBUG 4.6"
                     do j=1,rot_atom%natoms
                         ! Function ref: move_atom(m, atom, new_xx, new_yy, new_zz)
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
+write(*,*) "DEBUG 4.7"
 
                 else if( rot_atom%natoms .ge. mrot(i)%rot_i(atom)%nat ) then
+write(*,*) "DEBUG 4.8"
                 ! The number of times the atom appears went up (duplication).
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
                     ! the number of atoms was changed.
@@ -982,10 +965,12 @@ contains
                     ! be updated up to the number of times it appeared in the
                     ! model before. This saves deleting rot_i(atom) and
                     ! re-implementing it, as well as all the atoms it points to.
+write(*,*) "DEBUG 4.9"
                     do j=1,mrot(i)%rot_i(atom)%nat
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
+write(*,*) "DEBUG 4.10"
 
                     ! Now add the rest of the atom positions in rot_atom that we
                     ! haven't gotten to yet.
@@ -993,7 +978,9 @@ contains
                         call add_atom(mrot(i), atom, rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j), rot_atom%znum%ind(j), rot_atom%znum_r%ind(j) )
                     enddo
 
+write(*,*) "DEBUG 4.11"
                 else if( mrot(i)%rot_i(atom)%nat .gt. rot_atom%natoms ) then
+write(*,*) "DEBUG 4.12"
                 ! The number of times the atom appears in the rotated model went down.
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
                     ! the number of atoms was changed.
@@ -1005,6 +992,7 @@ contains
                     ! way our array deletion is faster in the remove_atom
                     ! function.
                     call sort(mrot(i)%rot_i(atom))
+write(*,*) "DEBUG 4.13"
 
                     ! The atom positions in the rotated model (not atom) should
                     ! be updated up to the number of atoms in rot_atom. This
@@ -1014,6 +1002,7 @@ contains
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
+write(*,*) "DEBUG 4.14"
 
                     ! Now we delete the extras that were in the model before.
                     ! The thing you need to be careful of is that remove_atom
@@ -1021,24 +1010,29 @@ contains
                     ! next call to remove_atom needs the same index, not the
                     ! next one. So instead of j, we use rot_atom%natoms+1.
                     ! But we still need to call remove_atom j times.
+write(*,*) "DEBUG 4.15"
                     do j=rot_atom%natoms+1, mrot(i)%rot_i(atom)%nat
                         call remove_atom(mrot(i), atom, mrot(i)%rot_i(atom)%ind(rot_atom%natoms+1) )
                     enddo
+write(*,*) "DEBUG 4.16"
                 endif
 
             endif ! Test to see if (rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)
 
             !call destroy_model(rot_atom) ! I might have a memory leak somewhere. I wonder if it is here.
             !Deallocate ind in rot_atom%rot_i
+write(*,*) "DEBUG 4.17"
             do n=1, size(rot_atom%rot_i,1)
                 if(allocated(rot_atom%rot_i(n)%ind))then
                     deallocate(rot_atom%rot_i(n)%ind)
                 endif
             enddo
+write(*,*) "DEBUG 4.18"
             deallocate(rot_atom%xx%ind, rot_atom%yy%ind, rot_atom%zz%ind, &
                 rot_atom%znum%ind, rot_atom%rot_i, rot_atom%znum_r%ind, stat=istat)
 
         enddo rotations
+write(*,*) "DEBUG 4.19"
 
         ! For debugging only.
         !ntpix = 0
@@ -1052,18 +1046,20 @@ contains
         !write(*,*) "Calling Intensity on ", ntpix, " pixels."
         !write(*,*) "Average number of pixels to call intensity on per model:", real(ntpix)/211.0
         ! Update pixels if necessary.
+write(*,*) "DEBUG 4.20"
         do i=myid+1, nrot, numprocs
             do m=1, pa%npix
                 if(update_pix(i,m)) then
                     call intensity(mrot(i), res, pa%pix(m, 1), pa%pix(m, 2), k, &
-                        int_i(1:nk, m, i), int_i_as(1:nk, m, i), scatfact_e,istat, square_pixel, use_multislice)
-                    if(use_multislice) then
+                        int_i(1:nk, m, i), int_i_as(1:nk, m, i), scatfact_e,istat, square_pixel, use_autoslice)
+                    if(use_autoslice) then
                         int_as_sq(1:nk, m, i) = int_i_as(1:nk, m, i)**2
                     endif
                     int_sq(1:nk, m, i) = int_i(1:nk, m, i)**2
                 endif
             enddo
         enddo
+write(*,*) "DEBUG 4.21"
 
         ! Set psum_int and psum_int_sq.
         do i=myid+1, nrot, numprocs
@@ -1072,10 +1068,12 @@ contains
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, m, i)
             enddo
         enddo
+write(*,*) "DEBUG 4.22"
 
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
 
+write(*,*) "DEBUG 4.23"
         ! Recalculate the variance
         if(myid.eq.0)then
             do i=1, nk
@@ -1084,16 +1082,18 @@ contains
             end do
         endif
         ! TODO MAKE SURE THIS IS RIGHT.
-        if(use_multislice) then
+        if(use_autoslice) then
             do i=1, nk
                 Vk_as(i) = (sum_int_as(i)**2/(pa%npix*nrot))/((sum_int_as(i)**2/(pa%npix*nrot))**2)-1.0
                 Vk_as(i) = Vk_as(i) - v_background(i)   !background subtraction 052210 JWH
             enddo
         endif
+write(*,*) "DEBUG 4.24"
 
         deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
         !call destroy_model(moved_atom) ! Memory leak?
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
+write(*,*) "DEBUG 4.25"
     end subroutine fem_update
 
     subroutine fem_accept_move(comm)
