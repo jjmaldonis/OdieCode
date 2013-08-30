@@ -170,7 +170,7 @@ program rmc
         endif
     endif
     ! Fem updates vk based on the intensity calculations and v_background.
-    call fem(m, res, k, vk, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+    call fem(m, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
 
     t1 = omp_get_wtime()
     write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
@@ -218,7 +218,7 @@ program rmc
 
         ! Reset time_elapsed and energy_function
         open(35,file=trim(time_elapsed),form='formatted',status='unknown')
-            write(35,*) numprocs, "processors being used. OpenMP + MPI. Model is al50k.xyz"
+            write(35,*) numprocs, "processors being used. OpenMP + MPI."
             t1 = omp_get_wtime()
             write (35,*) i, t1-t0
         close(35)
@@ -238,7 +238,6 @@ program rmc
             !    stop ! Stop after 100 steps for timing runs.
             !endif
 
-write(*,*) "DEBUG 1"
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
             ! another atom. Returns true if the move is okay. (hard shere cutoff)
@@ -250,12 +249,9 @@ write(*,*) "DEBUG 1"
                 call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             end do
 
-write(*,*) "DEBUG 2"
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
-write(*,*) "DEBUG 3"
             call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
-write(*,*) "DEBUG 4"
             ! Use multislice every 10k steps if specified.
             if(use_multislice .and. mod(i,10000) .eq. 0) then
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
@@ -263,7 +259,6 @@ write(*,*) "DEBUG 4"
             else
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
             endif
-write(*,*) "DEBUG 5"
             !write(*,*) "Finished updating eam, gr, and fem data."
             
             chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
@@ -274,15 +269,12 @@ write(*,*) "DEBUG 5"
             chi2_new = chi2_new + te2
             del_chi = chi2_new - chi2_old
 
-write(*,*) "DEBUG 6"
             call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
-write(*,*) "DEBUG 7"
                
             randnum = ran2(iseed2)
             ! Test if the move should be accepted or rejected based on del_chi
-            if(del_chi <0.0)then
-            !if(.true.)then !For timing purposes, always accept the move.
-write(*,*) "DEBUG 8"
+            !if(del_chi <0.0)then
+            if(.true.)then !For timing purposes, always accept the move.
                 ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
@@ -293,7 +285,6 @@ write(*,*) "DEBUG 8"
                 ! Based on the random number above, even if del_chi is negative, decide
                 ! whether to move or not (statistically).
                 if(log(1.-randnum)<-del_chi*beta)then
-write(*,*) "DEBUG 9"
                     ! Accept move
                     e1 = e2
                     call fem_accept_move(mpi_comm_world)
@@ -304,19 +295,14 @@ write(*,*) "DEBUG 9"
                     endif
                 else
                     ! Reject move
-write(*,*) "DEBUG 10"
                     e2 = e1
                     call reject_position(m, w, xx_cur, yy_cur, zz_cur)
-write(*,*) "DEBUG 11"
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-write(*,*) "DEBUG 12"
                     call fem_reject_move(m, mpi_comm_world)
-write(*,*) "DEBUG 13"
                     accepted = .false.
                     write(*,*) "MC move rejected."
                 endif
             endif
-write(*,*) "DEBUG 14"
 
             ! Every 150,000 steps lower the temp, max_move, and reset beta.
             if(mod(i,150000)==0)then
