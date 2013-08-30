@@ -806,7 +806,7 @@ write(*,*) "DEBUG 4.20.7"
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
         !write (*,*) 'Total Elapsed CPU time in Intensity= ', time_in_int
-        write (*,*) 'Intesity call took', timer2 - timer1, 'seconds on processor', myid, 'and core', thrnum
+        write (*,*) 'Intensity call took', timer2 - timer1, 'seconds on processor', myid, 'and core', thrnum
     end subroutine intensity
 
 
