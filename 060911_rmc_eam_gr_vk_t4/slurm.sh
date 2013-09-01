@@ -16,6 +16,7 @@
 
 ##SBATCH --export=ALL
 
+echo "Using ACI / HCP / Slurm cluster."
 echo "JobID = $SLURM_JOB_ID"
 echo "Using $SLURM_NNODES nodes"
 echo "Using $SLURM_NODELIST nodes."
