@@ -285,17 +285,20 @@ contains
                 psi_temp = (j-1)*step_size(2)
                 ntheta_w(j) = int(sin(psi_temp)*ntheta)
                 if(ntheta_w(j).ge.0)then
-                    if(ntheta_w(j).gt.0)then
+                    if(ntheta_w(j).gt.0) then
                         pp = 2*(ntheta_w(j)-1)
-                    endif
-                    if(ntheta_w(j).eq.0)then
+                    else if(ntheta_w(j).eq.0) then
                         pp = 1
                     endif
                     do k=1, pp
                         if(k*(pi/(ntheta_w(j)-1)).lt.pi)then
                             rot_temp(jj,1) = (i-1)*step_size(1)
                             rot_temp(jj,2) = (j-1)*step_size(2)
-                            rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
+                            if(ntheta_w(j) .eq. 0) then
+                                rot_temp(jj,3) = 0.0
+                            else
+                                rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
+                            endif
                             jj = jj + 1
                         endif
                     enddo
@@ -304,6 +307,7 @@ contains
         enddo
 
         num_rot = jj - 1
+        write(*,*) "Number of rotations:", num_rot
 
         allocate(rot(num_rot, 3), stat=istat)
         if (istat /= 0) then
@@ -479,21 +483,26 @@ contains
             if( allocated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
         enddo
 
-        use_autoslice = .false.
+        use_autoslice = .true.
         ! Calculate intensities for every single pixel in every single model. This is very expensive.
         write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
         do i=myid+1, nrot, numprocs
             do j=1, pa%npix
                 !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
-                call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, .false.)
+                call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, use_autoslice)
                 int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                 if(use_autoslice) int_as_sq(1:nk, j, i) = int_i_as(1:nk, j, i)**2
 
+                write(*,*) "DEBUG 1", psum_int(1:nk)
+                write(*,*) "DEBUG 2", psum_int_as(1:nk)
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
                 if(use_autoslice) psum_int_as(1:nk) = psum_int_as(1:nk) + int_i_as(1:nk, j, i)
                 if(use_autoslice) psum_int_as_sq(1:nk) = psum_int_as_sq(1:nk) + int_as_sq(1:nk, j, i)
+                write(*,*) "DEBUG 3", psum_int(1:nk)
+                write(*,*) "DEBUG 4", psum_int_as(1:nk)
             enddo
+            write(*,*) "Finished intensity calls on model", i
         enddo
 
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
@@ -505,7 +514,6 @@ contains
             do i=1, nk
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                 Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
-                write(*,*) "sum_int_sq(i)=", sum_int_sq(i)
             end do
         endif
         ! TODO MAKE SURE THIS IS RIGHT.
@@ -629,17 +637,17 @@ contains
         ! never called we should automatically have the max number of
         ! threads available in any parallel loop.
 
-        !!$omp parallel do
-        !do i=1,1
-            !nthr = omp_get_num_threads() !omp_get_max_threads()
-            !thrnum = omp_get_thread_num()
-            !!write(*,*) "We are using", nthr, " thread(s) in Intensity."
-        !enddo
-        !!$omp end parallel do
+        !$omp parallel do
+        do i=1,1
+            nthr = omp_get_num_threads() !omp_get_max_threads()
+            thrnum = omp_get_thread_num()
+            !write(*,*) "We are using", nthr, " thread(s) in Intensity."
+        enddo
+        !$omp end parallel do
 
         ! Calculate sum1 for gr_i calculation in next loop.
         if(square_pixel) then
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -657,9 +665,9 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         else
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -674,12 +682,12 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         endif
 
         ! Calculate gr_i for int_i in next loop.
         if(square_pixel) then
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size_pix_atoms
@@ -700,9 +708,9 @@ contains
                     enddo
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         else
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if(rr_a(i).le.res)then
                     !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
@@ -725,10 +733,10 @@ contains
                     enddo
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         endif
 
-        !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
+        !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
@@ -739,7 +747,7 @@ contains
                 enddo
             end do
         end do
-        !!$omp end parallel do
+        !$omp end parallel do
 
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)

@@ -382,7 +382,7 @@ contains
         real :: lx2, ly2, lz2                             ! half box sizes
         type(model) :: mt                                 ! temporary oversize model
         integer, dimension(:), allocatable :: orig_indices
-
+        
         ! periodic continue mt to 3x3x3 of the original model
         istat = 0
         call periodic_continue_model(3, 3, 3, min, mt, .FALSE., istat)
@@ -408,6 +408,7 @@ contains
 
         ! generate the members of a 3x3 rotation matrix.  Use the Goldstein "x-convention"
         ! and Euler angles phi theta, psi.
+        !write(*,*) "Rotation angles:", phi, psi, theta
         cpsi = cos(psi)
         cphi = cos(phi)
         ctheta = cos(theta)

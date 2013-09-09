@@ -34,7 +34,8 @@ contains
         real, dimension(:,:,:), allocatable :: phi_temp2
         integer :: line
 
-        open(unit=71,file="ZrCuAl_lammps_revised.eam",form='formatted',status='unknown')
+        !open(unit=71,file="ZrCuAl_lammps_revised.eam",form='formatted',status='unknown')
+        open(unit=71,file="ZrCuAl2011.eam.alloy",form='formatted',status='unknown')
         read(71,*)  !comment line
         read(71,*)  !comment line
         read(71,*)  !comment line

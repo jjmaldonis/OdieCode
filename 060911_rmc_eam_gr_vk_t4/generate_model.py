@@ -2,7 +2,7 @@ import random
 import math
 
 def main():
-    natoms = 1425*8
+    natoms = 1000
     al_natoms = int(round(0.08 * natoms))
     cu_natoms = int(round(0.38 * natoms))
     zr_natoms = natoms - al_natoms - cu_natoms #Fill up whats left here
@@ -18,8 +18,8 @@ def main():
     ly = 56.56900
     lz = 56.56900
     atoms = []
-    f = open('double_model.xyz','w')
-    f.write('double model\n')
+    f = open('Zr54Cu38Al8_1000atoms.xyz','w')
+    f.write('Zr54Cu38Al8 1000atoms\n')
     f.write( str(lx) + ' ' + str(ly) + ' ' + str(lz) + "\n")
 
     i = 0

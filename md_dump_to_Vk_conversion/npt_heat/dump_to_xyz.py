@@ -2,9 +2,10 @@ import os
 import time
 
 def main():
-    dirs = [ name for name in os.listdir(os.getcwd()) if os.path.isdir(os.path.join(os.getcwd(), name)) ]
-    for name in dirs:
-        parse_dump(name)
+    #dirs = [ name for name in os.listdir(os.getcwd()) if os.path.isdir(os.path.join(os.getcwd(), name)) ]
+    #for name in dirs:
+    #    parse_dump(name)
+    parse_dump('Zr54Cu38Al8_sm_tot.dump')
 
 
 

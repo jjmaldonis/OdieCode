@@ -75,6 +75,7 @@ program rmc
     logical :: square_pixel, accepted, use_rmc, use_multislice
     integer :: ipvd, nthr
     doubleprecision :: t0, t1, t2 !timers
+        real :: x! This is the parameter we will use to fit vsim to vas.
 
     if(myid.eq.0)then
         write(*,*)
@@ -171,6 +172,7 @@ program rmc
     endif
     ! Fem updates vk based on the intensity calculations and v_background.
     call fem(m, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
+    call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
 
     t1 = omp_get_wtime()
     write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
