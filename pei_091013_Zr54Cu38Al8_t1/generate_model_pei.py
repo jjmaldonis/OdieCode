@@ -6,7 +6,7 @@ import math
 # This function generates a random model with natoms atoms. Below you can specify natoms, the composition, the box size, the cutoff distance, and the output filename.
 # This function is completely random. No monte carlo or other type of algorithm is used. That means this may not be the best way to make a model if the cutoff distance, model size, and number of atoms doesn't leave much extra space available. A MC approach would be better.
 def main():
-    natoms = 1000
+    natoms = 1523
     al_natoms = int(round(0.08 * natoms))
     cu_natoms = int(round(0.38 * natoms))
     zr_natoms = natoms - al_natoms - cu_natoms #Fill up whats left here
@@ -16,14 +16,14 @@ def main():
     print(str(zr_natoms))
     print(str(natoms))
 
-    cutoff = 2.0
+    cutoff = 2.272
 
-    lx = 24.581
-    ly = 24.581
-    lz = 24.581
+    lx = 20*math.sqrt(2)
+    ly = 20*math.sqrt(2)
+    lz = 20*math.sqrt(2)
     atoms = []
-    f = open('Zr54Cu38Al8_1000atoms_post_md.xyz','w')
-    f.write('Zr54Cu38Al8 1000atoms post md\n')
+    f = open('Zr54Cu38Al8_1523atoms_post_md.xyz','w')
+    f.write('Zr54Cu38Al8 1523atoms post md. atom density = ' + str(1000/math.pow(24.581,3)) + '\n')
     f.write( str(lx) + ' ' + str(ly) + ' ' + str(lz) + "\n")
 
     i = 0

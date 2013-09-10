@@ -14,7 +14,7 @@ def main():
     print(str(zr_natoms))
     print(str(natoms))
 
-    cutoff = 1.76
+    cutoff = 2.0
 
     lx = 24.581
     ly = 24.581
