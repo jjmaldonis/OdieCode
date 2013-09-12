@@ -483,7 +483,7 @@ contains
             if( allocated(old_pos(i)%pos) ) deallocate(old_pos(i)%pos)
         enddo
 
-        use_autoslice = .true.
+        use_autoslice = .false.
         ! Calculate intensities for every single pixel in every single model. This is very expensive.
         write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
         do i=myid+1, nrot, numprocs
@@ -493,16 +493,16 @@ contains
                 int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
                 if(use_autoslice) int_as_sq(1:nk, j, i) = int_i_as(1:nk, j, i)**2
 
-                write(*,*) "DEBUG 1", psum_int(1:nk)
-                write(*,*) "DEBUG 2", psum_int_as(1:nk)
+                !write(*,*) "DEBUG 1", psum_int(1:nk)
+                !write(*,*) "DEBUG 2", psum_int_as(1:nk)
                 psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
                 psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
                 if(use_autoslice) psum_int_as(1:nk) = psum_int_as(1:nk) + int_i_as(1:nk, j, i)
                 if(use_autoslice) psum_int_as_sq(1:nk) = psum_int_as_sq(1:nk) + int_as_sq(1:nk, j, i)
-                write(*,*) "DEBUG 3", psum_int(1:nk)
-                write(*,*) "DEBUG 4", psum_int_as(1:nk)
+                !write(*,*) "DEBUG 3", psum_int(1:nk)
+                !write(*,*) "DEBUG 4", psum_int_as(1:nk)
             enddo
-            write(*,*) "Finished intensity calls on model", i
+            !write(*,*) "Finished intensity calls on model", i
         enddo
 
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
@@ -827,7 +827,7 @@ contains
         call cpu_time(timer2)
         time_in_int = time_in_int + timer2-timer1
         !write (*,*) 'Total Elapsed CPU time in Intensity= ', time_in_int
-        write (*,*) 'Intensity call took', timer2 - timer1, 'seconds on processor', myid!, 'and core', thrnum
+        !write (*,*) 'Intensity call took', timer2 - timer1, 'seconds on processor', myid!, 'and core', thrnum
     end subroutine intensity
 
 

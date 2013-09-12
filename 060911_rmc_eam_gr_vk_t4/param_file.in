@@ -12,9 +12,9 @@
 #
 0
 0  0
-xrd_zr50_kramer_reduced.txt
-3290.0	!weight of xrd gr
-1.68  10.0
+# xrd_zr50_kramer_reduced.txt
+0 #3290.0	!weight of xrd gr
+0 0 #1.68  10.0
 fem_exp_jwh.txt
 1.0	 !weight of fem
 28.637     !scaling factor for exp Vk

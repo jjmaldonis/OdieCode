@@ -43,7 +43,7 @@ program rmc
     character (len=256) :: outbase
     character (len=256) :: jobID, c
     character (len=512) :: comment
-    character (len=256) :: time_elapsed, vki_fn, vku_fn, vkf_fn, output_model_fn, energy_fn, final_model_fn, gri_fn
+    character (len=256) :: time_elapsed, vki_fn, vku_fn, vkf_fn, output_model_fn, energy_fn, final_model_fn, gri_fn, chi_squared_file
     logical, dimension(4) :: used_data_sets
     real :: temperature
     real :: max_move
@@ -57,7 +57,7 @@ program rmc
     real, pointer, dimension(:,:) :: cutoff_r 
     real, pointer, dimension(:,:) :: scatfact_e
     real :: xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new
-    real :: chi2_old, chi2_new, scale_fac, scale_fac_initial, del_chi, beta, chi2_gr, chi2_vk
+    real :: chi2_old, chi2_new, scale_fac, scale_fac_initial, del_chi, beta, chi2_gr, chi2_vk, chi2_no_energy
     real :: rmin_e, rmax_e
     real :: rmin_n, rmax_n
     real :: rmin_x, rmax_x
@@ -107,8 +107,6 @@ program rmc
 
     ! Set input filenames.
     model_filename = 'model_040511c_t2_final.xyz'
-    !model_filename = 'double_model.xyz'
-    !model_filename = 'al50k_paul.xyz'
     param_filename = 'param_file.in'
 
     ! Set output filenames.
@@ -129,6 +127,8 @@ program rmc
     energy_fn = trim(trim(energy_fn)//jobID)//".txt"
     write(gri_fn, "(A10)") "gr_initial"
     gri_fn = trim(trim(gri_fn)//jobID)//".txt"
+    write(chi_squared_file, "(A11)") "chi_squared"
+    chi_squared_file = trim(trim(chi_squared_file)//jobID)//".txt"
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -172,7 +172,8 @@ program rmc
     endif
     ! Fem updates vk based on the intensity calculations and v_background.
     call fem(m, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
-    call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
+    ! TODO !!! Make sure I am actually supposed to be updating scale_fac and not ! weights(4) instead!!! That would be real bad.
+    !call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
 
     t1 = omp_get_wtime()
     write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
@@ -198,10 +199,20 @@ program rmc
     if(use_rmc) then ! End here if we only want femsim. Set the variable above.
 
         ! Initial chi2
+write(*,*) "weight=", weights(4)
         chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
             gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
             rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
-        chi2_old = chi2_old + te1 
+write(*,*) "pre weight chi2_old=", chi2_old
+        weights(4) = -1*te1/chi2_old
+write(*,*) "weight changed to", weights(4)
+        chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
+            gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
+            rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+write(*,*) "pre energy chi2_old=", chi2_old
+        chi2_no_energy = chi2_old
+        chi2_old = chi2_old + te1
+write(*,*) "chi2_old, energy=", chi2_old, te1
 
         e2 = e1
 
@@ -218,15 +229,20 @@ program rmc
             write(*,*)
         endif
 
-        ! Reset time_elapsed and energy_function
+        ! Reset time_elapsed, energy_function, chi_squared_file
         open(35,file=trim(time_elapsed),form='formatted',status='unknown')
             write(35,*) numprocs, "processors being used. OpenMP + MPI."
             t1 = omp_get_wtime()
             write (35,*) i, t1-t0
         close(35)
         open(34,file=trim(energy_fn),form='formatted',status='unknown')
+            write(34,*) "step, energy"
             write(34,*) i, te1
         close(34)
+        open(36,file=trim(chi_squared_file),form='formatted',status='unknown')
+            write(36,*) "step, chi2, chi2-energy, percent_diff"
+            write(36,*) i, chi2_no_energy, chi2_old, abs(chi2_old/chi2_no_energy)
+        close(36)
 
 
         ! The loops stops if the temperature goes below a certain temp (30.0).
@@ -268,8 +284,10 @@ program rmc
                 gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
                 rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
+            chi2_no_energy = chi2_new
             chi2_new = chi2_new + te2
             del_chi = chi2_new - chi2_old
+write(*,*) "chi2_new, del_chi, energy=", chi2_new, del_chi, te2
 
             call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
                
@@ -306,8 +324,8 @@ program rmc
                 endif
             endif
 
-            ! Every 150,000 steps lower the temp, max_move, and reset beta.
-            if(mod(i,150000)==0)then
+            ! Every 50,000 steps lower the temp, max_move, and reset beta.
+            if(mod(i,50000)==0)then
                 temperature = temperature * sqrt(0.7)
                 if(myid.eq.0)then
                     write(*,*) "Lowering temp to", temperature, "at step", i
@@ -361,6 +379,11 @@ program rmc
                     ! drops in temp necessary to get to temp=30.
                     write(*,*) "Approximate time remaining in seconds:", (t1-t0)/i * (150000 * log(30/temperature)/log(sqrt(0.7)) - i)! / nthr
                     !write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/i * (100-i)! / nthr
+                    if(accepted) then
+                        open(36,file=trim(chi_squared_file),form='formatted',status='unknown',access='append')
+                            write(36,*) i, chi2_no_energy, chi2_old, abs(chi2_old/chi2_no_energy)
+                        close(36)
+                    endif
                 endif
             endif
         enddo
