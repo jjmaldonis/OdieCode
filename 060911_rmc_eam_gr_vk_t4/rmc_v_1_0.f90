@@ -41,9 +41,9 @@ program rmc
     character (len=256) :: model_filename
     character (len=256) :: param_filename  
     character (len=256) :: outbase
-    character (len=256) :: jobID, c
+    character (len=256) :: jobID, c, step_str
     character (len=512) :: comment
-    character (len=256) :: time_elapsed, vki_fn, vku_fn, vkf_fn, output_model_fn, energy_fn, final_model_fn, gri_fn, chi_squared_file
+    character (len=256) :: time_elapsed, vki_fn, vku_fn, vkf_fn, output_model_fn, energy_fn, final_model_fn, gri_fn, chi_squared_file, acceptance_rate_fn
     logical, dimension(4) :: used_data_sets
     real :: temperature
     real :: max_move
@@ -75,7 +75,9 @@ program rmc
     logical :: square_pixel, accepted, use_rmc, use_multislice
     integer :: ipvd, nthr
     doubleprecision :: t0, t1, t2 !timers
-        real :: x! This is the parameter we will use to fit vsim to vas.
+    real :: x! This is the parameter we will use to fit vsim to vas.
+    integer, dimension(100) :: acceptance_array
+    real :: avg_acceptance
 
     if(myid.eq.0)then
         write(*,*)
@@ -129,6 +131,8 @@ program rmc
     gri_fn = trim(trim(gri_fn)//jobID)//".txt"
     write(chi_squared_file, "(A11)") "chi_squared"
     chi_squared_file = trim(trim(chi_squared_file)//jobID)//".txt"
+    write(acceptance_rate_fn, "(A11)") "acceptance_rate"
+    acceptance_rate_fn = trim(trim(acceptance_rate_fn)//jobID)//".txt"
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -199,20 +203,17 @@ program rmc
     if(use_rmc) then ! End here if we only want femsim. Set the variable above.
 
         ! Initial chi2
-write(*,*) "weight=", weights(4)
-        chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
+        chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
             gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
             rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
-write(*,*) "pre weight chi2_old=", chi2_old
-        weights(4) = -1*te1/chi2_old
-write(*,*) "weight changed to", weights(4)
-        chi2_old = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
-            gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
-            rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
-write(*,*) "pre energy chi2_old=", chi2_old
-        chi2_no_energy = chi2_old
-        chi2_old = chi2_old + te1
-write(*,*) "chi2_old, energy=", chi2_old, te1
+        ! If fem data is the only input data set we can set its weighting factor here.
+        if(.not. used_data_sets(1) .and. .not. used_data_sets(2) .and. .not.  used_data_sets(3) .and. used_data_sets(4) ) then
+            weights(4) = -1*te1/chi2_no_energy
+            chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
+                gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
+                rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+        endif
+        chi2_old = chi2_no_energy + te1
 
         e2 = e1
 
@@ -231,18 +232,21 @@ write(*,*) "chi2_old, energy=", chi2_old, te1
 
         ! Reset time_elapsed, energy_function, chi_squared_file
         open(35,file=trim(time_elapsed),form='formatted',status='unknown')
-            write(35,*) numprocs, "processors being used. OpenMP + MPI."
             t1 = omp_get_wtime()
-            write (35,*) i, t1-t0
+            write(35,*) numprocs, "processors being used."
+            write(35,*) "Step || Time elapsed || Avg time per step || This step's time || Approx time remaining"
         close(35)
         open(34,file=trim(energy_fn),form='formatted',status='unknown')
             write(34,*) "step, energy"
             write(34,*) i, te1
         close(34)
         open(36,file=trim(chi_squared_file),form='formatted',status='unknown')
-            write(36,*) "step, chi2, chi2-energy, percent_diff"
-            write(36,*) i, chi2_no_energy, chi2_old, abs(chi2_old/chi2_no_energy)
+            write(36,*) "step, chi2, energy, chi2-energy, chi2/energy"
+            write(36,*) i, chi2_no_energy, te1, chi2_old, abs(chi2_no_energy/te1)
         close(36)
+        open(37,file=trim(acceptance_rate_fn),form='formatted',status='unknown',access='append')
+            write(37,*) "step, acceptance rate averaged over last 100 steps"
+        close(37)
 
 
         ! The loops stops if the temperature goes below a certain temp (30.0).
@@ -279,22 +283,20 @@ write(*,*) "chi2_old, energy=", chi2_old, te1
             endif
             !write(*,*) "Finished updating eam, gr, and fem data."
             
-            chi2_new = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
+            chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
                 gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
                 gr_x_sim_new, vk, scale_fac, rmin_e, rmax_e, rmin_n, rmax_n, &
                 rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
 
-            chi2_no_energy = chi2_new
-            chi2_new = chi2_new + te2
+            chi2_new = chi2_no_energy + te2
             del_chi = chi2_new - chi2_old
-write(*,*) "chi2_new, del_chi, energy=", chi2_new, del_chi, te2
 
             call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
                
             randnum = ran2(iseed2)
             ! Test if the move should be accepted or rejected based on del_chi
-            !if(del_chi <0.0)then
-            if(.true.)then !For timing purposes, always accept the move.
+            if(del_chi <0.0)then
+            !if(.true.)then !For timing purposes, always accept the move.
                 ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
@@ -323,6 +325,73 @@ write(*,*) "chi2_new, del_chi, energy=", chi2_new, del_chi, te2
                     write(*,*) "MC move rejected."
                 endif
             endif
+            
+            if(accepted) then
+                acceptance_array(mod(i,100)+1) = 1
+            else
+                acceptance_array(mod(i,100)+1) = 0
+            endif
+            if(i .gt. 100) avg_acceptance = sum(acceptance_array)/100
+
+            ! Periodically save data.
+            if(myid.eq.0)then
+            if(mod(i,1000)==0)then
+                    ! Write to vk_update
+                    open(32,file=trim(vku_fn),form='formatted',status='unknown')
+                        do j=1, nk
+                            write(32,*)k(j),vk(j)
+                        enddo
+                    close(32)
+                if(accepted) then
+                    ! Write to model_update
+                    write(output_model_fn, "(A12)") "model_update"
+                    write(step_str,*) i
+                    output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//trim(step_str))//".txt"
+                    open(33,file=trim(output_model_fn),form='formatted',status='unknown')
+                        write(33,*)"updated model"
+                        write(33,*)m%lx,m%ly,m%lz
+                        do j=1,m%natoms
+                            write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
+                        enddo
+                        write(33,*)"-1"
+                    close(33)
+                endif
+            endif
+            if(mod(i,1)==0)then
+                if(accepted) then
+                    ! Write to energy_function
+                    open(34,file=trim(energy_fn),form='formatted',status='unknown',access='append')
+                        write(*,*) i, te2
+                        write(34,*) i, te2
+                    close(34)
+                    ! Write chi2 info
+                    open(36,file=trim(chi_squared_file),form='formatted',status='unknown',access='append')
+                        write(36,*) i, chi2_no_energy, te2, chi2_old, abs(chi2_no_energy/te2)
+                    close(36)
+                endif
+            endif
+            if(mod(i,1000)==0)then
+                ! Write to time_elapsed
+                open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
+                    t1 = omp_get_wtime()
+                    !write(*,*) "Step, time elapsed, temp:", i, t1-t0, temperature
+                    write(35,*) "Step || Time elapsed || Avg time per step || This step's time || Approx time remaining"
+                    write (35,*) i, t1-t0, (t1-t0)/i, t1-t2, (t1-t0)/i * (150000 * log(30/temperature)/log(sqrt(0.7)) - i)
+                close(35)
+                !write(*,*) "Time per step = ", (t1-t0)/(i)
+                !write(*,*) "This step's time = ", t1-t2
+                ! Time per step * num steps before decreasing temp * num
+                ! drops in temp necessary to get to temp=30.
+                !write(*,*) "Approximate time remaining in seconds:", (t1-t0)/i * (150000 * log(30/temperature)/log(sqrt(0.7)) - i)! / nthr
+                !write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/i * (100-i)! / nthr
+            endif
+            if(mod(i,100)==0 .and. i .gt. 100)then
+                ! Write to acceptance rate
+                open(40,file=trim(acceptance_rate_fn),form='formatted',status='unknown',access='append')
+                    write(40,*) i, avg_acceptance
+                close(40)
+            endif
+            endif ! myid == 0
 
             ! Every 50,000 steps lower the temp, max_move, and reset beta.
             if(mod(i,50000)==0)then
@@ -341,52 +410,7 @@ write(*,*) "chi2_new, del_chi, energy=", chi2_new, del_chi, te2
                     endif
                 endif
             endif
-
-            ! Periodically save data.
-            if(mod(i,1)==0)then
-                if(myid.eq.0)then
-                    ! Write to vk_update
-                    open(32,file=trim(vku_fn),form='formatted',status='unknown')
-                        do j=1, nk
-                            write(32,*)k(j),vk(j)
-                        enddo
-                    close(32)
-                    ! Write to model_update
-                    !open(33,file=trim(output_model_fn),form='formatted',status='unknown')
-                        !write(33,*)"updated model"
-                        !write(33,*)m%lx,m%ly,m%lz
-                        !do j=1,m%natoms
-                        !    write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
-                        !enddo
-                        !write(33,*)"-1"
-                    !close(33)
-                    open(34,file=trim(energy_fn),form='formatted',status='unknown',access='append')
-                        if(accepted) then
-                            ! Write to energy_function
-                            write(*,*) i, te2
-                            write(34,*) i, te2
-                        endif
-                    close(34)
-                    ! Write to time_elapsed
-                    open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
-                        t1 = omp_get_wtime()
-                        write (*,*) "Step, time elapsed, temp:", i, t1-t0, temperature
-                        write (35,*) i, t1-t0
-                    close(35)
-                    write(*,*) "Time per step = ", (t1-t0)/(i)
-                    write(*,*) "This step's time = ", t1-t2
-                    ! Time per step * num steps before decreasing temp * num
-                    ! drops in temp necessary to get to temp=30.
-                    write(*,*) "Approximate time remaining in seconds:", (t1-t0)/i * (150000 * log(30/temperature)/log(sqrt(0.7)) - i)! / nthr
-                    !write(*,*) "Approximate time remaining in seconds (for 100 steps):", (t1-t0)/i * (100-i)! / nthr
-                    if(accepted) then
-                        open(36,file=trim(chi_squared_file),form='formatted',status='unknown',access='append')
-                            write(36,*) i, chi2_no_energy, chi2_old, abs(chi2_old/chi2_no_energy)
-                        close(36)
-                    endif
-                endif
-            endif
-        enddo
+        enddo !RMC do loop
 
         write(*,*) "Monte Carlo Finished!"
 
