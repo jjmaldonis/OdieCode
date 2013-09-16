@@ -79,11 +79,7 @@ program rmc
     integer, dimension(100) :: acceptance_array
     real :: avg_acceptance
 
-    if(myid.eq.0)then
-        write(*,*)
-        write(*,*) "This is the dev version of rmc!"
-        write(*,*)
-    endif
+    !------------------- Program setup. -----------------!
 
     !call mpi_init(mpierr)
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
@@ -91,20 +87,19 @@ program rmc
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
     
     nthr = omp_get_max_threads()
-    if(myid.eq.0) then
+    if(myid.eq.0)then
+        write(*,*)
+        write(*,*) "This is the dev version of rmc!"
+        write(*,*)
+        write(*,*) "Using", numprocs, "processors."
         write(*,*) "OMP found a max number of threads of", nthr
         write(*,*)
     endif
-    
-    t0 = omp_get_wtime()
-
     call get_command_argument(1, c, length, istat)
     if (istat == 0) then
         jobID = "_"//trim(c)
     else
-        write (*,*) 'No jobID given.'
-        write(*,*)
-        jobID = ''
+        jobID = '_temp'
     end if
 
     ! Set input filenames.
@@ -131,8 +126,13 @@ program rmc
     gri_fn = trim(trim(gri_fn)//jobID)//".txt"
     write(chi_squared_file, "(A11)") "chi_squared"
     chi_squared_file = trim(trim(chi_squared_file)//jobID)//".txt"
-    write(acceptance_rate_fn, "(A11)") "acceptance_rate"
+    write(acceptance_rate_fn, "(A15)") "acceptance_rate"
     acceptance_rate_fn = trim(trim(acceptance_rate_fn)//jobID)//".txt"
+
+    !------------------- Read inputs and initialize. -----------------!
+
+    ! Start timer.
+    t0 = omp_get_wtime()
 
     ! Read input model
     call read_model(model_filename, comment, m, istat)
@@ -164,9 +164,9 @@ program rmc
     call scatt_power(m,used_data_sets,istat)
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
-    allocate(vk(size(vk_exp)))
-    allocate(vk_as(size(vk_exp)))
+    allocate(vk(size(vk_exp)), vk_as(size(vk_exp)))
     if(myid.eq.0) call print_sampled_map(m, res, square_pixel)
+    ! Print warning message if we are using too many cores.
     if(myid.eq.0) then
         if(pa%npix /= 1) then
             if(numprocs > 3*nrot) write(*,*) "WARNING: You are using too many cores!"
@@ -174,6 +174,9 @@ program rmc
             if(numprocs > nrot) write(*,*) "WARNING: You are using too many cores!"
         endif
     endif
+
+    !------------------- Call femsim. -----------------!
+
     ! Fem updates vk based on the intensity calculations and v_background.
     call fem(m, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel)
     ! TODO !!! Make sure I am actually supposed to be updating scale_fac and not ! weights(4) instead!!! That would be real bad.
@@ -200,12 +203,15 @@ program rmc
         close(52)
     endif
 
+    !------------------- Start RMC. -----------------!
+
     if(use_rmc) then ! End here if we only want femsim. Set the variable above.
 
-        ! Initial chi2
+        ! Calculate initial chi2
         chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, gr_n, gr_x, vk_exp, vk_exp_err, &
             gr_e_sim_cur, gr_n_sim_cur, gr_x_sim_cur, vk, scale_fac,&
             rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
+
         ! If fem data is the only input data set we can set its weighting factor here.
         if(.not. used_data_sets(1) .and. .not. used_data_sets(2) .and. .not.  used_data_sets(3) .and. used_data_sets(4) ) then
             weights(4) = -1*te1/chi2_no_energy
@@ -214,10 +220,8 @@ program rmc
                 rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
         endif
         chi2_old = chi2_no_energy + te1
-
         e2 = e1
 
-        ! RMC step begins
         t0 = omp_get_wtime()
         i=1
         if(myid.eq.0)then
@@ -231,9 +235,10 @@ program rmc
         endif
 
         ! Reset time_elapsed, energy_function, chi_squared_file
+        if(myid .eq. 0) then
         open(35,file=trim(time_elapsed),form='formatted',status='unknown')
             t1 = omp_get_wtime()
-            write(35,*) numprocs, "processors being used."
+            write(35,*) numprocs, "processors are being used."
             write(35,*) "Step || Time elapsed || Avg time per step || This step's time || Approx time remaining"
         close(35)
         open(34,file=trim(energy_fn),form='formatted',status='unknown')
@@ -247,8 +252,10 @@ program rmc
         open(37,file=trim(acceptance_rate_fn),form='formatted',status='unknown',access='append')
             write(37,*) "step, acceptance rate averaged over last 100 steps"
         close(37)
+        endif
 
 
+        ! RMC loop begins.
         ! The loops stops if the temperature goes below a certain temp (30.0).
         do while (i > 0)
             i=i+1
@@ -302,7 +309,7 @@ program rmc
                 call fem_accept_move(mpi_comm_world)
                 chi2_old = chi2_new
                 accepted = .true.
-                write(*,*) "MC move accepted outright."
+                if(myid .eq. 0) write(*,*) "MC move accepted outright."
             else
                 ! Based on the random number above, even if del_chi is negative, decide
                 ! whether to move or not (statistically).
@@ -312,9 +319,7 @@ program rmc
                     call fem_accept_move(mpi_comm_world)
                     chi2_old = chi2_new
                     accepted = .true.
-                    if(myid.eq.0)then
-                        write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
-                    endif
+                    if(myid.eq.0) write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                 else
                     ! Reject move
                     e2 = e1
@@ -322,7 +327,7 @@ program rmc
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                     call fem_reject_move(m, mpi_comm_world)
                     accepted = .false.
-                    write(*,*) "MC move rejected."
+                    if(myid .eq. 0) write(*,*) "MC move rejected."
                 endif
             endif
             
@@ -370,12 +375,11 @@ program rmc
                     close(36)
                 endif
             endif
-            if(mod(i,1000)==0)then
+            if(mod(i,1)==0)then
                 ! Write to time_elapsed
                 open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
                     t1 = omp_get_wtime()
                     !write(*,*) "Step, time elapsed, temp:", i, t1-t0, temperature
-                    write(35,*) "Step || Time elapsed || Avg time per step || This step's time || Approx time remaining"
                     write (35,*) i, t1-t0, (t1-t0)/i, t1-t2, (t1-t0)/i * (150000 * log(30/temperature)/log(sqrt(0.7)) - i)
                 close(35)
                 !write(*,*) "Time per step = ", (t1-t0)/(i)
