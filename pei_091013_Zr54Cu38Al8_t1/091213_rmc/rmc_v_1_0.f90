@@ -103,7 +103,7 @@ program rmc
     end if
 
     ! Set input filenames.
-    model_filename = 'model_040511c_t2_final.xyz'
+    model_filename = 'Zr54Cu38Al8_1523atoms_start.xyz'
     param_filename = 'param_file.in'
 
     ! Set output filenames.

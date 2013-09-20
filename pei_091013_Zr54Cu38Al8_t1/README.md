@@ -1,12 +1,12 @@
 The fem experimental data is for as cast Zr54Cu38Al8 with oxidation layer subtraction. 
 
-Date: 9/9/13. I am a couple days into making this stuff now, and it won't be ready for another couple, but this is the approx date of when we did this.
+Date: 9/9/13. I am a couple days into making this stuff now, and it wont be ready for another couple, but this is the approx date of when we did this.
 
 
 Description of the models:
 Zr54Cu38Al8_1000atoms.xyz is the initial model that I generated with generate_model.py (cutoff distance of 1.76, model size is in the file).
 Zr54Cu38Al8_sm_tot.dump is the .dump file after the MD simulation that optimized the box size.
-56500000.xyz was taken from the last timestep in Zr54Cu38Al8_sm_tot.dump. The RDF was run on this model using Jinwoo's code, which turns out not to be correct. Paul says it looks like the correction for the near density has been done twice.
+56500000.xyz was taken from the last timestep in Zr54Cu38Al8_sm_tot.dump. The RDF was run on this model using Jinwoos code, which turns out not to be correct. Paul says it looks like the correction for the near density has been done twice.
 Paul found that with 1000 atoms, the box side length is 24.581 Angstroms (at 300K). This gives us an atom density of 1000/(24.581)^3 = 0.06732887526; and therefore for a box side length of 20*sqrt(20) Angstroms we need 1000/(24.581)^3*(20*sqrt(2))^3 = 1523.4785 ~= 1523 atoms. This is the number of atoms we need for a box side length of 20*sqrt(2)A = 28.28427A.
 Zr54Cu38Al8_1523atoms_post_md.xyz is the model created by generate_model_pei.py (cutoff of 2.0 (still too low), smaller box size (see file)).
 
@@ -24,3 +24,13 @@ Here is the general outline of approach:
 
 
     Note on calculating the RDF: The input xyz file must be tab deliminated. Use Excel to load and re-save if necessary (you may also need to remove comments after lines; the first line should be a comment). Load the Igor functions from: https://github.com/paul-voyles/Igor/blob/master/STEM%20simulations/XYZ.ipf. Load the .xyz file into Igor with LoadXYZ() and select the .xyz file. Then RDF(xyz, 200) and PartialRDF(xyz,200) create the RDFs which you can display.
+
+
+
+Peis simulation parameter settings:
+Cutoffs in param_file.in = 2.272A taken from the RDF described above in step 3.
+Starting temperature = 100,000 and decreasing it to temp*sqrt(0.7) every 50k moves until temp=30. (This is what Jinwoo used).
+Max_move distance = 1.5A. (Same as Jinwoos).
+Since we are using using the fem data in the HRMC, we set its weighting factor **** HOW??? UPDATE ME TODO!
+Autoslice is not used.
+Peis glass thickness is, on average, 27nm and the thickness gradient is 35-50nm. This means beta = 1/3*ts/te = 1/3*20*sqrt(2)/270 = 0.03492. Then we plug 1/0.03492 = 28.6378 into param_file.in.

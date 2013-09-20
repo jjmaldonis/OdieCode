@@ -1,0 +1,3 @@
+ step, acceptance rate averaged over last 100 steps
+ step, acceptance rate averaged over last 100 steps
+ step, acceptance rate averaged over last 100 steps
