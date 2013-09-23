@@ -7,7 +7,7 @@ module ReadInputs
 
 contains
 
-    subroutine read_inputs(param_filename,temperature, max_move, cutoff_r, used_data_sets, weights, gr_e, r_e, gr_e_err, &
+    subroutine read_inputs(param_filename,model_fn, temperature, max_move, cutoff_r, used_data_sets, weights, gr_e, r_e, gr_e_err, &
     gr_n, r_n, gr_x, r_x, V, k, V_err, V_background, ntheta, nphi, npsi, scale_fac, Q, fem_algorithm, pixel_distance, total_steps, &
     rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
     !It reads input file names, temperature, maximum atom movement distance
@@ -44,6 +44,7 @@ contains
 
         implicit none
         character (len=*), intent(in) :: param_filename  !Assume size array, be careful
+        character (len=80), intent(out) :: model_fn
         real, intent(out) :: temperature
         real, intent(out) :: max_move
         real, intent(out), dimension(:,:) :: cutoff_r
@@ -67,8 +68,8 @@ contains
         !Variables declared in this subroutine, local variables
         !comment1=comment in param_filename
         character (len=80) comment1  
-        character (len=20) scatteringfile ! The scattering file name, at most 20 characters
-        character (len=20) femfile ! The fem data file name, at most 20 characters
+        character (len=80) scatteringfile ! The scattering file name, at most 20 characters
+        character (len=80) femfile ! The fem data file name, at most 20 characters
             ! Note: electron, neutron, and x-ray data all use this name, but in order.
         integer filenamelength !The file name length in scatteringfile or femfile
         integer i
@@ -86,6 +87,7 @@ contains
             return
         endif
         read(20, '(a80)') comment1 !read comment and it is neglected in the input
+        read(20, '(a80)') model_fn; model_fn = adjustl(model_fn)
         read(20, *) total_steps
         read(20, *) temperature
         read(20, *) max_move

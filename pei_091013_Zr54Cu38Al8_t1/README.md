@@ -31,6 +31,7 @@ Peis simulation parameter settings:
 Cutoffs in param_file.in = 2.272A taken from the RDF described above in step 3.
 Starting temperature = 100,000 and decreasing it to temp*sqrt(0.7) every 50k moves until temp=30. (This is what Jinwoo used).
 Max_move distance = 1.5A. (Same as Jinwoos).
-Since we are using using the fem data in the HRMC, we set its weighting factor **** HOW??? UPDATE ME TODO!
 Autoslice is not used.
+Since we are using using the fem data in the HRMC, we set its weighting factor based on the the below calculation. Beta is the weighting factor.
 Peis glass thickness is, on average, 27nm and the thickness gradient is 35-50nm. This means beta = 1/3*ts/te = 1/3*20*sqrt(2)/270 = 0.03492. Then we plug 1/0.03492 = 28.6378 into param_file.in.
+There is another weighting factor - that between chi2 and the energy. We call this one alpha. See pg 25 in my notebook. We just set this basically by making a best guess. I ran the simulation with weighting factors of 1 for alpha and of 28.6378 for beta, and the looked at the output chi2 over energy in the output chi_squared file. I looked at the chi2/energy column, and it instabily flattens out around 1000 accpeted moves (I only ran to a bit less than 2000 accepted moves though!). So I took the "flat" part and averged the chi2/energy values. The approximate reciprocal of this number is the number I then used for alpha (390.0). However, when I ran the simulation with alpha=390.0, chi2/energy was still noticably less than 1.0, so I recalculated alpha with this data and got alpha=550.0. This is currenty what is running and I will continue to keep an eye on things.

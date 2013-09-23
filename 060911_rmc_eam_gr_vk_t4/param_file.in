@@ -1,4 +1,5 @@
 #parameter file opened. set a filename to # to ignore it
+model_040511c_t2_final.xyz
 100  !total RMC steps - ignore
 100000.0    !starting temperature
 1.5    !maximum move distance

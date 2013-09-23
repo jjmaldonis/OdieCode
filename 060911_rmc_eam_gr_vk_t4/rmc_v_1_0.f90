@@ -103,7 +103,6 @@ program rmc
     end if
 
     ! Set input filenames.
-    model_filename = 'model_040511c_t2_final.xyz'
     param_filename = 'param_file.in'
 
     ! Set output filenames.
@@ -137,17 +136,19 @@ program rmc
     t0 = omp_get_wtime()
 
     ! Read input model
-    call read_model(model_filename, comment, m, istat)
+    call read_model(param_filename, comment, m, istat)
     call check_model(m, istat)
     call recenter_model(0.0, 0.0, 0.0, m)
 
     ! Read input parameters
     allocate(cutoff_r(m%nelements,m%nelements),stat=istat)
-    call read_inputs(param_filename,temperature, max_move, cutoff_r, &
+    call read_inputs(param_filename,model_filename,temperature, max_move, cutoff_r, &
         used_data_sets, weights, gr_e, r_e, gr_e_err, gr_n, r_n, gr_x, &
         r_x, vk_exp, k, vk_exp_err, v_background, ntheta, nphi, npsi, &
         scale_fac_initial, Q, fem_algorithm, pixel_distance, total_steps, &
         rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
+
+    write(*,*) "Model filename:", adjustl(model_filename)
 
     scale_fac = scale_fac_initial
     res = 0.61/Q
@@ -341,7 +342,8 @@ program rmc
             else
                 acceptance_array(mod(i,100)+1) = 0
             endif
-            if(i .gt. 100) avg_acceptance = sum(acceptance_array)/100
+            if(i .gt. 100) avg_acceptance = sum(acceptance_array)/100.0
+            if(i .gt. 100) write(*,*) "Acceptance info:", sum(acceptance_array), avg_acceptance
 
             ! Periodically save data.
             if(myid.eq.0)then
