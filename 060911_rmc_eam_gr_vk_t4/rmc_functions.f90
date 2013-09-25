@@ -114,10 +114,6 @@ CONTAINS
             enddo
             sum1(i) = sum1(i)/nf
         endif
-write(*,*) "V(k)_exp:"
-write(*,*) v
-write(*,*) "V(k)_sim:"
-write(*,*) v_sim
 
         chi2_gr = sum1(3)
         chi2_vk = sum1(4)

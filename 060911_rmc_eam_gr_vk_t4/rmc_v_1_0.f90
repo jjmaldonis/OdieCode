@@ -343,7 +343,6 @@ program rmc
                 acceptance_array(mod(i,100)+1) = 0
             endif
             if(i .gt. 100) avg_acceptance = sum(acceptance_array)/100.0
-            if(i .gt. 100) write(*,*) "Acceptance info:", sum(acceptance_array), avg_acceptance
 
             ! Periodically save data.
             if(myid.eq.0)then
@@ -358,7 +357,7 @@ program rmc
                     ! Write to model_update
                     write(output_model_fn, "(A12)") "model_update"
                     write(step_str,*) i
-                    output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//trim(step_str))//".txt"
+                    output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//step_str)//".txt"
                     open(33,file=trim(output_model_fn),form='formatted',status='unknown')
                         write(33,*)"updated model"
                         write(33,*)m%lx,m%ly,m%lz
