@@ -336,6 +336,15 @@ contains
         else
             pa%phys_diam = res
         endif
+        if( pa%phys_diam - m%lx > 0) then !Rounding error.
+            pa%phys_diam = m%lx !TODO Something weird
+            ! was going on here if I didn't do this. It was a result of pa%phys_diam being
+            ! larger than m%lx by a tiny amount due to rounding errors from the
+            ! inputs. Not sure how best to fix it right now.
+            write(*,*)
+            write(*,*) "WARNING: There was a rounding error in init_pix, it was manually corrected but you should check to make sure nothing funny is happening."
+            write(*,*)
+        endif
         pa%npix_1D = floor( m%lx / pa%phys_diam )
         pa%npix = pa%npix_1D**2
 

@@ -1,5 +1,5 @@
 #parameter file opened. set a filename to # to ignore it
-Zr54Cu38Al8_1523atoms_start.xyz
+model_update_22111_20000.txt
 100  !total RMC steps - ignore
 100000.0    !starting temperature
 1.5    !maximum move distance
