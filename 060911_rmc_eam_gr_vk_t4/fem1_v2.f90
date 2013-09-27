@@ -495,7 +495,9 @@ contains
         use_autoslice = .false.
         ! Calculate intensities for every single pixel in every single model. This is very expensive.
         write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
+        write(*,*) "Outside intenstiy loop: myid+1=", myid+1, " nrot=",nrot
         do i=myid+1, nrot, numprocs
+        write(*,*) "Inside intenstiy loop: myid+1=", myid+1, " nrot=",nrot
             do j=1, pa%npix
                 !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
                 call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, use_autoslice)
@@ -646,17 +648,17 @@ contains
         ! never called we should automatically have the max number of
         ! threads available in any parallel loop.
 
-        !$omp parallel do
-        do i=1,1
-            nthr = omp_get_num_threads() !omp_get_max_threads()
-            thrnum = omp_get_thread_num()
-            !write(*,*) "We are using", nthr, " thread(s) in Intensity."
-        enddo
-        !$omp end parallel do
+        !!$omp parallel do
+        !do i=1,1
+            !nthr = omp_get_num_threads() !omp_get_max_threads()
+            !thrnum = omp_get_thread_num()
+            !!write(*,*) "We are using", nthr, " thread(s) in Intensity."
+        !enddo
+        !!$omp end parallel do
 
         ! Calculate sum1 for gr_i calculation in next loop.
         if(square_pixel) then
-            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -674,9 +676,9 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !$omp end parallel do
+            !!$omp end parallel do
         else
-            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -691,12 +693,12 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !$omp end parallel do
+            !!$omp end parallel do
         endif
 
         ! Calculate gr_i for int_i in next loop.
         if(square_pixel) then
-            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size_pix_atoms
@@ -717,9 +719,9 @@ contains
                     enddo
                 endif
             enddo
-            !$omp end parallel do
+            !!$omp end parallel do
         else
-            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if(rr_a(i).le.res)then
                     !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
@@ -742,10 +744,10 @@ contains
                     enddo
                 endif
             enddo
-            !$omp end parallel do
+            !!$omp end parallel do
         endif
 
-        !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
+        !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
@@ -756,7 +758,7 @@ contains
                 enddo
             end do
         end do
-        !$omp end parallel do
+        !!$omp end parallel do
 
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
