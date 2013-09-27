@@ -4,9 +4,9 @@ Zr54Cu38Al8_1523atoms_start.xyz
 100000.0    !starting temperature
 1.5    !maximum move distance
 !cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
-1.76 1.76 1.76
-1.76 1.76 1.76
-1.76 1.76 1.76
+2.272 2.272 2.272
+2.272 2.272 2.272
+2.272 2.272 2.272
 #
 0	!weight of electron scattering
 0  0 !rmin_e rmax_e
