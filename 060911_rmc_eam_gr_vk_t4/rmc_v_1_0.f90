@@ -249,8 +249,8 @@ program rmc
             write(34,*) i, te1
         close(34)
         open(36,file=trim(chi_squared_file),form='formatted',status='unknown')
-            write(36,*) "step, chi2, energy, chi2-energy, chi2/energy"
-            write(36,*) i, chi2_no_energy, te1, chi2_old, abs(chi2_no_energy/te1)
+            write(36,*) "step, chi2, energy, chi2-energy, chi2/energy, alpha weight, beta weight"
+            write(36,*) i, chi2_no_energy, te1, chi2_old, abs(chi2_no_energy/te1), weights(4), scale_fac
         close(36)
         open(37,file=trim(acceptance_rate_fn),form='formatted',status='unknown',access='append')
             write(37,*) "step, acceptance rate averaged over last 100 steps"
@@ -377,7 +377,7 @@ program rmc
                     close(34)
                     ! Write chi2 info
                     open(36,file=trim(chi_squared_file),form='formatted',status='unknown',access='append')
-                        write(36,*) i, chi2_no_energy, te2, chi2_old, abs(chi2_no_energy/te2)
+                        write(36,*) i, chi2_no_energy, te2, chi2_old, abs(chi2_no_energy/te2), weights(4), scale_fac
                     close(36)
                 endif
             endif
