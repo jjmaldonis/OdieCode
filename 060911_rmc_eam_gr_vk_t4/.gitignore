@@ -11,3 +11,6 @@ param_file_BAK.in
 param_file_al50k.in
 resize_pix_outputs/
 temp.tmp
+acceptance_rate_*
+beta_weighting_*
+chi_squared_*

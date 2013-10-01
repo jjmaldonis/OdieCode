@@ -21,8 +21,8 @@ LIBS=
 # compiler options for debugging
 #FC_DEBUG = ifort -g -debug all -check all -implicitnone -warn all
 #FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all
-FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all -openmp -fpp
-#FC_DEBUG = mpif90 -g -implicitnone -openmp -fpp
+#FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all -openmp -fpp
+FC_DEBUG = mpif90 -g -implicitnone -openmp -fpp
 
 CC_DEBUG = icc -g  -Wall
 
