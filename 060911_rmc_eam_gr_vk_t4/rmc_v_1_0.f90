@@ -347,17 +347,20 @@ program rmc
             ! Periodically save data.
             if(myid.eq.0)then
             if(mod(i,1000)==0)then
-                    ! Write to vk_update
-                    open(32,file=trim(vku_fn),form='formatted',status='unknown')
-                        do j=1, nk
-                            write(32,*)k(j),vk(j)
-                        enddo
-                    close(32)
+                ! Write to vk_update
+                write(vku_fn, "(A9)") "vk_update"
+                write(step_str,*) i
+                vku_fn = trim(trim(trim(trim(vku_fn)//jobID)//"_")//step_str)//".txt"
+                open(32,file=trim(vku_fn),form='formatted',status='unknown')
+                    do j=1, nk
+                        write(32,*)k(j),vk(j)
+                    enddo
+                close(32)
                 if(accepted) then
                     ! Write to model_update
                     write(output_model_fn, "(A12)") "model_update"
                     write(step_str,*) i
-                    output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//step_str)//".txt"
+                    output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//step_str)//".xyz"
                     open(33,file=trim(output_model_fn),form='formatted',status='unknown')
                         write(33,*)"updated model"
                         write(33,*)m%lx,m%ly,m%lz
