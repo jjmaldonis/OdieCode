@@ -69,6 +69,7 @@ module model_mod
         integer :: unrot_natoms
         type(index_list), dimension(:), allocatable :: rot_i ! list of which atoms in the rotated model correspond
         ! to the index i in the unrotated model
+        integer :: id  ! model ID - ranges from 1 to nrot for those in rotated matrix; is 0 for the original m
     end type model
 
     TYPE hutch_2D_list
@@ -175,6 +176,9 @@ contains
         integer :: i, j, atom_count=0, nat=0, atom_temp
         integer, dimension(103) :: elements=0
         real :: comp_temp
+
+        ! Set model ID to 0.
+        m%id = 0
 
         open(20, file=param_filename,iostat=istat, status='old')
             read(20, '(a80)') comment !read comment from paramfile
@@ -410,7 +414,8 @@ contains
                 write(*,*) 'wrong here', i, orig_indices(i)
             endif
         enddo
-        orig_indices = (/ (mod(i,min%natoms)+1, i=1,mt%natoms) /)
+        !orig_indices = (/ (mod(i,min%natoms)+1, i=1,mt%natoms) /)
+        orig_indices = (/ (mod(i,min%natoms)+1, i=0,mt%natoms-1) /) ! Jason 10-14-2013
 
         ! generate the members of a 3x3 rotation matrix.  Use the Goldstein "x-convention"
         ! and Euler angles phi theta, psi.
@@ -518,6 +523,7 @@ contains
                         ! it takes a type object containing the list 
                         ! and an int equal to its size.
                         call add_index(mrot%rot_i(orig_indices(i)), j)
+!write(*,*) "Atom", orig_indices(i), "has rot_i=", mrot%rot_i(orig_indices(i))%ind
                         j = j+1
                     endif
                 endif
@@ -1129,8 +1135,6 @@ contains
         integer, intent(in) :: atom
         real, intent(in) :: xx, yy, zz
         integer :: hx, hy, hz
-        type(hutch_array), pointer :: ha
-        ha => m%ha
         call hutch_remove_atom(m, atom)
         call hutch_position(m, xx, yy, zz, hx, hy, hz)
         call hutch_add_atom(m, atom, hx, hy, hz)
@@ -1141,11 +1145,20 @@ contains
     ! Adds the atom with index atom to the hutch_array in hutch hx, hy, hz.
         type(model), target, intent(inout) :: m
         integer, intent(in) :: atom, hx, hy, hz
-        integer :: nat
+        integer :: nat, i
         integer, dimension(m%ha%h(hx, hy, hz)%nat+1) :: scratch_atoms
         integer, dimension(:,:), allocatable :: temp_atom_hutch
         type(hutch_array), pointer :: ha
+        logical :: found
         ha => m%ha
+
+        !Error checking.
+        found = .false.
+        do i=1, ha%h(hx,hy,hz)%nat
+            if(ha%h(hx,hy,hz)%at(i) .eq. atom) found = .true.
+        enddo
+        if(found) write(*,*) "WARNING: ERROR: Atom", atom, "already exists in hutch", hx, hy, hz
+
         ! ha%h(hx,hy,hz)%nat is set to 0 in a do loop in model_init_hutches,
         ! slightly before this function is called for each atom.
         ! TODO I should be able to use add_index and remove_index in functions
@@ -1180,9 +1193,17 @@ contains
             ha%atom_hutch = temp_atom_hutch
             deallocate(temp_atom_hutch)
         endif
+
         ha%atom_hutch(atom, 1) = hx
         ha%atom_hutch(atom, 2) = hy
         ha%atom_hutch(atom, 3) = hz
+
+        !Error checking.
+        found = .false.
+        do i=1, ha%h(hx,hy,hz)%nat
+            if( ha%h(hx,hy,hz)%at(i) .eq. atom ) found = .true.
+        enddo
+        if( .not. found) write(*,*) "WARNING: Tried to add atom",atom,"to hutch", hx, hy, hy, "but failed!"
     end subroutine hutch_add_atom
 
 
@@ -1210,6 +1231,15 @@ contains
         hz = ha%atom_hutch(atom,3)
         !write(*,*) "hx,hy,hz=", hx, hy, hz
 
+        ! Error checking.
+        found = .false.
+        do i=1, ha%h(hx,hy,hz)%nat
+            if(ha%h(hx,hy,hz)%at(i) .eq. atom) found = .true.
+        enddo
+        if(.not. found) then
+            write(*,*) "WARNING: ERROR: Atom", atom, "does not exist in hutch", hx, hy, hz, "and you are trying to remove it!"
+        endif
+
         !scratch_atoms = ha%h(hx,hy,hz)%at
         !deallocate(ha%h(hx,hy,hz)%at)
 
@@ -1224,29 +1254,6 @@ contains
         ha%atom_hutch(atom,1) = 0
         ha%atom_hutch(atom,2) = 0
         ha%atom_hutch(atom,3) = 0
-
-        if(.not. found) write(*,*) "WARNING: Trying to remove an atom from this hutch that doesn't exist in this hutch!"
-
-        !if(ha%h(hx, hy, hz)%nat .gt. 1) then  !added by feng yi on 03/19/2009
-        !    allocate(ha%h(hx,hy,hz)%at( ha%h(hx,hy,hz)%nat-1 ))
-        !    j=1
-        !    do i=1, ha%h(hx,hy,hz)%nat
-        !        if (scratch_atoms(i) /= atom) then
-        !            ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
-        !            j=j+1
-        !        end if
-        !    enddo
-
-        !    ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
-        !    ! I technically should reallocate here but I am going to do it in
-        !    ! remove_atom because move_atom calls this, and if thats the case I
-        !    ! dont need to reallocate.
-        !    ha%atom_hutch(atom,1) = 0
-        !    ha%atom_hutch(atom,2) = 0
-        !    ha%atom_hutch(atom,3) = 0
-        !else
-        !    ha%h(hx,hy, hz)%nat = 0
-        !endif
     end subroutine hutch_remove_atom
 
 
@@ -1258,6 +1265,14 @@ contains
         m%yy%ind(atom) = yy
         m%zz%ind(atom) = zz
         call hutch_move_atom(m, atom, xx, yy, zz)
+
+        !Error checking.
+        if( m%xx%ind(atom) .ne. xx .or. m%yy%ind(atom) .ne. yy .or.  m%zz%ind(atom) .ne. zz) then
+            write(*,*) "WARNING: Atom",atom,"'s positions did not get updated correctly!"
+            write(*,*) m%xx%ind(atom), xx
+            write(*,*) m%yy%ind(atom), yy
+            write(*,*) m%zz%ind(atom), zz
+        endif
     end subroutine move_atom
 
 
@@ -1572,6 +1587,7 @@ contains
         mout%zz%nat = m%zz%nat
         mout%znum%nat = m%znum%nat
         mout%znum_r%nat = m%znum_r%nat
+        mout%id = m%id
 
         ! Reallocate arrays and set them.
         allocate(mout%xx%ind(size(m%xx%ind)), mout%yy%ind(size(m%yy%ind)), mout%zz%ind(size(m%zz%ind)), mout%znum%ind(size(m%znum%ind)), mout%znum_r%ind(size(m%znum_r%ind)))
@@ -1680,6 +1696,66 @@ contains
         m%yy%ind(atom) = yy_cur
         m%zz%ind(atom) = zz_cur
     end subroutine reject_position
+
+
+    subroutine recalculate_hutches(m)
+        type(model), intent(inout) :: m
+        integer :: ii, jj, kk, hx, hy, hz, i
+        
+        do ii=1, m%ha%nhutch_x
+            do jj=1, m%ha%nhutch_y
+                do kk=1, m%ha%nhutch_z
+                    m%ha%h(ii,jj,kk)%nat = 0
+                    if(allocated(m%ha%h(ii,jj,kk)%at)) m%ha%h(ii,jj,kk)%at = 0
+                enddo
+            enddo
+        enddo
+        do i=1, m%natoms
+            call hutch_position(m, m%xx%ind(i), m%yy%ind(i), m%zz%ind(i), hx, hy, hz)
+            call hutch_add_atom(m, i, hx, hy, hz)
+        enddo
+    end subroutine recalculate_hutches
+
+
+    subroutine save_model(m)
+        type(model), intent(in) :: m
+        integer :: i
+        write(*,*) "Saving fem model!"
+        open(unit=55,file=trim('fem_mrot1_model.txt'),form='formatted',status='unknown')
+        write(55,*)"updated model"
+        write(55,*)m%lx,m%ly,m%lz
+        do i=1,m%natoms
+            write(55,*)m%znum%ind(i), m%xx%ind(i), m%yy%ind(i), m%zz%ind(i)
+        enddo
+        write(55,*)"-1"; close(55)
+    end subroutine save_model
+
+
+    subroutine compare_models(m1, m2)
+    ! Currently it only checks to make sure the atoms have the same positions.
+        type(model), intent(in) :: m1
+        type(model), intent(in) :: m2
+        integer :: i, j
+        logical :: found
+        do i=1, m1%natoms
+            found = .false.
+            do j=1, m2%natoms
+                if(m1%xx%ind(i) .eq. m2%xx%ind(j) .and. &
+                m1%yy%ind(i) .eq. m2%yy%ind(j) .and. &
+                m1%zz%ind(i) .eq. m2%zz%ind(j) ) found = .true.
+            enddo
+            if(.not. found) write(*,*) "Couldn't find atom", i, "in m2 with positions", m1%xx%ind(i), m1%yy%ind(i), m1%zz%ind(i)
+        enddo
+        do i=1, m2%natoms
+            found = .false.
+            do j=1, m1%natoms
+                if(m1%xx%ind(i) .eq. m2%xx%ind(j) .and. &
+                m1%yy%ind(i) .eq. m2%yy%ind(j) .and. &
+                m1%zz%ind(i) .eq. m2%zz%ind(j) ) found = .true.
+            enddo
+            if(.not. found) write(*,*) "Couldn't find atom", i, "in m1 with positions", m2%xx%ind(i), m2%yy%ind(i), m2%zz%ind(i)
+        enddo
+    end subroutine compare_models
 
 
 end module model_mod

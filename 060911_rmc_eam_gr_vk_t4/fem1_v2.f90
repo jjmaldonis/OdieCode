@@ -33,7 +33,7 @@ module fem_mod
     real, save, dimension(:,:,:), allocatable :: old_int, old_int_sq
     real, save, dimension(:), allocatable :: int_sum, int_sq_sum  ! nk long sums of int and int_sq arrays for calculating V(k)
     real, save, allocatable, dimension(:) :: j0, A1                                               
-    type(model), save, dimension(:), pointer :: mrot  ! array of rotated models
+    type(model), save, dimension(:), pointer, public :: mrot  ! array of rotated models
     type(model), save, dimension(:), pointer :: mcopy  ! array of rotated models
     type(index_list), save, dimension(:), pointer :: old_index
     type(pos_list), save, dimension(:), pointer :: old_pos 
@@ -307,7 +307,7 @@ contains
         enddo
 
         num_rot = jj - 1
-        write(*,*) "Number of rotations:", num_rot
+        if(myid .eq. 0) write(*,*) "Number of rotations:", num_rot
 
         allocate(rot(num_rot, 3), stat=istat)
         if (istat /= 0) then
@@ -320,6 +320,11 @@ contains
             rot(i,2) = rot_temp(i,2)
             rot(i,3) = rot_temp(i,3)
         enddo
+        
+        if(rot(1,1) .ne. 0.0 .or. rot(1,2) .ne. 0.0 .or. rot(1,3) .ne. 0.0) then
+            write(*,*) "WARNING: ERROR: The first rotation MUST be 0,0,0!"
+            write(*,*) "They currently are", rot(1,1), rot(1,2), rot(1,3)
+        endif
 
         deallocate(rot_temp)
     end subroutine init_rot
@@ -473,7 +478,8 @@ contains
         ! This is actually really fast.
         do i=myid+1, nrot, numprocs
             call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
-        call check_allocation(istat, 'Failed to rotate model')
+            call check_allocation(istat, 'Failed to rotate model')
+            mrot(i)%id = i
         enddo
 
         ! Initialize the copies from the rotated models for fem_accept/reject.
@@ -494,10 +500,10 @@ contains
 
         use_autoslice = .false.
         ! Calculate intensities for every single pixel in every single model. This is very expensive.
-        write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
-        write(*,*) "Outside intenstiy loop: myid+1=", myid+1, " nrot=",nrot
+        if(myid .eq. 0) then
+            write(*,*); write(*,*) "Calculating intensities over the models: nrot = ", nrot; write(*,*)
+        endif
         do i=myid+1, nrot, numprocs
-        write(*,*) "Inside intenstiy loop: myid+1=", myid+1, " nrot=",nrot
             do j=1, pa%npix
                 !write(*,*) "Calling intensity on pixel (", pa%pix(j,1), ",",pa%pix(j,2), ") in rotated model ", i
                 call intensity(mrot(i), res, pa%pix(j, 1), pa%pix(j, 2), k, int_i(1:nk, j, i), int_i_as(1:nk, j, i), scatfact_e, istat, pixel_square, use_autoslice)
@@ -549,7 +555,7 @@ contains
     ! use_autoslice is specified.
         use  omp_lib
         use, intrinsic :: iso_c_binding
-        type(model), intent(in) :: m_int
+        type(model), intent(inout) :: m_int
         real, intent(in) :: res, px, py
         real, dimension(nk), intent(in) :: k
         real, dimension(nk), intent(out) :: int_i, int_i_as
@@ -608,6 +614,7 @@ contains
             end function islice
         end interface
 
+        call recalculate_hutches(m_int)
 
         call cpu_time(timer1)
 
@@ -625,6 +632,9 @@ contains
             call hutch_list_pixel(m_int, px, py, pa%phys_diam, pix_atoms, istat)
         endif
         size_pix_atoms = size(pix_atoms)
+        !if(m_int%id .eq. 114) write(*,*) "FOR MODEL ID 114: natoms=", m_int%natoms
+        !if(m_int%id .eq. 114) write(*,*) "Size pix_atoms=", size_pix_atoms
+        !if(m_int%id .eq. 114) write(*,*) pix_atoms
         !r_max = 6*res    !check cut-off effect on 05/11/2009
         bin_max = int(r_max/fem_bin_width)+1
 
@@ -648,17 +658,17 @@ contains
         ! never called we should automatically have the max number of
         ! threads available in any parallel loop.
 
-        !!$omp parallel do
-        !do i=1,1
-            !nthr = omp_get_num_threads() !omp_get_max_threads()
-            !thrnum = omp_get_thread_num()
-            !!write(*,*) "We are using", nthr, " thread(s) in Intensity."
-        !enddo
-        !!$omp end parallel do
+        !$omp parallel do
+        do i=1,1
+            nthr = omp_get_num_threads() !omp_get_max_threads()
+            thrnum = omp_get_thread_num()
+            !write(*,*) "We are using", nthr, " thread(s) in Intensity."
+        enddo
+        !$omp end parallel do
 
         ! Calculate sum1 for gr_i calculation in next loop.
         if(square_pixel) then
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -676,9 +686,9 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         else
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 x2=m_int%xx%ind(pix_atoms(i))-px
                 y2=m_int%yy%ind(pix_atoms(i))-py
@@ -693,12 +703,12 @@ contains
                     sum1(znum_r(i),i)=A1(j)
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         endif
 
         ! Calculate gr_i for int_i in next loop.
         if(square_pixel) then
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if((rr_x(i).le.sqrt1_2_res) .and. (rr_y(i) .le.  sqrt1_2_res))then
                     do j=i,size_pix_atoms
@@ -719,9 +729,9 @@ contains
                     enddo
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         else
-            !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
+            !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y)
             do i=1,size_pix_atoms
                 if(rr_a(i).le.res)then
                     !if(rr_a(i) .le. res*3.0)then  !check cut-off effect
@@ -744,10 +754,10 @@ contains
                     enddo
                 endif
             enddo
-            !!$omp end parallel do
+            !$omp end parallel do
         endif
 
-        !!$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
+        !$omp parallel do private(i, j, ii, jj, kk, rr, t1, t2, pp, r_max, x2, y2) shared(pix_atoms, A1, rr_a, const1, const2, const3, x1, y1, gr_i, int_i, znum_r, sum1, rr_x, rr_y, k)
         do i=1,nk
             do j=0,bin_max
                 do ii=1,m_int%nelements
@@ -758,7 +768,7 @@ contains
                 enddo
             end do
         end do
-        !!$omp end parallel do
+        !$omp end parallel do
 
         if(allocated(gr_i))      deallocate(gr_i)
         if(allocated(x1))        deallocate(x1,y1, rr_a, znum_r)
@@ -839,6 +849,9 @@ contains
         time_in_int = time_in_int + timer2-timer1
         !write (*,*) 'Total Elapsed CPU time in Intensity= ', time_in_int
         !write (*,*) 'Intensity call took', timer2 - timer1, 'seconds on processor', myid!, 'and core', thrnum
+        !if(m_int%id .eq. 114) write(*,*) "Intensity for model:", m_int%id
+        !if(m_int%id .eq. 114) write(*,*) int_i
+        !if(m_int%id .eq. 114) write(*,*) "Intensity for model:", m_int%id, "complete."
     end subroutine intensity
 
 
@@ -980,6 +993,8 @@ contains
                 ! same number of times as before.
                     do j=1,rot_atom%natoms
                         ! Function ref: move_atom(m, atom, new_xx, new_yy, new_zz)
+    !write(*,*) "Atom", mrot(i)%rot_i(atom)%ind(j), " !==!", atom, "simply moved positions. It's moving from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)),  mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+!write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
@@ -989,12 +1004,16 @@ contains
                     ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
                     ! the number of atoms was changed.
                     old_index(i)%nat = -1
+                    
+!write(*,*) "Atom", atom, "increased the number of times it occures in model", mrot(i)%id
+!write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
 
                     ! The atom positions in the rotated model (not atom) should
                     ! be updated up to the number of times it appeared in the
                     ! model before. This saves deleting rot_i(atom) and
                     ! re-implementing it, as well as all the atoms it points to.
                     do j=1,mrot(i)%rot_i(atom)%nat
+    !write(*,*) "Moving", mrot(i)%rot_i(atom)%ind(j), "from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)),  mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
                         call move_atom(mrot(i), mrot(i)%rot_i(atom)%ind(j), &
                         rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
                     enddo
@@ -1011,6 +1030,9 @@ contains
                     ! the number of atoms was changed.
                     old_index(i)%nat = -1
                 
+!write(*,*) "Atom", atom, "decreaed the number of times it occures in model", mrot(i)%id
+!write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
+
                     ! First I want to sort the indices in mrot(i)%rot_i(atom)
                     ! so that when we delete an atom from this array we will
                     ! always be deleting the atom with the highest index. That
@@ -1051,6 +1073,8 @@ contains
                 rot_atom%znum%ind, rot_atom%rot_i, rot_atom%znum_r%ind, stat=istat)
 
         enddo rotations
+
+!if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
 
         ! For debugging only.
         !ntpix = 0

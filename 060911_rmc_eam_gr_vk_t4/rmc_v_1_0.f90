@@ -148,7 +148,7 @@ program rmc
         scale_fac_initial, Q, fem_algorithm, pixel_distance, total_steps, &
         rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
 
-    write(*,*) "Model filename:", adjustl(model_filename)
+    if(myid .eq. 0) write(*,*) "Model filename:", trim(model_filename)
 
     scale_fac = scale_fac_initial
     res = 0.61/Q
@@ -226,7 +226,6 @@ program rmc
         e2 = e1
 
         t0 = omp_get_wtime()
-        i=1
         if(myid.eq.0)then
             write(*,*)
             write(*,*) "Initialization complete. Starting Monte Carlo."
@@ -261,17 +260,20 @@ program rmc
         endif
 
 
+        i=1
         ! RMC loop begins.
         ! The loops stops if the temperature goes below a certain temp (30.0).
         do while (i > 0)
             i=i+1
             t2 = omp_get_wtime()
 
-            !if( i > 100) then
-            !    write(*,*) "STOPPING MC AFTER 100 STEPS"
-            !    call mpi_finalize(mpierr)
-            !    stop ! Stop after 100 steps for timing runs.
-            !endif
+            if(myid .eq. 0) write(*,*) "Starting step", i
+
+            if( i > 100) then
+                if(myid .eq. 0) write(*,*) "STOPPING MC AFTER 100 STEPS"
+                call mpi_finalize(mpierr)
+                stop ! Stop after 100 steps for timing runs.
+            endif
 
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
@@ -284,6 +286,11 @@ program rmc
                 call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             end do
 
+!if(myid .eq. 0) write(*,*) "Atom", w, "'s rot_i in mrot(1)=", mrot(1)%rot_i(w)%ind
+!if(myid .eq. 0) write(*,*) "Atom", w+1, "'s rot_i in mrot(1)=", mrot(1)%rot_i(w+1)%ind
+!if(myid .eq. 0) write(*,*) "PRE-FEM UPDATE:"
+!if(myid .eq. 0) call compare_models(m, mrot(1))
+!            if(myid .eq. 0) write(*,*) "Moving atom", w, "in RMC from position", xx_cur, yy_cur, zz_cur, "to", m%xx%ind(w), m%yy%ind(w), m%zz%ind(w)
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
             call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
@@ -294,7 +301,9 @@ program rmc
             else
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
             endif
-            !write(*,*) "Finished updating eam, gr, and fem data."
+            !if(myid .eq. 0) write(*,*) "Finished updating eam, gr, and fem data."
+!if(myid .eq. 0) write(*,*) "POST-FEM UPDATE:" !TODO
+!if(myid .eq. 0) call compare_models(m, mrot(1)) !TODO
             
             chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
                 gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
@@ -310,6 +319,7 @@ program rmc
             ! Test if the move should be accepted or rejected based on del_chi
             if(del_chi <0.0)then
             !if(.true.)then !For timing purposes, always accept the move.
+            !if(.false.) then ! For debugging, always reject the move. TODO
                 ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
@@ -320,6 +330,7 @@ program rmc
                 ! Based on the random number above, even if del_chi is negative, decide
                 ! whether to move or not (statistically).
                 if(log(1.-randnum)<-del_chi*beta)then
+                !if(.false.) then ! For debugging, always reject the move. TODO
                     ! Accept move
                     e1 = e2
                     call fem_accept_move(mpi_comm_world)
@@ -346,7 +357,7 @@ program rmc
 
             ! Periodically save data.
             if(myid.eq.0)then
-            if(mod(i,1000)==0)then
+            if(mod(i,1)==0)then
                 ! Write to vk_update
                 write(vku_fn, "(A9)") "vk_update"
                 write(step_str,*) i
@@ -356,7 +367,7 @@ program rmc
                         write(32,*)k(j),vk(j)
                     enddo
                 close(32)
-                if(accepted) then
+                !if(accepted) then
                     ! Write to model_update
                     write(output_model_fn, "(A12)") "model_update"
                     write(step_str,*) i
@@ -369,7 +380,7 @@ program rmc
                         enddo
                         write(33,*)"-1"
                     close(33)
-                endif
+                !endif
             endif
             if(mod(i,1)==0)then
                 if(accepted) then
@@ -426,6 +437,8 @@ program rmc
                     endif
                 endif
             endif
+            
+            !if(myid .eq. 0) write(*,*) "Finished step", i
         enddo !RMC do loop
 
         write(*,*) "Monte Carlo Finished!"

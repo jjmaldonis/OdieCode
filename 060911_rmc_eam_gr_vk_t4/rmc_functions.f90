@@ -105,22 +105,22 @@ CONTAINS
         
         !FEM data
         i=i+1
-        write(*,*) "DEBUG: sum1(i) starts at:", sum1(i)
+        !write(*,*) "DEBUG: sum1(i) starts at:", sum1(i)
         if(used_data_sets(i)) then
            !sum1(i)=sum(((V_sim-V*scale_fac)/(scale_fac*V_err))**2)*weights(i)
             nf = 0
             do j=1,nk
                 nf = nf + 1
-                write(*,*) "DEBUG: weights(4)=", weights(4)
-                write(*,*) "DEBUG: v(j)*scale_fac-v_sim(j)=", v(j)*scale_fac-v_sim(j)
-                write(*,*) "DEBUG: scale_fac*V_err(j)=", scale_fac*V_err(j)
-                write(*,*) "DEBUG: Total addition is:", weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
+                !write(*,*) "DEBUG: weights(4)=", weights(4)
+                !write(*,*) "DEBUG: v(j)*scale_fac-v_sim(j)=", v(j)*scale_fac-v_sim(j)
+                !write(*,*) "DEBUG: scale_fac*V_err(j)=", scale_fac*V_err(j)
+                !write(*,*) "DEBUG: Total addition is:", weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
                 sum1(i) = sum1(i)+weights(4)*((v(j)*scale_fac-v_sim(j))/(scale_fac*V_err(j)))**2
-                write(*,*) "DEBUG: New sum1(i)=", sum1(i)
+                !write(*,*) "DEBUG: New sum1(i)=", sum1(i)
             enddo
             sum1(i) = sum1(i)/nf
-            write(*,*) "DEBUG: Final sum1(i) = sum1(i)/nf=", sum1(i)
-            write(*,*) "DEBUG: where nf=", nf
+            !write(*,*) "DEBUG: Final sum1(i) = sum1(i)/nf=", sum1(i)
+            !write(*,*) "DEBUG: where nf=", nf
         endif
 
         chi2_gr = sum1(3)
