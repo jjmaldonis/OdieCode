@@ -269,11 +269,11 @@ program rmc
 
             if(myid .eq. 0) write(*,*) "Starting step", i
 
-            if( i > 100) then
-                if(myid .eq. 0) write(*,*) "STOPPING MC AFTER 100 STEPS"
-                call mpi_finalize(mpierr)
-                stop ! Stop after 100 steps for timing runs.
-            endif
+            !if( i > 100) then
+                !if(myid .eq. 0) write(*,*) "STOPPING MC AFTER 100 STEPS"
+                !call mpi_finalize(mpierr)
+                !stop ! Stop after 100 steps for timing runs.
+            !endif
 
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
