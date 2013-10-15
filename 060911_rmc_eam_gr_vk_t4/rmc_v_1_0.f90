@@ -367,21 +367,19 @@ program rmc
                         write(32,*)k(j),vk(j)
                     enddo
                 close(32)
-                if(accepted) then
 if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
-                    ! Write to model_update
-                    write(output_model_fn, "(A12)") "model_update"
-                    write(step_str,*) i
-                    output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//step_str)//".xyz"
-                    open(33,file=trim(output_model_fn),form='formatted',status='unknown')
-                        write(33,*)"updated model"
-                        write(33,*)m%lx,m%ly,m%lz
-                        do j=1,m%natoms
-                            write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
-                        enddo
-                        write(33,*)"-1"
-                    close(33)
-                endif
+                ! Write to model_update
+                write(output_model_fn, "(A12)") "model_update"
+                write(step_str,*) i
+                output_model_fn = trim(trim(trim(trim(output_model_fn)//jobID)//"_")//step_str)//".xyz"
+                open(33,file=trim(output_model_fn),form='formatted',status='unknown')
+                    write(33,*)"updated model"
+                    write(33,*)m%lx,m%ly,m%lz
+                    do j=1,m%natoms
+                        write(33,*)m%znum%ind(j), m%xx%ind(j), m%yy%ind(j), m%zz%ind(j)
+                    enddo
+                    write(33,*)"-1"
+                close(33)
             endif
             if(mod(i,1)==0)then
                 if(accepted) then
