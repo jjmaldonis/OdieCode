@@ -88,7 +88,7 @@ contains
         endif
         read(20, '(a80)') comment1 !read comment and it is neglected in the input
         read(20, '(a80)') model_fn; model_fn = adjustl(model_fn)
-        read(20, *) total_steps
+        read(20, *) total_steps !WRONG. I changed this to starting step #
         read(20, *) temperature
         read(20, *) max_move
         read(20, * ) !commented line

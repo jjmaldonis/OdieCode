@@ -1,7 +1,7 @@
 #parameter file opened. set a filename to # to ignore it
-model_040511c_t2_final.xyz
-100  !total RMC steps - ignore
-100000.0    !starting temperature
+model_restart_2270000.xyz
+1  !starting step number
+100000.0    !starting temperature (assuming starting step is 1, not what you set it at)
 1.5    !maximum move distance
 !cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
 1.76 1.76 1.76

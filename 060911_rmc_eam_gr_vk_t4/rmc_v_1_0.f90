@@ -163,6 +163,7 @@ program rmc
 
     call read_eam(m)
     call eam_initial(m,te1)
+    if(myid.eq.0) write(*,*) "Energy = ", te1
 
     call scatt_power(m,used_data_sets,istat)
     call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
@@ -186,9 +187,9 @@ program rmc
     !call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
 
     t1 = omp_get_wtime()
-    write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
-
     if(myid.eq.0)then
+        write(*,*) "Femsim took", t1-t0, "seconds on processor", myid
+
         ! Write initial gr
         !open(unit=51,file=trim(gri_fn),form='formatted',status='unknown')
         !    do i=1, mbin_x
@@ -207,6 +208,14 @@ program rmc
     endif
 
     !------------------- Start RMC. -----------------!
+
+    open(20, file=param_filename,iostat=istat, status='old')
+        read(20, '(a80)') comment !read comment from paramfile
+        read(20, '(a80)') comment !model filename
+        read(20, *) i !step to start at (start at 1 not 0)
+        read(20, *) temperature !starting temp when i = 1
+    close(20)
+    temperature = temperature * sqrt(0.7)**int(i/50000)
 
     if(use_rmc) then ! End here if we only want femsim. Set the variable above.
 
@@ -260,7 +269,7 @@ program rmc
         endif
 
 
-        i=1
+        !i=1
         ! RMC loop begins.
         ! The loops stops if the temperature goes below a certain temp (30.0).
         do while (i > 0)
@@ -286,11 +295,6 @@ program rmc
                 call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             end do
 
-!if(myid .eq. 0) write(*,*) "Atom", w, "'s rot_i in mrot(1)=", mrot(1)%rot_i(w)%ind
-!if(myid .eq. 0) write(*,*) "Atom", w+1, "'s rot_i in mrot(1)=", mrot(1)%rot_i(w+1)%ind
-!if(myid .eq. 0) write(*,*) "PRE-FEM UPDATE:"
-!if(myid .eq. 0) call compare_models(m, mrot(1))
-!            if(myid .eq. 0) write(*,*) "Moving atom", w, "in RMC from position", xx_cur, yy_cur, zz_cur, "to", m%xx%ind(w), m%yy%ind(w), m%zz%ind(w)
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
             call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
@@ -302,8 +306,6 @@ program rmc
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
             endif
             !if(myid .eq. 0) write(*,*) "Finished updating eam, gr, and fem data."
-!if(myid .eq. 0) write(*,*) "POST-FEM UPDATE:" !TODO
-!if(myid .eq. 0) call compare_models(m, mrot(1)) !TODO
             
             chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
                 gr_n, gr_x, vk_exp, vk_exp_err, gr_e_sim_new, gr_n_sim_new, &
@@ -319,7 +321,6 @@ program rmc
             ! Test if the move should be accepted or rejected based on del_chi
             if(del_chi <0.0)then
             !if(.true.)then !For timing purposes, always accept the move.
-            !if(.false.) then ! For debugging, always reject the move. TODO
                 ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
@@ -330,7 +331,6 @@ program rmc
                 ! Based on the random number above, even if del_chi is negative, decide
                 ! whether to move or not (statistically).
                 if(log(1.-randnum)<-del_chi*beta)then
-                !if(.false.) then ! For debugging, always reject the move. TODO
                     ! Accept move
                     e1 = e2
                     call fem_accept_move(mpi_comm_world)

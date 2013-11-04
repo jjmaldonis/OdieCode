@@ -13,7 +13,7 @@
 # OpenMPI is current parallel environment for nodes without IB. Do not change unless you use a different MPI
 # <num> specifies how many processors in total to request. It's suggested use 12*integer processors here. 
 # If the queue is testqueue, specify the number of nodes you want to use instead of cores.
-#$ -pe orte 128
+#$ -pe orte 112
 
 # request 48 hours of wall time, if you need longer time please contact system admin
 #$ -l h_rt=INFINITY
