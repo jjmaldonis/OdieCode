@@ -427,14 +427,14 @@ if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
                 endif
                 max_move = max_move * sqrt(0.94)
                 beta=1./((8.6171e-05)*temperature)
-                if(myid.eq.0)then
-                    if(temperature.lt.30.0)then
-                        if(myid.eq.0)then
-                            write(*,*) "STOPPING MC DUE TO TEMP"
-                        endif
-                        stop
-                    endif
-                endif
+                !if(myid.eq.0)then
+                !    if(temperature.lt.30.0)then
+                !        if(myid.eq.0)then
+                !            write(*,*) "STOPPING MC DUE TO TEMP"
+                !        endif
+                !        stop
+                !    endif
+                !endif
             endif
             
             !if(myid .eq. 0) write(*,*) "Finished step", i
