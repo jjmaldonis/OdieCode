@@ -522,13 +522,16 @@ contains
             !write(*,*) "Finished intensity calls on model", i
         enddo
 
+        call mpi_barrier(comm, mpierr)
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         if(use_autoslice) call mpi_reduce (psum_int_as, sum_int_as, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         if(use_autoslice) call mpi_reduce (psum_int_as_sq, sum_int_as_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
 
         if(myid.eq.0)then
+write(*,*) "Writing I(k):"
             do i=1, nk
+write(*,*) k(i), sum_int(i)
                 Vk(i) = (sum_int_sq(i)/(pa%npix*nrot))/((sum_int(i)/(pa%npix*nrot))**2)-1.0
                 Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
             end do
@@ -1100,6 +1103,9 @@ contains
         enddo
 
         write(*,*) "I am core", myid, "and I am past the int calls."
+        
+        call mpi_barrier(comm, mpierr)
+        write(*,*) "I am core", myid, "and I am past mp_barrier."
 
         ! Set psum_int and psum_int_sq. This MUST be done inside an MPI loop
         ! with the exact same structure as the MPI loop that called intensity.
@@ -1120,9 +1126,6 @@ contains
         ! operation operation. These are stored in the processor id
         ! root_processor_id. I think this is how it works anyways. I am probably
         ! somewhat off.
-        
-        call mpi_barrier(comm, mpierr)
-        write(*,*) "I am core", myid, "and I am past mp_barrier."
 
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)

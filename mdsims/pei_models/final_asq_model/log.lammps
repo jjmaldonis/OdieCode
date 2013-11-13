@@ -1,0 +1,60 @@
+LAMMPS (29 Sep 2011)
+units           metal
+boundary        p p p
+
+atom_style      atomic
+
+read_data       model_update_9933_50000.dat
+  orthogonal box = (-14.1421 -14.1421 -14.1421) to (14.1421 14.1421 14.1421)
+  1 by 1 by 1 processor grid
+  1523 atoms
+
+mass            1  63.55
+mass            2  26.98
+mass            3  91.22
+
+pair_style      eam/alloy
+pair_coeff      * * ZrCuAl_lammps_revised.eam Zr Cu Al
+
+timestep       0.001
+
+fix             1 all npt temp 300 300 0.2 iso 1.013 1.013 1
+
+dump            1 all atom 1000 energy_min_RT.dump
+
+thermo_style    custom step temp press vol pe etotal
+thermo          100
+minimize 1.0e-4 1.0e-6 100 1000
+WARNING: Resetting reneighboring criteria during minimization (min.cpp:160)
+Memory usage per processor = 3.28905 Mbytes
+Step Temp Press Volume PotEng TotEng 
+       0            0    285043.13    22627.414   -6022.2711   -6022.2711 
+      67            0    162411.06    22627.414   -6933.9705   -6933.9705 
+Loop time of 0.841972 on 1 procs for 67 steps with 1523 atoms
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+        -6022.27113991     -6933.37913394     -6933.97050782
+  Force two-norm initial, final = 93.1521 2.50267
+  Force max component initial, final = 5.89861 0.36975
+  Final line search alpha, max atom move = 0.0657534 0.0243123
+  Iterations, force evaluations = 67 68
+
+Pair  time (%) = 0.794753 (94.3919)
+Neigh time (%) = 0.0325933 (3.87106)
+Comm  time (%) = 0.00506496 (0.60156)
+Outpt time (%) = 0 (0)
+Other time (%) = 0.00956082 (1.13553)
+
+Nlocal:    1523 ave 1523 max 1523 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    4738 ave 4738 max 4738 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    130523 ave 130523 max 130523 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 130523
+Ave neighs/atom = 85.7012
+Neighbor list builds = 4
+Dangerous builds = 0

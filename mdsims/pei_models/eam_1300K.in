@@ -1,0 +1,25 @@
+units           metal
+boundary        p p p
+
+atom_style      atomic
+
+read_data       eam_only.dat
+
+mass            1  91.22
+mass            2  63.55
+mass            3  26.98
+
+pair_style      eam/alloy
+pair_coeff      * * ZrCuAl.eam.alloy Zr Cu Al
+
+timestep       0.001
+
+fix             1 all npt temp 1300 1300 0.2 iso 1.013 1.013 1
+
+dump            1 all atom 1000 eam_1300K.dump
+
+thermo_style    custom step temp press vol pe etotal
+thermo          100
+run             1000000
+write_restart	eam_only_1300K_1ns.restart
+

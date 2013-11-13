@@ -199,9 +199,9 @@ program rmc
         !close(51)
         ! Write initial vk 
         open(unit=52,file=trim(vki_fn),form='formatted',status='unknown')
-            write(*,*) "Writing V(k)."
+!            write(*,*) "Writing V(k)."
             do i=1, nk
-                write (*,*) k(i),vk(i)
+!                write (*,*) k(i),vk(i)
                 write(52,*) k(i),vk(i)
             enddo
         close(52)

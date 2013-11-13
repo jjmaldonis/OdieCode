@@ -19,7 +19,7 @@ model_040511c_t2_final.xyz
 fem_exp_jwh.txt
 1.0	 !weight of fem
 28.637     !scaling factor for exp Vk
-1 20 11 	 !# of rotations(nphi, npsi, ntheta)
+1 38 18 	 !# of rotations(nphi, npsi, ntheta)
 0.0305 !Q (inverse angstrom)
 1	 !fem algorithm
 13.0	 !pixel distance
