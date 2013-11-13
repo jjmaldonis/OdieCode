@@ -348,12 +348,12 @@ contains
 
     nk = nki
     npix = npix_x*npix_y
-!    nrot = ntheta*nphi*npsi
+    !nrot = ntheta*nphi*npsi
 
     call init_rot(ntheta, nphi, npsi, nrot, istat)
-!    if (istat /= 0) return
+    !if (istat /= 0) return
 
-!    write(*,*)"total number of rotation =", nrot
+    !write(*,*)"total number of rotation =", nrot
 
     allocate(int_i(nk, npix, nrot), old_int(nk, npix, nrot), old_int_sq(nk, npix, nrot), &
      int_sq(nk, npix, nrot), int_sum(nk), int_sq_sum(nk), stat=istat)
@@ -411,37 +411,36 @@ contains
     real, dimension(:), allocatable :: psum_int, psum_int_sq, sum_int, sum_int_sq  !mpi
     integer :: comm
 
-
     integer :: i, j, i1, j1
     INTEGER begin_rot, end_rot
     REAL test1
     
-   IF( PRESENT(square_pixel)) THEN
-    pixel_square = square_pixel
-   ELSE
-    pixel_square = .FALSE.
-   ENDIF
+    IF( PRESENT(square_pixel)) THEN
+        pixel_square = square_pixel
+    ELSE
+        pixel_square = .FALSE.
+    ENDIF
 
+    IF( PRESENT(use_femsim)) THEN
+        femsim = use_femsim
+    ELSE
+        femsim = .FALSE.
+    ENDIF
 
-   IF( PRESENT(use_femsim)) THEN
-    femsim = use_femsim
-   ELSE
-    femsim = .FALSE.
-   ENDIF
+    !femsim = .FALSE.
+    IF( PRESENT(rot_begin)) THEN
+        begin_rot = rot_begin
+    ELSE
+        begin_rot  = 1
+    ENDIF
 
-   !femsim = .FALSE.
-   IF( PRESENT(rot_begin)) THEN
-    begin_rot = rot_begin
-   ELSE
-    begin_rot  = 1
-   ENDIF
+    IF( PRESENT(rot_end)) THEN
+        end_rot = rot_end
+    ELSE
+        end_rot = nrot
+    ENDIF
 
-   IF( PRESENT(rot_end)) THEN
-    end_rot = rot_end
-   ELSE
-    end_rot = nrot
-   ENDIF
-   IF(femsim) THEN   !This is addeb by Feng Yi on 03/19/2009 only for femsim calculation
+    IF(femsim) THEN   !This is added by Feng Yi on 03/19/2009 only for femsim calculation
 
     !debug for memory leak
     !rot = 0.0
@@ -449,64 +448,60 @@ contains
     !rot(i,1) =0.0
     !rot(i,2) =0.0
     !rot(i,3) = 0.0 
-    !ALLOCATE(mrot(1), STAT=istat)
+    !allocate(mrot(1), STAT=istat)
     !call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(1), istat)
 
+
     do i=begin_rot, end_rot
-      ! initialize the rotated models
-       allocate(mrot(1), stat=istat) !debug memory leak
-       if (istat /= 0) then
-          write(*,*) 'Cannot allocate rotated model array.'
-          return
-       endif
-    !WRITE(*,*) i, 'Before rotate_model' !debug
-    !rot(i,1) =0.0
-    !rot(i,2) =0.0
-    !rot(i,3) = 0.0 !for PSF and resolution test
-       call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(1), istat) !memory leak
-    !WRITE(*,*) 'Atom positions!'
-    !WRITE(*,*) 1, mrot(1)%xx(1), mrot(1)%yy(1), mrot(1)%zz(1)
-    !WRITE(*,*) 2, mrot(1)%xx(2), mrot(1)%yy(2), mrot(1)%zz(2)
+        ! initialize the rotated models
+        allocate(mrot(1), stat=istat) !debug memory leak
+        if (istat /= 0) then
+            write(*,*) 'Cannot allocate rotated model array.'
+            return
+        endif
+        !write(*,*) i, 'Before rotate_model' !debug
+        !rot(i,1) =0.0
+        !rot(i,2) =0.0
+        !rot(i,3) = 0.0 !for PSF and resolution test
+        call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(1), istat) !memory leak
+        !write(*,*) 'Atom positions!'
+        !write(*,*) 1, mrot(1)%xx(1), mrot(1)%yy(1), mrot(1)%zz(1)
+        !write(*,*) 2, mrot(1)%xx(2), mrot(1)%yy(2), mrot(1)%zz(2)
 
-!   WRITE(*,*) i, rot(i,1), rot(i,2), rot(i,3)
-       if (istat /= 0) then
-          write (*,*) 'Failed to rotate model ',i
-          return
-       endif
-    ! calculate intensities
-       do j=1, npix
-          ! WRITE(*,*) 'j is: ', j, pix(j,1), pix(j,2) !debug
-          call intensity(mrot(1), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
-      !test1=sin(exp(j*0.2345)) !test memory leak
-       enddo
-    !WRITE(*,*) i, 'After intensity cal!' !debug
-       !DEALLOCATE mrot(1)
-       CALL destroy_model(mrot(1)) !memory leak
-       DEALLOCATE(mrot) !memory leak
-       
-    !WRITE (*,*) 'rotated ', i !debug
+        !write(*,*) i, rot(i,1), rot(i,2), rot(i,3)
+        if (istat /= 0) then
+            write (*,*) 'Failed to rotate model ',i
+            return
+           endif
+        ! calculate intensities
+        do j=1, npix
+            ! WRITE(*,*) 'j is: ', j, pix(j,1), pix(j,2) !debug
+            call intensity(mrot(1), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+            !test1=sin(exp(j*0.2345)) !test memory leak
+        enddo
+        !write(*,*) i, 'After intensity cal!' !debug
+        !deallocate mrot(1)
+        call destroy_model(mrot(1)) !memory leak
+        deallocate(mrot) !memory leak
+        !write (*,*) 'rotated ', i !debug
     enddo !end i=1, nrot
-
       
     int_sq = int_i*int_i
     do i=1, nk
        Vk(i) = (sum(int_sq(i,1:npix,1:nrot)/(npix*nrot))/(sum(int_i(i,1:npix,1:nrot)/(npix*nrot))**2) ) - 1.0
        !tempporally added by Feng Yi just for femsim
-!   WRITE(*,*) k(i), Vk(i), sum(int_i(i,1:npix,1:nrot)/(npix*nrot))
+!   write(*,*) k(i), Vk(i), sum(int_i(i,1:npix,1:nrot)/(npix*nrot))
     enddo
-    !***********************************************************
-    
-    ELSE        !RMC
 
+    !***********************************************************
+    ELSE        !RMC
     !*************************************
 
     allocate (psum_int(size(k)), psum_int_sq(size(k)), sum_int(size(k)), sum_int_sq(size(k)), stat=istat)
-
     sum_int = 0.0
     sum_int_sq = 0.0
     psum_int = 0.0
     psum_int_sq = 0.0
-
 
     ! initialize the rotated models
     allocate(mrot(nrot), stat=istat)
@@ -515,45 +510,35 @@ contains
        return
     endif
 
-
-!open(unit=1003,file="test_rotation.txt",form='formatted',status='unknown')
-!open(unit=1004,file="vesta_test_rotation.xyz",form='formatted',status='unknown')
-!open(unit=1007,file="test_one_rot.txt",form='formatted',status='unknown')
-
+    !open(unit=1003,file="test_rotation.txt",form='formatted',status='unknown')
+    !open(unit=1004,file="vesta_test_rotation.xyz",form='formatted',status='unknown')
+    !open(unit=1007,file="test_one_rot.txt",form='formatted',status='unknown')
 
     do i=myid+1, nrot, numprocs
-
-       call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
-
-    !testing rotation
-    do j=1, mrot(i)%natoms
-        if(mrot(i)%znum(j).eq.40)then
-!           write(1003,*)i,j, mrot(i)%znum_r(j), mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
-!           write(1004,*)"o", mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
+        call rotate_model(rot(i, 1), rot(i, 2), rot(i, 3), m, mrot(i), istat)
+        !testing rotation
+        !do j=1, mrot(i)%natoms
+            !if(mrot(i)%znum(j).eq.40)then
+               !write(1003,*)i,j, mrot(i)%znum_r(j), mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
+               !write(1004,*)"o", mrot(i)%xx(j), mrot(i)%yy(j), mrot(i)%zz(j)
+            !endif
+        !enddo
+        if (istat /= 0) then
+            write (*,*) 'Failed to rotate model ',i
+            return
         endif
     enddo
-
-       if (istat /= 0) then
-          write (*,*) 'Failed to rotate model ',i
-          return
-       endif
-    enddo
-
-
 
     !debug
     !do i=1, mrot(96)%natoms
     !   write(1007,*)i, mrot(96)%znum(i), mrot(96)%znum_r(i), mrot(96)%xx(i), mrot(96)%yy(i), mrot(96)%zz(i)
     !enddo
 
-
     allocate(old_index(nrot), old_pos(nrot), stat=istat)
     if (istat /= 0) then
        write (*,*) 'Cannot allocate memory for old indices and positions in fem_initialize.'
        return
     endif
-
-
 
     ! initialize old_index and old_pos arrays
     do i=myid+1, nrot, numprocs
@@ -563,40 +548,32 @@ contains
        nullify(old_pos(i)%pos)
     enddo
 
-
-
     ! calculate intensities
     do i=myid+1, nrot, numprocs
-
        do j=1, npix
-
-          call intensity(mrot(i), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
-
-       int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
-       psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
-       psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
+           call intensity(mrot(i), res, pix(j, 1), pix(j, 2), k, int_i(1:nk, j, i), scatfact_e, istat, pixel_square)
+           int_sq(1:nk, j, i) = int_i(1:nk, j, i)**2
+           psum_int(1:nk) = psum_int(1:nk) + int_i(1:nk, j, i)
+           psum_int_sq(1:nk) = psum_int_sq(1:nk) + int_sq(1:nk, j, i)
        enddo
     enddo
 
-
-
     call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
     call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
-  
-
  
     if(myid.eq.0)then
       do i=1, nk
          Vk(i) = (sum_int_sq(i)/(npix*nrot))/((sum_int(i)/(npix*nrot))**2)-1.0
          Vk(i) = Vk(i) - v_background(i)  ! background subtraction   052210 JWH
+         write(*,*) "Vk(i)=", vk(i), sum_int(i)
       end do
     endif
-
 
     deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)  
    ENDIF
 
-
+   ! Added by Jason 06/28/13
+   write(*,*) "All initialization is complete. Starting movement."
 
   end subroutine fem
 
@@ -1162,8 +1139,7 @@ contains
 
     !phi runs from 0 to 2 PI
     !psi runs from 0 to 2 PI
-    !theta runs from 0 to PI   !not ture any more after weighting by psi angle - JWH 09/03/09
-
+    !theta runs from 0 to PI   !not sure any more after weighting by psi angle - JWH 09/03/09
     !step_size(1) for phi step    
     !step_size(2) for psi step
     !step_size(3) for theta step
@@ -1173,32 +1149,29 @@ contains
     step_size(3) = PI / ntheta  !not used any more after weighting by psi angle - JWH 09/03/09
 
     jj = 1
-
     do i=1, nphi
-           do j=1, npsi/2
-            
-              psi_temp = (j-1)*step_size(2)
-              ntheta_w(j) = int(sin(psi_temp)*ntheta)
-!       write(*,*)i,j,"ntheta=",ntheta_w(j) 
-        if(ntheta_w(j).ge.0)then
-                   if(ntheta_w(j).gt.0)then
-                      pp = 2*(ntheta_w(j)-1)
-                   endif
-                   if(ntheta_w(j).eq.0)then
-                      pp = 1
-                   endif
-
-              do k=1, pp
-            if(k*(pi/(ntheta_w(j)-1)).lt.pi)then
-                             rot_temp(jj,1) = (i-1)*step_size(1)
-                 rot_temp(jj,2) = (j-1)*step_size(2)
-                     rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
-                 !write(*,*)j, jj, rot_temp(jj,1), rot_temp(jj,2), rot_temp(jj,3)
-                 jj = jj + 1
+        do j=1, npsi/2
+            psi_temp = (j-1)*step_size(2)
+            ntheta_w(j) = int(sin(psi_temp)*ntheta)
+            !write(*,*)i,j,"ntheta=",ntheta_w(j) 
+            if(ntheta_w(j).ge.0)then
+                if(ntheta_w(j).gt.0)then
+                    pp = 2*(ntheta_w(j)-1)
+                endif
+                if(ntheta_w(j).eq.0)then
+                    pp = 1
+                endif
+                do k=1, pp
+                    if(k*(pi/(ntheta_w(j)-1)).lt.pi)then
+                        rot_temp(jj,1) = (i-1)*step_size(1)
+                        rot_temp(jj,2) = (j-1)*step_size(2)
+                        rot_temp(jj,3) = k*(pi/(ntheta_w(j)-1))
+                        !write(*,*)j, jj, rot_temp(jj,1), rot_temp(jj,2), rot_temp(jj,3)
+                        jj = jj + 1
+                    endif
+                enddo
             endif
-                  enddo
-        endif
-          enddo
+        enddo
     enddo
 
     num_rot = jj - 1
@@ -1273,17 +1246,13 @@ contains
 
      !WRITE(*,*) 'Finish hutch_pixel!' !debug
 
-
-
     allocate(gr_i(m_int%nelements,m_int%nelements, 0:bin_max), stat=istat)
     allocate(x1(size(pix_atoms)),y1(size(pix_atoms)),rr_a(size(pix_atoms)), stat=istat)
     allocate(sum1(m_int%nelements,size(pix_atoms)), stat=istat)
     allocate(znum_r(size(pix_atoms)), stat=istat)
 
-
-
     IF(pixel_square) THEN
-    ALLOCATE( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
+    allocate( rr_x(size(pix_atoms)),rr_y(size(pix_atoms)), stat=istat)
     ENDIF
     ! replaced code recalculating znum_r with code copying it from previous calculations 3/18/09 pmv  !tr RE-ok-jwh
     !WRITE(*,*) 'before using znum_r'
@@ -1306,12 +1275,13 @@ contains
     rr_a = 0.0
     x2 = 0.0
     y2 = 0.0
-
     
     const1 = twopi*(0.61/res)/fem_bin_width  !(0.61/res = Q) 
     const2 = 1/fem_bin_width
     const3 = TWOPI
-   
+!JASON - TODO
+!deallocate(A1)
+!allocate(A1(52073))
 
     IF(pixel_square) THEN
       do i=1,size(pix_atoms)
@@ -1324,21 +1294,27 @@ contains
      rr_y(i) = ABS(y2)
         rr_a(i)=sqrt(x2*x2 + y2*y2)
 !       if((rr_x(i).le.res) .AND. (rr_y(i) .le. res))then
+!write(*,*) "DEBUG - i = ", i
+!write(*,*) "DEBUG - A1=", A1
+!write(*,*) "DEBUG - size(A1)=", size(A1)
+!write(*,*) "DEBUG - size(sum1)=", size(sum1)
      if((rr_x(i) .le. sqrt1_2_res) .AND. (rr_y(i) .le. sqrt1_2_res))then !small pixel inscribed in Airy circle
     
-!k_1=0.82333
-!if(k_1.eq.k(6))then
-!write(*,*)k_1,px,py,m_int%xx(pix_atoms(i)),m_int%yy(pix_atoms(i))
-!endif
+          !k_1=0.82333
+          !if(k_1.eq.k(6))then
+          !write(*,*)k_1,px,py,m_int%xx(pix_atoms(i)),m_int%yy(pix_atoms(i))
+          !endif
 
            x1(i)=x2
            y1(i)=y2
            j=int(const1*rr_a(i))
+           !if(j .eq. 0) write(*,*) "     j = ",j
+           !if(j .eq. 0) j=1
+!write(*,*) "DEBUG - j = ", j
            sum1(znum_r(i),i)=A1(j)
          endif
        enddo
     ELSE
-
 
       do i=1,size(pix_atoms)
         x2=m_int%xx(pix_atoms(i))-px           
@@ -1435,6 +1411,7 @@ contains
              do jj=1,m_int%nelements
                 !write(111,*)gr_i(ii,jj,j)
                 pp=const3*j*k(i)
+pp=0 !JASON - DELETE THIS LINE. I had to put it in to get femsim to work... TODO
                 int_i(i)=int_i(i)+scatfact_e(ii,i)*scatfact_e(jj,i)*J0(INT(pp))*gr_i(ii,jj,j)
              enddo
           enddo
@@ -1465,7 +1442,6 @@ contains
    ENDIF
 
 
-   
     !deallocate(gr_i, x1, y1, sum1, znum_r, rr_a, pix_atoms)
   end subroutine intensity
 

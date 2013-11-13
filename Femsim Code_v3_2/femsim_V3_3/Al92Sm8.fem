@@ -1,7 +1,0 @@
-#This is for FEMs calculation of Al92Sm system 
-0.12	0.02	37	    #Starting k, k step size, number of k steps
-0.0381	#Objective aperture radius Q
-1	0	1   #numbef of rotations, start and stop point in the rotations list
-PixelPosition.out           #number of pixels in x and y
-2	#intensity algorithm: choices are 1 for sum, 2 for g2
-1E-03

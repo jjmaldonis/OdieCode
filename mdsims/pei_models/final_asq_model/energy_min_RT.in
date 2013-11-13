@@ -1,0 +1,25 @@
+units           metal
+boundary        p p p
+
+atom_style      atomic
+
+read_data       model_update_9933_50000.dat
+
+mass            1  63.55
+mass            2  26.98
+mass            3  91.22
+
+pair_style      eam/alloy
+pair_coeff      * * ZrCuAl_lammps_revised.eam Zr Cu Al
+
+timestep       0.001
+
+fix             1 all npt temp 300 300 0.2 iso 1.013 1.013 1
+
+dump            1 all atom 1000 energy_min_RT.dump
+
+thermo_style    custom step temp press vol pe etotal
+thermo          100
+minimize 1.0e-4 1.0e-6 100 1000
+write_restart   energy_min_RT.restart
+

@@ -107,17 +107,17 @@ i=0
 !*******************READ electron scattering file**********************
 !********************************************************************
 i=i+1
-Num_Line=0
+num_line=0
 
-READ(20, '(A)') ScatteringFile
-ScatteringFile = ADJUSTL(ScatteringFile)
-!write(*,*)ScatteringFile
-READ(20, *) weights(i)
-READ(20, *) rmin_e, rmax_e
+read(20, '(a)') scatteringfile
+scatteringfile = adjustl(scatteringfile)
+!write(*,*)scatteringfile
+read(20, *) weights(i)
+read(20, *) rmin_e, rmax_e
 
 
 
-IF(ScatteringFile(1:1) .NE. '#') THEN !Electron scattering file exists
+if(scatteringfile(1:1) .ne. '#') then !Electron scattering file exists
   used_data_sets(i) = .TRUE.
 
   FileNameLength=LEN_TRIM(ScatteringFile)
@@ -128,54 +128,51 @@ IF(ScatteringFile(1:1) .NE. '#') THEN !Electron scattering file exists
   !First line is comment
   !At first, count how many data pairs are in the file
   !-1 is chosen as the last point
-  !PRINT *, 'ScatteringFile(1:FileNameLength) 1 is:  ', ScatteringFile(1:FileNameLength) !Debug
-  OPEN(30,FILE=ScatteringFile(1:FileNameLength),IOSTAT=status1,STATUS='OLD') 
-   IF(status1 .EQ. 0) THEN !Open succeeds
-     READ(30, '(A80)') comment1
-     DO WHILE( .NOT. File_End)
-        READ(30, *) Indicator_End
-        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
+  !print *, 'scatteringfile(1:filenamelength) 1 is:  ', scatteringfile(1:filenamelength) !debug
+  open(30,file=scatteringfile(1:filenamelength),iostat=status1,status='old') 
+   if(status1 .eq. 0) then !Open succeeds
+     read(30, '(a80)') comment1
+     do while( .not. file_end)
+        read(30, *) indicator_end
+        if(abs(indicator_end+1.0) .le. 1e-6) then !File end is reached
           !PRINT *, 'Indicator_End is: ', Indicator_End
           !PRINT *, 'Electron scattering file end is reached'
-          EXIT !Exit this loop
-        ELSE
-          Num_Line = Num_Line + 1
-          !READ(30, *) 
-        ENDIF
-     ENDDO
+          exit !Exit this loop
+        else
+          num_line = num_line + 1
+          !read(30, *) 
+        endif
+     enddo
 
-     REWIND(30) !Go to the beginning of the file
+     rewind(30) !Go to the beginning of the file
 
-     READ(30, '(A80)') comment1
-     ALLOCATE(TempData(3*Num_Line),STAT=Stat_Allocate1)
-     IF(Stat_Allocate1 .EQ. 0) THEN
-       READ(30, *) TempData
-       ALLOCATE(r_e(Num_Line), STAT=Stat_Allocate2)
-       ALLOCATE(gr_e(Num_Line), STAT=Stat_Allocate3)
-          allocate(gr_e_err(num_line), stat=stat_allocate4)   !JWH 04/25/2009
-       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0) .and. (Stat_Allocate4 .EQ. 0)  ) THEN
-          r_e=TempData(1:3*Num_Line:3)
-          gr_e=TempData(2:3*Num_Line:3)
+     read(30, '(a80)') comment1
+     allocate(tempdata(3*num_line),stat=stat_allocate1)
+     if(stat_allocate1 .eq. 0) then
+       read(30, *) tempdata
+       allocate(r_e(num_line), stat=stat_allocate2)
+       allocate(gr_e(num_line), stat=stat_allocate3)
+       allocate(gr_e_err(num_line), stat=stat_allocate4)   !JWH 04/25/2009
+       if ((stat_allocate2 .eq. 0) .and. (stat_allocate3 .eq. 0) .and. (stat_allocate4 .eq. 0)  ) then
+          r_e=tempdata(1:3*num_line:3)
+          gr_e=tempdata(2:3*num_line:3)
           gr_e_err=tempdata(3:3*num_line:3)
-       ELSE
-         PRINT *, 'Electron scattering part 2 or 3 fails!'
-         RETURN
-       ENDIF !Allocate2 and 3
-       
-     ELSE
-       PRINT *, 'Electron scattering part allocation fail'
-       RETURN
-     ENDIF
-
-     DEALLOCATE(TempData)
-    
-   ELSE
-    PRINT *, 'Open electron scattering file fails'
-   ENDIF
-  CLOSE(30)
-ELSE 
-  used_data_sets(i) = .FALSE.
-ENDIF !Electron scattering file exists
+       else
+         print *, 'electron scattering part 2 or 3 fails!'
+         return
+       endif !Allocate2 and 3
+     else
+       print *, 'electron scattering part allocation fail'
+       return
+     endif
+     deallocate(tempdata)
+   else
+    print *, 'open electron scattering file fails'
+   endif
+  close(30)
+else 
+  used_data_sets(i) = .false.
+endif !Electron scattering file exists
 
 
 !*******************READ electron scattering file**********************
@@ -185,140 +182,140 @@ ENDIF !Electron scattering file exists
 !*******************************************************************
 
 i=i+1
-Num_Line=0
+num_line=0
 
-READ(20, '(A)') ScatteringFile
-ScatteringFile = ADJUSTL(ScatteringFile)
-READ(20, *) weights(i)
-READ(20, *) rmin_n, rmax_n
+read(20, '(a)') scatteringfile
+scatteringfile = adjustl(scatteringfile)
+read(20, *) weights(i)
+read(20, *) rmin_n, rmax_n
 
-IF(ScatteringFile(1:1) .NE. '#') THEN !Electron scattering file exists
-  used_data_sets(i) = .TRUE.
-  FileNameLength=LEN_TRIM(ScatteringFile)
-  File_End=.FALSE.
+if(scatteringfile(1:1) .ne. '#') then !electron scattering file exists
+  used_data_sets(i) = .true.
+  filenamelength=len_trim(scatteringfile)
+  file_end=.false.
 
-  !Read r_n and gr_n data
+  !read r_n and gr_n data
   !read r_n first, then gr_n
-  !First line is comment
-  !At first, count how many data pairs are in the file
+  !first line is comment
+  !at first, count how many data pairs are in the file
   !-1 is chosen as the last point
-  OPEN(30,FILE=ScatteringFile(1:FileNameLength),IOSTAT=status1,STATUS='OLD') 
-   IF(status1 .EQ. 0) THEN !Open succeeds
-     READ(30, '(A80)') comment1
-     DO WHILE( .NOT. File_End)
-        READ(30, *) Indicator_End
-        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-          !PRINT *, 'Neutron scattering file end is reached!'
-          EXIT !Exit this loop
-        ELSE
-          Num_Line = Num_Line + 1
-          !READ(30, *) 
-        ENDIF
-     ENDDO
+  open(30,file=scatteringfile(1:filenamelength),iostat=status1,status='old') 
+   if(status1 .eq. 0) then !open succeeds
+     read(30, '(a80)') comment1
+     do while( .not. file_end)
+        read(30, *) indicator_end
+        if(abs(indicator_end+1.0) .le. 1e-6) then !file end is reached
+          !print *, 'neutron scattering file end is reached!'
+          exit !exit this loop
+        else
+          num_line = num_line + 1
+          !read(30, *) 
+        endif
+     enddo
 
-     REWIND(30) !Go to the beginning of the file
+     rewind(30) !go to the beginning of the file
 
-     READ(30, '(A80)') comment1
-     ALLOCATE(TempData(2*Num_Line),STAT=Stat_Allocate1)
-     IF(Stat_Allocate1 .EQ. 0) THEN
-       READ(30, *) TempData
-       ALLOCATE(r_n(Num_Line), STAT=Stat_Allocate2)
-       ALLOCATE(gr_n(Num_Line), STAT=Stat_Allocate3)
+     read(30, '(a80)') comment1
+     allocate(tempdata(2*num_line),stat=stat_allocate1)
+     if(stat_allocate1 .eq. 0) then
+       read(30, *) tempdata
+       allocate(r_n(num_line), stat=stat_allocate2)
+       allocate(gr_n(num_line), stat=stat_allocate3)
 
-       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0)) THEN
-          r_n=TempData(1:2*Num_Line:2)
-          gr_n=TempData(2:2*Num_Line:2)
-       ELSE
-         PRINT *, 'Neutron scattering part 2 or 3 fails!'
-         RETURN
-       ENDIF !Allocate2 and 3
+       if ((stat_allocate2 .eq. 0) .and. (stat_allocate3 .eq. 0)) then
+          r_n=tempdata(1:2*num_line:2)
+          gr_n=tempdata(2:2*num_line:2)
+       else
+         print *, 'neutron scattering part 2 or 3 fails!'
+         return
+       endif !allocate2 and 3
        
-     ELSE
-       PRINT *, 'Neutron scattering part allocation fail'
-       RETURN
-     ENDIF
+     else
+       print *, 'neutron scattering part allocation fail'
+       return
+     endif
 
-     DEALLOCATE(TempData)
+     deallocate(tempdata)
     
-   ELSE
-    PRINT *, 'Open Neutron scattering file fails'
-   ENDIF
-  CLOSE(30)
-ELSE 
-  used_data_sets(i) = .FALSE.
-ENDIF !Neutron scattering file exists
+   else
+    print *, 'open neutron scattering file fails'
+   endif
+  close(30)
+else 
+  used_data_sets(i) = .false.
+endif !neutron scattering file exists
 
-!*******************READ neutron scattering file**********************
+!*******************read neutron scattering file**********************
 
 !*******************************************************************
-!*****************Read X-ray scattering file**********************
+!*****************read x-ray scattering file**********************
 !*******************************************************************
 
 i=i+1
-Num_Line=0
+num_line=0
 
-READ(20, '(A)') ScatteringFile
-ScatteringFile = ADJUSTL(ScatteringFile)
-READ(20, *) weights(i)
-READ(20, *) rmin_x, rmax_x
+read(20, '(a)') scatteringfile
+scatteringfile = adjustl(scatteringfile)
+read(20, *) weights(i)
+read(20, *) rmin_x, rmax_x
 
 
-IF(ScatteringFile(1:1) .NE. '#') THEN !X-ray scattering file exists 
+if(scatteringfile(1:1) .ne. '#') then !x-ray scattering file exists 
 
-  used_data_sets(i) = .TRUE.
-  FileNameLength=LEN_TRIM(ScatteringFile)
-  File_End=.FALSE.
-  !Read r_x and gr_x data
+  used_data_sets(i) = .true.
+  filenamelength=len_trim(scatteringfile)
+  file_end=.false.
+  !read r_x and gr_x data
   !read r_x first, then gr_x
-  !First line is comment
-  !At first, count how many data pairs are in the file
+  !first line is comment
+  !at first, count how many data pairs are in the file
   !-1 is chosen as the last point
-  !OPEN(30,FILE=ScatteringFile(1:FileNameLength),IOSTAT=status1,STATUS='OLD') - This sucks. It never works. Total junk. God damn wasting time. - JWH 052210
-  open(30, file="xrd_zr50_kramer_reduced.txt", IOSTAT=status1,STATUS='OLD')
-   IF(status1 .EQ. 0) THEN !Open succeeds
-     READ(30, '(A80)') comment1
-     DO WHILE( .NOT. File_End)
-        READ(30, *) Indicator_End
-        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-          !PRINT *, 'X-ray scattering file end is reached!'
-          EXIT !Exit this loop
-        ELSE
-          Num_Line = Num_Line + 1
-          !READ(30, *) 
-        ENDIF
-     ENDDO                          
-     REWIND(30) !Go to the beginning of the file
+  !open(30,file=scatteringfile(1:filenamelength),iostat=status1,status='old') - this sucks. it never works. total junk. god damn wasting time. - jwh 052210
+  open(30, file="xrd_zr50_kramer_reduced.txt", iostat=status1,status='old')
+   if(status1 .eq. 0) then !open succeeds
+     read(30, '(a80)') comment1
+     do while( .not. file_end)
+        read(30, *) indicator_end
+        if(abs(indicator_end+1.0) .le. 1e-6) then !file end is reached
+          !print *, 'x-ray scattering file end is reached!'
+          exit !exit this loop
+        else
+          num_line = num_line + 1
+          !read(30, *) 
+        endif
+     enddo                          
+     rewind(30) !go to the beginning of the file
 
-     READ(30, '(A80)') comment1
-     ALLOCATE(TempData(2*Num_Line),STAT=Stat_Allocate1)
-     IF(Stat_Allocate1 .EQ. 0) THEN
-       READ(30, *) TempData
-       ALLOCATE(r_x(Num_Line), STAT=Stat_Allocate2)
-       ALLOCATE(gr_x(Num_Line), STAT=Stat_Allocate3)
+     read(30, '(a80)') comment1
+     allocate(tempdata(2*num_line),stat=stat_allocate1)
+     if(stat_allocate1 .eq. 0) then
+       read(30, *) tempdata
+       allocate(r_x(num_line), stat=stat_allocate2)
+       allocate(gr_x(num_line), stat=stat_allocate3)
 
-       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0)) THEN
-          r_x=TempData(1:2*Num_Line:2)
+       if ((stat_allocate2 .eq. 0) .and. (stat_allocate3 .eq. 0)) then
+          r_x=tempdata(1:2*num_line:2)
 
-          gr_x=TempData(2:2*Num_Line:2)
-       ELSE
-         PRINT *, 'X-ray scattering part 2 or 3 fails!'
-         RETURN
-       ENDIF !Allocate2 and 3
+          gr_x=tempdata(2:2*num_line:2)
+       else
+         print *, 'x-ray scattering part 2 or 3 fails!'
+         return
+       endif !allocate2 and 3
        
-     ELSE
-       PRINT *, 'X-ray scattering part allocation fail'
-       RETURN
-     ENDIF
+     else
+       print *, 'x-ray scattering part allocation fail'
+       return
+     endif
 
-     DEALLOCATE(TempData)
+     deallocate(tempdata)
     
-   ELSE
-    PRINT *, 'Open X-ray scattering file fails'
-   ENDIF
-  CLOSE(30)
-ELSE 
-  used_data_sets(i) = .FALSE.
-ENDIF !X-ray scattering file exists
+   else
+    print *, 'open x-ray scattering file fails'
+   endif
+  close(30)
+else 
+  used_data_sets(i) = .false.
+endif !X-ray scattering file exists
 
 !*******************READ X-ray scattering file**********************
 
@@ -328,80 +325,80 @@ ENDIF !X-ray scattering file exists
 !*******************************************************************
 
 i=i+1
-Num_Line=0
+num_line=0
 
-READ(20, '(A)') FemFile
-FemFile = ADJUSTL(FemFile)
-!write(*,*)FemFile
-READ(20, *) weights(i)
-READ(20, *) scale_fac
-READ(20, *) nphi, npsi, ntheta
-READ(20, *) Q
-!write(*,*)Q
-READ(20, *) fem_algorithm
+read(20, '(a)') femfile
+femfile = adjustl(femfile)
+!write(*,*)femfile
+read(20, *) weights(i)
+read(20, *) scale_fac
+read(20, *) nphi, npsi, ntheta
+read(20, *) q
+!write(*,*)q
+read(20, *) fem_algorithm
 !write(*,*)fem_algorithm
-READ(20, *) pixel_distance
+read(20, *) pixel_distance
 !write(*,*)pixel_distance
 
-IF(FemFile(1:1) .NE. '#') THEN !FEM file exists
-  used_data_sets(i) = .TRUE.
-  FileNameLength=LEN_TRIM(FemFile)
-  File_End=.FALSE.
+if(femfile(1:1) .ne. '#') then !fem file exists
+  used_data_sets(i) = .true.
+  filenamelength=len_trim(femfile)
+  file_end=.false.
 
-  !Read k ,V, and V_err data
-  !read k first, then V, last V_err
-  !First line is comment
-  !At first, count how many data pairs are in the file
+  !read k ,v, and v_err data
+  !read k first, then v, last v_err
+  !first line is comment
+  !at first, count how many data pairs are in the file
   !-1 is chosen as the last point
-  OPEN(30,FILE=FemFile(1:FileNameLength),IOSTAT=status1,STATUS='OLD') 
-   IF(status1 .EQ. 0) THEN !Open succeeds
-     READ(30, '(A80)') comment1
-     DO WHILE( .NOT. File_End)
-        READ(30, *) Indicator_End
-        IF(ABS(Indicator_End+1.0) .LE. 1E-6) THEN !File end is reached
-          !PRINT *, 'FEM file end is reached'
-          EXIT !Exit this loop
-        ELSE
-          Num_Line = Num_Line + 1
-          !READ(30, *) 
-        ENDIF
-     ENDDO
+  open(30,file=femfile(1:filenamelength),iostat=status1,status='old') 
+   if(status1 .eq. 0) then !open succeeds
+     read(30, '(a80)') comment1
+     do while( .not. file_end)
+        read(30, *) indicator_end
+        if(abs(indicator_end+1.0) .le. 1e-6) then !file end is reached
+          !print *, 'fem file end is reached'
+          exit !exit this loop
+        else
+          num_line = num_line + 1
+          !read(30, *) 
+        endif
+     enddo
 
-     REWIND(30) !Go to the beginning of the file
+     rewind(30) !go to the beginning of the file
 
-     READ(30, '(A80)') comment1
-     ALLOCATE(TempData(4*Num_Line),STAT=Stat_Allocate1)
-     IF(Stat_Allocate1 .EQ. 0) THEN
-       READ(30, *) TempData
-       ALLOCATE(k(Num_Line), STAT=Stat_Allocate2)
-       ALLOCATE(V(Num_Line), STAT=Stat_Allocate3)
-       ALLOCATE(V_err(Num_Line), STAT=Stat_Allocate4)
-       ALLOCATE(V_background(Num_Line))
+     read(30, '(a80)') comment1
+     allocate(tempdata(4*num_line),stat=stat_allocate1)
+     if(stat_allocate1 .eq. 0) then
+       read(30, *) tempdata
+       allocate(k(num_line), stat=stat_allocate2)
+       allocate(v(num_line), stat=stat_allocate3)
+       allocate(v_err(num_line), stat=stat_allocate4)
+       allocate(v_background(num_line))
 
-       IF ((Stat_Allocate2 .EQ. 0) .AND. (Stat_Allocate3 .EQ. 0) .AND. (Stat_Allocate4 .EQ. 0)) THEN
-           k=TempData(1:4*Num_Line:4)
-           V=TempData(2:4*Num_Line:4)
-           V_err=TempData(3:4*Num_Line:4)
-           V_background=TempData(4:4*Num_Line:4)
-       ELSE
-         PRINT *, 'FEM part 2 or 3, or 4 fails!'
-         RETURN
-       ENDIF !Allocate2, 3 and 4
+       if ((stat_allocate2 .eq. 0) .and. (stat_allocate3 .eq. 0) .and. (stat_allocate4 .eq. 0)) then
+           k=tempdata(1:4*num_line:4)
+           v=tempdata(2:4*num_line:4)
+           v_err=tempdata(3:4*num_line:4)
+           v_background=tempdata(4:4*num_line:4)
+       else
+         print *, 'fem part 2 or 3, or 4 fails!'
+         return
+       endif !allocate2, 3 and 4
        
-     ELSE
-       PRINT *, 'FEM part allocation fail'
-       RETURN
-     ENDIF
+     else
+       print *, 'fem part allocation fail'
+       return
+     endif
 
-     DEALLOCATE(TempData)
+     deallocate(tempdata)
     
-   ELSE
-    PRINT *, 'Open FEM file fails'
-   ENDIF
-  CLOSE(30)
-ELSE 
-  used_data_sets(i) = .FALSE.
-ENDIF !FEM file exists
+   else
+    print *, 'open fem file fails'
+   endif
+  close(30)
+else 
+  used_data_sets(i) = .false.
+endif !FEM file exists
 
 !*******************READ FEM file**********************
 

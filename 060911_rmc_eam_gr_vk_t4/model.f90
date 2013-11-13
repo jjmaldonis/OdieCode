@@ -587,6 +587,8 @@ end subroutine reduce_znum
     do i=1,m%natoms
        isnew = 1
        do j=1,m%nelements
+          ! If atom i's atomic number is already in the list, don't add
+          ! its atomic number to the list again.
           if(m%znum(i) == znum_list(j)) isnew = 0
        enddo
        if (isnew /= 0) then
@@ -1547,7 +1549,6 @@ nlist = m%natoms
        scratch_atoms(nat+1) = atom
 
        ! Reallocate with new size
-       ! TODO - JASON This is a major operation, can I fix it somehow?
        deallocate(ha%h(hx,hy,hz)%at)
        allocate(ha%h(hx,hy,hz)%at(1:nat+1)) ! +1 for fencepost 
 
@@ -1592,22 +1593,22 @@ nlist = m%natoms
     deallocate(ha%h(hx,hy,hz)%at)
 
     IF(ha%h(hx, hy, hz)%nat .GT. 1) THEN  !added by Feng Yi on 03/19/2009
-    !allocate(ha%h(hx,hy,hz)%at(1:ha%h(hx,hy,hz)%nat-1))
+        !allocate(ha%h(hx,hy,hz)%at(1:ha%h(hx,hy,hz)%nat-1))
         allocate(ha%h(hx,hy,hz)%at(ha%h(hx,hy,hz)%nat-1))
-    j=1
-    do i=1, ha%h(hx,hy,hz)%nat
-      if (scratch_atoms(i) /= atom) then
-        ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
-        j=j+1
-      end if
-    enddo
+        j=1
+        do i=1, ha%h(hx,hy,hz)%nat
+          if (scratch_atoms(i) /= atom) then
+            ha%h(hx,hy,hz)%at(j) = scratch_atoms(i)
+            j=j+1
+          end if
+        enddo
 
-    ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
-    ha%atom_hutch(atom,1) = 0
-    ha%atom_hutch(atom,2) = 0
-    ha%atom_hutch(atom,3) = 0
-    ELSE
-    ha%h(hx,hy, hz)%nat = 0
+        ha%h(hx,hy,hz)%nat = ha%h(hx,hy,hz)%nat-1
+        ha%atom_hutch(atom,1) = 0
+        ha%atom_hutch(atom,2) = 0
+        ha%atom_hutch(atom,3) = 0
+        ELSE
+        ha%h(hx,hy, hz)%nat = 0
     ENDIF
 
     !debug
@@ -2080,6 +2081,7 @@ nlist = m%natoms
   ! use private variable list_1_3D
   subroutine hutch_list_3D(m, px, py, pz, radius, atoms, istat, nlist)
   ! TODO - JASON Go through this function... it is called in eam_initial
+  ! for each atom.
 
     type(model), target, intent(in) :: m
     !TYPE(hutch_3D_array), INTENT(IN) :: list1 !sotre relative position of each hutch
@@ -2184,7 +2186,9 @@ nlist = m%natoms
               
               i = list_1_3D%list_3D(p_relative_3D, ratio_position)%list_x(k1)
               i = hx + i
-              if (i > ha%nhutch_x) then !Periodic boundary condition
+
+              !Periodic boundary condition
+              if (i > ha%nhutch_x) then
                  hi = i - ha%nhutch_x
               else if (i < 1) then
                  hi = i + ha%nhutch_x
@@ -2326,8 +2330,8 @@ nlist = m%natoms
     
   end subroutine hutch_position_eff
 
-
-    ! Makes a list of atom indices (in atoms) of the atoms in a rectangular
+  ! ??? - JASON I dont understand this subroutine.
+  ! Makes a list of atom indices (in atoms) of the atoms in a rectangular
   ! prism with side length diameter in x and y, through the model thickness
   ! in z, centered on the hutch containing the point (px, py).  Useful for
   ! calculating the FEM intensity at (px, py).  Returns 1 in istat if the
@@ -2346,7 +2350,6 @@ nlist = m%natoms
     integer :: i, j, k1        ! counting variables
     integer :: hi, hj, hk   ! counting variables with periodic boundary conditions
     
-
     integer, dimension(:), allocatable, target :: temp_atoms
     type(hutch_array), pointer :: ha
     !real hx_min, hx_max, hy_min, hy_max !added by Feng Yi on 03/05/2009
@@ -2355,7 +2358,6 @@ nlist = m%natoms
     INTEGER ratio_position
     REAL ratio1
     LOGICAL New_Algorithm
-
 
     ha => m%ha
 
