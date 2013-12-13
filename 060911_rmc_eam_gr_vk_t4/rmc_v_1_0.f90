@@ -101,9 +101,17 @@ program rmc
     else
         jobID = '_temp'
     end if
+    call get_command_argument(2, c, length, istat)
+    if (istat == 0) then
+        model_filename = trim(c)
+    else
+        stop
+    end if
+    model_filename = trim(model_filename)
 
     ! Set input filenames.
     param_filename = 'param_file.in'
+    !call execute_command_line("cat param_file.in")
 
     ! Set output filenames.
     outbase = ""
@@ -131,7 +139,7 @@ program rmc
     beta_fn = trim(trim(beta_fn)//jobID)//".txt"
 
     !------------------- Read inputs and initialize. -----------------!
-
+    
     ! Start timer.
     t0 = omp_get_wtime()
 

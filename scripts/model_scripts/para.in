@@ -1,0 +1,6 @@
+# atom types
+1 Al
+# steps, # total atoms, # atoms of type 1, # atoms of type2, # atoms type3, ...
+1 1099 1099
+# box size, # cut-off of neighbor
+6.0 2.0

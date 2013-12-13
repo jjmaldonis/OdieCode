@@ -168,7 +168,7 @@ contains
     ! The subroutine composition_model has been incorporated into this
     ! subroutine by Jason on 06/28/13.
         implicit none
-        character (len=*),intent(in) :: param_filename
+        character (len=*),intent(in) :: param_filename!, model_filename
         character (LEN=*),intent(out) :: comment
         character (len=80) :: model_filename
         type(model), intent(out) :: m
@@ -186,7 +186,7 @@ contains
         close(20)
 
         ! Open file that contains the model information.
-        open(1,file=model_filename,iostat=istat,status='old')
+        open(1,file=trim(model_filename),iostat=istat,status='old')
         call check_allocation(istat, "Error in opening flie, "//model_filename)
 
         read(1,*) ! Comment line.
