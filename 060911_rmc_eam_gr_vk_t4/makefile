@@ -22,9 +22,9 @@ LIBS=
 #FC_DEBUG = ifort -g -debug all -check all -implicitnone -warn all
 #FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all
 FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all -openmp -fpp
-#FC_DEBUG = mpif90 -g -implicitnone -openmp -fpp
 
 CC_DEBUG = icc -g  -Wall
+CC_OPT = icc
 
 # compiler options for optmized running
 #FC_OPT = ifort -O3 -xO -ipo -no-prec-div -static
