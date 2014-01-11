@@ -665,7 +665,7 @@ write(*,*) k(i), sum_int(i)
         !do i=1,1
             !nthr = omp_get_num_threads() !omp_get_max_threads()
             !thrnum = omp_get_thread_num()
-            !!write(*,*) "We are using", nthr, " thread(s) in Intensity."
+            !write(*,*) "We are using", nthr, " thread(s) in Intensity."
         !enddo
         !!$omp end parallel do
 
@@ -1102,10 +1102,10 @@ write(*,*) k(i), sum_int(i)
             enddo
         enddo
 
-        write(*,*) "I am core", myid, "and I am past the int calls."
+        !write(*,*) "I am core", myid, "and I am past the int calls."
         
         call mpi_barrier(comm, mpierr)
-        write(*,*) "I am core", myid, "and I am past mp_barrier."
+        !write(*,*) "I am core", myid, "and I am past mp_barrier."
 
         ! Set psum_int and psum_int_sq. This MUST be done inside an MPI loop
         ! with the exact same structure as the MPI loop that called intensity.
@@ -1117,7 +1117,7 @@ write(*,*) k(i), sum_int(i)
                 if(use_autoslice) psum_int_as_sq(1:nk) = psum_int_as_sq(1:nk) + int_as_sq(1:nk, m, i)
             enddo
         enddo
-        write(*,*) "I am core", myid, "and I am past the psum_int setters."
+        !write(*,*) "I am core", myid, "and I am past the psum_int setters."
 
         ! psum_int_sq is set is set in the above loop. int_sq is set in the loop
         ! above that. int_i is set in subroutine intensity.
@@ -1127,11 +1127,12 @@ write(*,*) k(i), sum_int(i)
         ! root_processor_id. I think this is how it works anyways. I am probably
         ! somewhat off.
 
+        call mpi_barrier(comm, mpierr)
         call mpi_reduce (psum_int, sum_int, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         call mpi_reduce (psum_int_sq, sum_int_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         if(use_autoslice) call mpi_reduce (psum_int_as, sum_int_as, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
         if(use_autoslice) call mpi_reduce (psum_int_as_sq, sum_int_as_sq, size(k), mpi_real, mpi_sum, 0, comm, mpierr)
-        write(*,*) "I am core", myid, "and I am past mp_reduce."
+        !write(*,*) "I am core", myid, "and I am past mp_reduce."
 
         ! Recalculate the variance
         if(myid.eq.0)then
@@ -1149,7 +1150,7 @@ write(*,*) k(i), sum_int(i)
         deallocate(moved_atom%xx%ind, moved_atom%yy%ind, moved_atom%zz%ind, moved_atom%znum%ind, moved_atom%atom_type, moved_atom%znum_r%ind, moved_atom%composition, stat=istat)
         !call destroy_model(moved_atom) ! Memory leak?
         deallocate(psum_int, psum_int_sq, sum_int, sum_int_sq)
-        write(*,*) "I am core", myid, "and I am done with fem_update."
+        !write(*,*) "I am core", myid, "and I am done with fem_update."
     end subroutine fem_update
 
     subroutine fem_accept_move(comm)

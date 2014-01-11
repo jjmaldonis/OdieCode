@@ -1,7 +1,7 @@
 #parameter file opened. set a filename to # to ignore it
-model_040511c_t2_final.xyz
+model_040511c_t2_final.xyz.bigger
 1  !starting step number
-100000.0    !starting temperature (assuming starting step is 1, not what you set it at)
+200000.0    !starting temperature (assuming starting step is 1, not what you set it at)
 1.5    !maximum move distance
 !cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
 1.76 1.76 1.76
@@ -16,10 +16,10 @@ model_040511c_t2_final.xyz
 # xrd_zr50_kramer_reduced.txt
 0 #3290.0	!weight of xrd gr
 0 0 #1.68  10.0
-fem_exp_jwh.txt
+fem_exp_jwh_t2.txt
 1.0	 !weight of fem
 28.637     !scaling factor for exp Vk
-1 38 18 	 !# of rotations(nphi, npsi, ntheta)
+1 24 20 	 !# of rotations(nphi, npsi, ntheta) #128 = 1 24 20; 16 = 2 17 1
 0.0305 !Q (inverse angstrom)
 1	 !fem algorithm
 13.0	 !pixel distance

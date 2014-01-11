@@ -89,7 +89,7 @@ program rmc
     nthr = omp_get_max_threads()
     if(myid.eq.0)then
         write(*,*)
-        write(*,*) "This is the dev version of rmc!"
+        write(*,*) "This is the speedup dev version of rmc!"
         write(*,*)
         write(*,*) "Using", numprocs, "processors."
         write(*,*) "OMP found a max number of threads of", nthr
@@ -102,12 +102,12 @@ program rmc
         jobID = '_temp'
     end if
     call get_command_argument(2, c, length, istat)
-    if (istat == 0) then
-        model_filename = trim(c)
-    else
-        stop
-    end if
-    model_filename = trim(model_filename)
+    !if (istat == 0) then
+    !    model_filename = trim(c)
+    !else
+    !    stop "istat for get_command_arg was nonzero", model_filename
+    !end if
+    !model_filename = trim(model_filename)
 
     ! Set input filenames.
     param_filename = 'param_file.in'
@@ -144,7 +144,7 @@ program rmc
     t0 = omp_get_wtime()
 
     ! Read input model
-    call read_model(param_filename, comment, m, istat)
+    call read_model(param_filename, model_filename, comment, m, istat)
     call check_model(m, istat)
     call recenter_model(0.0, 0.0, 0.0, m)
 
@@ -156,7 +156,8 @@ program rmc
         scale_fac_initial, Q, fem_algorithm, pixel_distance, total_steps, &
         rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, status2)
 
-    if(myid .eq. 0) write(*,*) "Model filename:", trim(model_filename)
+    if(myid .eq. 0) write(*,*) "Model filename: ", trim(model_filename)
+    if(myid .eq. 0) write(*,*)
 
     scale_fac = scale_fac_initial
     res = 0.61/Q
@@ -217,6 +218,7 @@ program rmc
 
     !------------------- Start RMC. -----------------!
 
+    call mpi_barrier(mpi_comm_world, mpierr)
     open(20, file=param_filename,iostat=istat, status='old')
         read(20, '(a80)') comment !read comment from paramfile
         read(20, '(a80)') comment !model filename
@@ -260,10 +262,10 @@ program rmc
             write(35,*) numprocs, "processors are being used."
             write(35,*) "Step || Time elapsed || Avg time per step || This step's time || Approx time remaining"
         close(35)
-        open(34,file=trim(energy_fn),form='formatted',status='unknown')
-            write(34,*) "step, energy"
-            write(34,*) i, te1
-        close(34)
+        !open(34,file=trim(energy_fn),form='formatted',status='unknown')
+        !    write(34,*) "step, energy"
+        !    write(34,*) i, te1
+        !close(34)
         open(36,file=trim(chi_squared_file),form='formatted',status='unknown')
             write(36,*) "step, chi2, energy, chi2-energy, chi2/energy, alpha weight, beta weight"
             write(36,*) i, chi2_no_energy, te1, chi2_old, abs(chi2_no_energy/te1), weights(4), scale_fac
@@ -271,9 +273,9 @@ program rmc
         open(37,file=trim(acceptance_rate_fn),form='formatted',status='unknown',access='append')
             write(37,*) "step, acceptance rate averaged over last 100 steps"
         close(37)
-        open(38,file=trim(beta_fn),form='formatted',status='unknown',access='append')
-        write(38,*) "Sum(V_exp)/Sum(V_sim). I.e. what beta should be. If it stays constant that is great - that'    s what we want beta to be! (rather an 3*te/ts)"
-        close(38)
+        !open(38,file=trim(beta_fn),form='formatted',status='unknown',access='append')
+        !write(38,*) "Sum(V_exp)/Sum(V_sim). I.e. what beta should be. If it stays constant that is great - that'    s what we want beta to be! (rather an 3*te/ts)"
+        !close(38)
         endif
 
 
@@ -286,11 +288,11 @@ program rmc
 
             if(myid .eq. 0) write(*,*) "Starting step", i
 
-            if( i > 100) then
-                if(myid .eq. 0) write(*,*) "STOPPING MC AFTER 100 STEPS"
-                call mpi_finalize(mpierr)
-                stop ! Stop after 100 steps for timing runs.
-            endif
+            !if( i > 100) then
+            !    if(myid .eq. 0) write(*,*) "STOPPING MC AFTER 100 STEPS"
+            !    call mpi_finalize(mpierr)
+            !    stop ! Stop after 100 steps for timing runs.
+            !endif
 
             call random_move(m,w,xx_cur,yy_cur,zz_cur,xx_new,yy_new,zz_new, max_move)
             ! check_curoffs returns false if the new atom placement is too close to
@@ -312,6 +314,7 @@ program rmc
                 call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
             else
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
+                !write(*,*) "I am core", myid, "and I have exited from fem_update into the main rmc block."
             endif
             !if(myid .eq. 0) write(*,*) "Finished updating eam, gr, and fem data."
             
@@ -323,12 +326,14 @@ program rmc
             chi2_new = chi2_no_energy + te2
             del_chi = chi2_new - chi2_old
 
+            call mpi_barrier(mpi_comm_world, mpierr) ! Pretty sure this is unnecessary
             call mpi_bcast(del_chi, 1, mpi_real, 0, mpi_comm_world, mpierr)
+            !write(*,*) "I am core", myid, "and I am past mpi_bcast.", del_chi
                
             randnum = ran2(iseed2)
             ! Test if the move should be accepted or rejected based on del_chi
             if(del_chi <0.0)then
-            !if(.true.)then !For timing purposes, always accept the move.
+            !if(.true.)then !For timing purposes, always accept the move. TODO
                 ! Accept the move
                 e1 = e2
                 call fem_accept_move(mpi_comm_world)
@@ -367,15 +372,15 @@ program rmc
             if(myid.eq.0)then
             if(mod(i,1000)==0)then
                 ! Write to vk_update
-                write(vku_fn, "(A9)") "vk_update"
-                write(step_str,*) i
-                vku_fn = trim(trim(trim(trim(vku_fn)//jobID)//"_")//step_str)//".txt"
-                open(32,file=trim(vku_fn),form='formatted',status='unknown')
-                    do j=1, nk
-                        write(32,*)k(j),vk(j)
-                    enddo
-                close(32)
-if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
+                !write(vku_fn, "(A9)") "vk_update"
+                !write(step_str,*) i
+                !vku_fn = trim(trim(trim(trim(vku_fn)//jobID)//"_")//step_str)//".txt"
+                !open(32,file=trim(vku_fn),form='formatted',status='unknown')
+                !    do j=1, nk
+                !        write(32,*)k(j),vk(j)
+                !    enddo
+                !close(32)
+!if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
                 ! Write to model_update
                 write(output_model_fn, "(A12)") "model_update"
                 write(step_str,*) i
@@ -392,10 +397,10 @@ if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
             if(mod(i,1)==0)then
                 if(accepted) then
                     ! Write to energy_function
-                    open(34,file=trim(energy_fn),form='formatted',status='unknown',access='append')
-                        write(*,*) i, te2
-                        write(34,*) i, te2
-                    close(34)
+                    !open(34,file=trim(energy_fn),form='formatted',status='unknown',access='append')
+                    !    write(*,*) i, te2
+                    !    write(34,*) i, te2
+                    !close(34)
                     ! Write chi2 info
                     open(36,file=trim(chi_squared_file),form='formatted',status='unknown',access='append')
                         write(36,*) i, chi2_no_energy, te2, chi2_old, abs(chi2_no_energy/te2), weights(4), scale_fac
@@ -403,9 +408,9 @@ if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
                 endif
             endif
             if(mod(i,1)==0)then
-                open(36,file=trim(beta_fn),form='formatted',status='unknown',access='append')
-                    write(36,*) sum(vk_exp)/sum(vk)
-                close(36)
+                !open(36,file=trim(beta_fn),form='formatted',status='unknown',access='append')
+                !    write(36,*) sum(vk_exp)/sum(vk)
+                !close(36)
                 ! Write to time_elapsed
                 open(35,file=trim(time_elapsed),form='formatted',status='unknown',access='append')
                     t1 = omp_get_wtime()

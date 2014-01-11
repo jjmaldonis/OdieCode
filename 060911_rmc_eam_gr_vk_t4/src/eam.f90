@@ -169,23 +169,23 @@ contains
         enddo
 
         !plotting
-        open(unit=2,file="phi_zrzr.out",form='formatted',status='unknown')
-        open(unit=3,file="rho_zr.out",form='formatted',status='unknown')
-        open(unit=4,file="f_zr.out",form='formatted',status='unknown')
+        !open(unit=2,file="phi_zrzr.out",form='formatted',status='unknown')
+        !open(unit=3,file="rho_zr.out",form='formatted',status='unknown')
+        !open(unit=4,file="f_zr.out",form='formatted',status='unknown')
 
-        do i=1, nr
-            rr=(i*dr)
-            write(2,*)rr, phi(1, 1, i)
-            write(3,*)rr, rho(1, i)
-        enddo
-        do i=1, nrho
-            rho1 = i*drho
-            write(4,*)rho1, f(1, i)
-        enddo
+        !do i=1, nr
+            !rr=(i*dr)
+            !write(2,*)rr, phi(1, 1, i)
+            !write(3,*)rr, rho(1, i)
+        !enddo
+        !do i=1, nrho
+            !rho1 = i*drho
+            !write(4,*)rho1, f(1, i)
+        !enddo
 
-        close(2)
-        close(3)
-        close(4)
+        !close(2)
+        !close(3)
+        !close(4)
 
         allocate(e1(m%natoms))
         allocate(e2(m%natoms))
