@@ -10,3 +10,7 @@ So for RMC we use square pixels to remove this effect, even though it does not e
 For Femsim, we do want to exactly replicate the experiment and we are simply calculating the variance of the model. Therefore, we are not moving atoms (and have no input data by the way) and so the RMC probelms are irrelevant here. We will use overlapping pixels instead of leaving atoms out here.
 
 In the code we want the pixel placement to be as obvious for the user as possible. Page 11 in my notebook shows pictures of the pixel setup for a 3x3 case.
+
+
+
+Consider this readme forgotten!
