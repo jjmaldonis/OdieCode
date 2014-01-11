@@ -4,7 +4,7 @@
 #
 
 # application name
-APP = rmc
+APP = ../rmc
 
 # list of source files
 SRC = ran2.f90 globals.f90 read_inputs_v2.f90 model_v2.f90 rmc_functions.f90 scattering_factors.f90 fft2dc.c slicelib.c islice.c fem1_v2.f90 gr.f90 eam.f90 rmc_v_1_0.f90 
