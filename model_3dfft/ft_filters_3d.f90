@@ -5,12 +5,12 @@
 
 module ft_filters_3D
 
-  interface 
-     function t2o(ii, jj, kk, nx, ny)
-       integer :: t2o
-       integer, intent(in) :: ii, jj, kk, nx, ny
-     end function t2o
-  end interface
+  !interface 
+  !   function t2o(ii, jj, kk, nx, ny)
+  !     integer :: t2o
+  !     integer, intent(in) :: ii, jj, kk, nx, ny
+  !   end function t2o
+  !end interface
 
 
 contains

@@ -1,0 +1,47 @@
+#
+# default makefile for ifort compiler with more or less
+# appropriate options for debugging and high performance
+#
+
+%.o: %.mod
+
+# application name
+APP = m3dfft2
+
+MKLROOT = /state/partition1/apps/intel_20130618/composer_xe_2013.3.163/mkl/
+MKLRUNLIB_PATH = $(MKLROOT)/lib/intel64/
+CMPLR_PATH = /state/partition1/apps/intel_20130618/composer_xe_2013.3.163/compiler/lib/intel64/
+RUNLIB_PATH = $(MKLRUNLIB_PATH):$(CMPLR_PATH)
+RUNENV = LD_LIBRARY_PATH=$(CMPLR_PATH):$(LD_LIBRARY_PATH)
+
+# list of source files
+SRC = model.f90 nrtype.f90 nrutil.f90 recipes.f90 atompot.f90 mkl_dfti.f90 gfx.f90 ft_filters_3d.f90 m3dfft.f90
+
+# list of object files
+OBJ = model.o nrtype.o nrutil.o recipes.o atompot.o mkl_dfti.o gfx.o ft_filters_3d.o m3dfft.o
+
+# define libraries needed by the linker
+#LIBS = -L/opt/intel/mkl/10.0.3.020/lib/em64t /opt/intel/mkl/10.0.3.020/lib/em64t/libmkl_intel_lp64.a -Wl,--start-group /opt/intel/mkl/10.0.3.020/lib/em64t/libmkl_intel_thread.a /opt/intel/mkl/10.0.3.020/lib/em64t/libmkl_core.a -Wl,--end-group /opt/intel/mkl/10.0.3.020/lib/em64t/libguide.a -lpthread
+LIBS = -L$(MKLROOT)/lib/intel64/
+
+# compiler options for debugging
+FC_DEBUG = ifort -g -debug all -check all -implicitnone -warn all
+
+# compiler options for optmized running
+FC_OPT = ifort -O3 -xO -ipo -no-prec-div -static
+
+
+# build rules
+
+.SUFFIXES: .f90 .o .mod
+.f90.o:
+	${FC_DEBUG} -c $<
+
+debug: ${OBJ} ${SRC}
+	${FC_DEBUG} -o ${APP} ${OBJ} ${LIBS}
+
+opt: ${SRC}
+	${FC_OPT} -o ${APP} ${SRC} ${LIBS}
+
+clean:
+	rm -f *.mod *.o ${APP}
