@@ -1,0 +1,11 @@
+units           metal
+boundary        p p p
+
+atom_style      atomic
+
+read_data       jwh/model_040511c_t2_final.dat
+
+pair_style      eam/alloy
+pair_coeff      * * ZrCuAl2011.eam.alloy Cu Al Zr
+
+compute pot all pe

@@ -27,6 +27,7 @@
 
 program rmc
 
+    use LAMMPS
     use omp_lib
     use rmc_global
     use readinputs
@@ -34,9 +35,15 @@ program rmc
     use gr_mod
     use fem_mod
     use rmc_functions
-    use eam_mod
+    !use eam_mod
     implicit none
     include 'mpif.h'
+    ! LAMMPS objects
+    type (C_ptr) :: lmp
+    real (C_double), pointer :: te1 => NULL()
+    real (C_double), pointer :: te2 => NULL()
+    character (len=512) :: lmp_cmd_str
+    ! RMC / Femsim objects
     type(model) :: m
     character (len=256) :: model_filename
     character (len=256) :: param_filename  
@@ -71,7 +78,7 @@ program rmc
     integer :: total_steps
     integer :: iseed2
     real :: randnum
-    real :: te1, te2
+    !real :: te1, te2
     logical :: square_pixel, accepted, use_rmc, use_multislice
     integer :: ipvd, nthr
     doubleprecision :: t0, t1, t2 !timers
@@ -81,11 +88,13 @@ program rmc
 
     !------------------- Program setup. -----------------!
 
-    !call mpi_init(mpierr)
     call mpi_init_thread(MPI_THREAD_MULTIPLE, ipvd, mpierr) !http://www.open-mpi.org/doc/v1.5/man3/MPI_Init_thread.3.php
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
-    
+
+    call lammps_open_no_mpi ('lmp -log log.simple -screen none', lmp)
+    call lammps_file (lmp, 'lmp_energy.in')
+
     nthr = omp_get_max_threads()
     if(myid.eq.0)then
         write(*,*)
@@ -170,8 +179,10 @@ program rmc
     use_rmc = .TRUE.
     use_multislice = .FALSE.
 
-    call read_eam(m)
-    call eam_initial(m,te1)
+    !call read_eam(m)
+    !call eam_initial(m,te1)
+    call lammps_command (lmp, 'run 0')
+    call lammps_extract_compute (te1, lmp, 'pot', 0, 0)
     if(myid.eq.0) write(*,*) "Energy = ", te1
 
     call scatt_power(m,used_data_sets,istat)
@@ -242,7 +253,7 @@ program rmc
         !        rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
         !endif
         chi2_old = chi2_no_energy + te1
-        e2 = e1
+        !e2 = e1
 
         t0 = omp_get_wtime()
         if(myid.eq.0)then
@@ -307,7 +318,13 @@ program rmc
 
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
-            call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+            write(lmp_cmd_str, "(A9, I4, A3, F, A3, F, A3, F)") "set atom ", w, " x ", xx_new, " y ", yy_new, " z ", zz_new
+            call lammps_command(lmp, trim(lmp_cmd_str))
+    
+
+            !call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+            call lammps_command (lmp, 'run 0')
+            call lammps_extract_compute (te2, lmp, 'pot', 0, 0)
             ! Use multislice every 10k steps if specified.
             if(use_multislice .and. mod(i,10000) .eq. 0) then
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
@@ -335,7 +352,7 @@ program rmc
             if(del_chi <0.0)then
             !if(.true.)then !For timing purposes, always accept the move. TODO
                 ! Accept the move
-                e1 = e2
+                !e1 = e2
                 call fem_accept_move(mpi_comm_world)
                 chi2_old = chi2_new
                 accepted = .true.
@@ -345,14 +362,14 @@ program rmc
                 ! whether to move or not (statistically).
                 if(log(1.-randnum)<-del_chi*beta)then
                     ! Accept move
-                    e1 = e2
+                    !e1 = e2
                     call fem_accept_move(mpi_comm_world)
                     chi2_old = chi2_new
                     accepted = .true.
                     if(myid.eq.0) write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                 else
                     ! Reject move
-                    e2 = e1
+                    !e2 = e1
                     call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
                     call fem_reject_move(m, mpi_comm_world)
@@ -367,6 +384,8 @@ program rmc
                 acceptance_array(mod(i,100)+1) = 0
             endif
             if(i .gt. 100) avg_acceptance = sum(acceptance_array)/100.0
+            ! Writing to 0 is stderr
+            if(i .gt. 100 .and. avg_acceptance .le. 0.05) write(0,*) "WARNING!  Acceptance rate is low:", avg_acceptance
 
             ! Periodically save data.
             if(myid.eq.0)then
@@ -380,7 +399,6 @@ program rmc
                 !        write(32,*)k(j),vk(j)
                 !    enddo
                 !close(32)
-!if(myid .eq. 0) call save_model(mrot(1)) ! TODO Delete this. For debugging.
                 ! Write to model_update
                 write(output_model_fn, "(A12)") "model_update"
                 write(step_str,*) i
@@ -483,6 +501,7 @@ program rmc
             close(57)
         endif
     endif ! Use RMC
+    call lammps_close (lmp)
     call mpi_finalize(mpierr)
 
 end program rmc
