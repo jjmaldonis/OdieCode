@@ -15,3 +15,6 @@ acceptance_rate_*
 beta_weighting_*
 chi_squared_*
 timings/
+log.lammps
+log.simple
+src/ran2__genmod.f90
