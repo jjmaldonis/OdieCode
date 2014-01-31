@@ -84,7 +84,7 @@ program rmc
     doubleprecision :: t0, t1, t2 !timers
     real :: x! This is the parameter we will use to fit vsim to vas.
     integer, dimension(100) :: acceptance_array
-    real :: avg_acceptance
+    real :: avg_acceptance = 1.0
 
     !------------------- Program setup. -----------------!
 
@@ -92,8 +92,10 @@ program rmc
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
+    if(myid.eq.0) then
     call lammps_open_no_mpi ('lmp -log log.simple -screen none', lmp)
     call lammps_file (lmp, 'lmp_energy.in')
+    endif
 
     nthr = omp_get_max_threads()
     if(myid.eq.0)then
@@ -174,6 +176,7 @@ program rmc
     beta=1./((8.6171e-05)*temperature)
 
     iseed2 = 104756
+    if(myid .eq. 0) write(*,*) "random number generator seed =", iseed2
 
     square_pixel = .TRUE. ! RMC uses square pixels, not round.
     use_rmc = .TRUE.
@@ -181,8 +184,11 @@ program rmc
 
     !call read_eam(m)
     !call eam_initial(m,te1)
+    if(myid.eq.0) then
     call lammps_command (lmp, 'run 0')
     call lammps_extract_compute (te1, lmp, 'pot', 0, 0)
+    call mpi_bcast(te1, 1, mpi_real, 0, mpi_comm_world, mpierr)
+    endif
     if(myid.eq.0) write(*,*) "Energy = ", te1
 
     call scatt_power(m,used_data_sets,istat)
@@ -290,10 +296,10 @@ program rmc
         endif
 
 
-        !i=1
+        i=0
         ! RMC loop begins.
         ! The loops stops if the temperature goes below a certain temp (30.0).
-        do while (i > 0)
+        do while (i .ge. 0)
             i=i+1
             t2 = omp_get_wtime()
 
@@ -319,12 +325,18 @@ program rmc
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
             write(lmp_cmd_str, "(A9, I4, A3, F, A3, F, A3, F)") "set atom ", w, " x ", xx_new, " y ", yy_new, " z ", zz_new
+            if(myid.eq.0) then
             call lammps_command(lmp, trim(lmp_cmd_str))
+            endif
     
 
             !call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+            if(myid.eq.0) then
             call lammps_command (lmp, 'run 0')
             call lammps_extract_compute (te2, lmp, 'pot', 0, 0)
+            write(*,*) "Energy = ", te2
+            endif
+            call mpi_bcast(te2, 1, mpi_real, 0, mpi_comm_world, mpierr)
             ! Use multislice every 10k steps if specified.
             if(use_multislice .and. mod(i,10000) .eq. 0) then
                 call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
@@ -501,7 +513,9 @@ program rmc
             close(57)
         endif
     endif ! Use RMC
+    if(myid.eq.0) then
     call lammps_close (lmp)
+    endif
     call mpi_finalize(mpierr)
 
 end program rmc

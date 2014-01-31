@@ -1,12 +1,12 @@
 #parameter file opened. set a filename to # to ignore it
-jwh/model_040511c_t2_final.xyz
+pei/model_update_2919_3000000.xyz
 1  !starting step number
 200000.0    !starting temperature (assuming starting step is 1, not what you set it at)
 1.5    !maximum move distance
 !cut off: nxn matrix 11 21 31/ 12 22 32/ 13 23 33/  (1 is the lowest atom# species) 
-1.76 1.76 1.76
-1.76 1.76 1.76
-1.76 1.76 1.76
+2.272 2.272 2.272
+2.272 2.272 2.272
+2.272 2.272 2.272
 #
 0	!weight of electron scattering
 0  0 !rmin_e rmax_e
@@ -16,10 +16,10 @@ jwh/model_040511c_t2_final.xyz
 # xrd_zr50_kramer_reduced.txt
 0 #3290.0	!weight of xrd gr
 0 0 #1.68  10.0
-jwh/fem_exp_jwh_t2.txt
-1.0	 !weight of fem
-28.637     !scaling factor for exp Vk
-1 40 20 	 !# of rotations(nphi, npsi, ntheta) #128 = 1 24 20; 16 = 2 17 1; normal = 1 40 20
+pei/fem_exp_Zr54Cu38Al8_t2.txt
+550.0	 !weight of fem; alpha
+28.6378  !scaling factor for exp Vk; beta
+1 40 20 	 !# of rotations(nphi, npsi, ntheta)
 0.0305 !Q (inverse angstrom)
 1	 !fem algorithm
 13.0	 !pixel distance

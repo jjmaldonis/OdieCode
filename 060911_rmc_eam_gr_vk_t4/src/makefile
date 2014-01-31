@@ -15,11 +15,12 @@ LMP_INC = -I../lammps_src/ -I../lammps_src/fortran2
 LIBS=
 
 CFLAGS = -O2 -openmp -fpp
+CDEBUGFLAGS = -g -debug all -check all -implicitnone -warn all -O2 -openmp -fpp
 
 FC_OPT = mpif90
 CC_OPT = icc
 
-FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all -openmp -fpp
+FC_DEBUG = mpif90 -g -debug all -check all -implicitnone -warn all
 CC_DEBUG = icc -g  -Wall
 
 
