@@ -91,6 +91,7 @@ the dynamically-linkable library (liblammps_fortran.so).
      etc.)  For example,
         mpif90 LAMMPS.o LAMMPS-wrapper.o ${my_object_files} \
             ${LAMMPS_LIB} -lmpi_cxx -lstdc++ -lm
+        " mpif90 LAMMPS.o LAMMPS-wrapper.o simple.o liblammps_odie.a -lmpi_cxx -lstdc++ -lm " -- that works
      OR
         gfortran LAMMPS.o LAMMPS-wrapper.o ${my_object_files} \
             ${LAMMPS_LIB} ${MPI_STUBS} -lstdc++ -lm

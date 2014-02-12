@@ -55,7 +55,8 @@ program simple
 
    ! And here's how to to it with a string constant of your choice
    !call lammps_open_no_mpi ('lmp -log log.simple', lmp)
-   call lammps_open_no_mpi ('lmp -log log.simple -screen none', lmp)
+   call lammps_open('lmp -log log.simple', mpi_comm_world, lmp)
+   !call lammps_open_no_mpi ('lmp -log log.simple -screen none', lmp)
 
    !call lammps_file (lmp, 'in.simple')
    !call lammps_command (lmp, 'run 500')

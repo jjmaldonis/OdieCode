@@ -93,7 +93,7 @@ program rmc
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
     if(myid.eq.0) then
-    call lammps_open_no_mpi ('lmp -log log.simple -screen none', lmp)
+    call lammps_open ('lmp -log log.simple -screen none', mpi_comm_world, lmp)
     call lammps_file (lmp, 'lmp_energy.in')
     endif
 
