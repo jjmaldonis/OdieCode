@@ -1,0 +1,66 @@
+units		metal
+boundary	p p p
+
+atom_style	atomic
+
+read_data	Zr54Cu38Al8_1000atoms_DRP.dat
+
+pair_style	eam/alloy
+pair_coeff	* * ZrCuAl2011.eam.alloy Zr Cu Al
+
+thermo_style	custom step etotal fmax fnorm
+thermo		10
+
+minimize	1.0e-6 0 1000 10000
+
+write_restart	Zr54Cu38Al8_1k_emin.restart
+
+timestep	0.002
+
+thermo_style	custom step temp press vol pe etotal
+#thermo		100
+thermo		1000
+dump		1 all atom 10000 Zr54Cu38Al8_sm_tot.dump
+
+velocity	all create 100 233278 dist gaussian sum no mom yes rot yes
+fix		1 all nvt temp 100 100 0.2
+
+#run		500
+run		500000
+
+unfix		1
+fix		1 all npt temp 100 100 0.2 iso 1.0 1.0 1
+
+#run		500
+run		500000
+
+unfix		1
+fix		1 all npt temp 600 600 0.2 iso 1.0 1.0 1
+
+#run		500
+run		500000
+
+unfix		1
+fix		1 all npt temp 1300 1300 0.2 iso 1.0 1.0 1.0
+
+#run		500
+run 		2500000
+
+write_restart	Zr54Cu38Al8_1300K_npt_5ns.restart
+
+unfix		1
+fix             1 all npt temp 1300 300 0.2 iso 1.0 1.0 1
+
+#run		500
+run             50000000
+
+write_restart	 Zr54Cu38Al8_npt_1k_1300K_300K.restart
+
+unfix		 1
+fix		 1 all npt temp 300 300 0.2 iso 1.0 1.0 1
+
+#run		 500
+run		 2500000
+
+write_restart	 Zr54Cu38Al8_1k_300K_quench.restart
+
