@@ -1272,12 +1272,12 @@ contains
         call hutch_move_atom(m, atom, xx, yy, zz)
 
         !Error checking.
-        if( m%xx%ind(atom) .ne. xx .or. m%yy%ind(atom) .ne. yy .or.  m%zz%ind(atom) .ne. zz) then
-            write(*,*) "WARNING: Atom",atom,"'s positions did not get updated correctly!"
-            write(*,*) m%xx%ind(atom), xx
-            write(*,*) m%yy%ind(atom), yy
-            write(*,*) m%zz%ind(atom), zz
-        endif
+        !if( m%xx%ind(atom) .ne. xx .or. m%yy%ind(atom) .ne. yy .or.  m%zz%ind(atom) .ne. zz) then
+        !    write(*,*) "WARNING: Atom",atom,"'s positions did not get updated correctly!"
+        !    write(*,*) m%xx%ind(atom), xx
+        !    write(*,*) m%yy%ind(atom), yy
+        !    write(*,*) m%zz%ind(atom), zz
+        !endif
     end subroutine move_atom
 
 

@@ -338,13 +338,13 @@ program rmc
             endif
             call mpi_bcast(te2, 1, mpi_real, 0, mpi_comm_world, mpierr)
             ! Use multislice every 10k steps if specified.
-            if(use_multislice .and. mod(i,10000) .eq. 0) then
-                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
-                call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
-            else
-                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
-                !write(*,*) "I am core", myid, "and I have exited from fem_update into the main rmc block."
-            endif
+!            if(use_multislice .and. mod(i,10000) .eq. 0) then
+!                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
+!                call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
+!            else
+!                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
+!                !write(*,*) "I am core", myid, "and I have exited from fem_update into the main rmc block."
+!            endif
             !if(myid .eq. 0) write(*,*) "Finished updating eam, gr, and fem data."
             
             chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, &

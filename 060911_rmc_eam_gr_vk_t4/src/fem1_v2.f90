@@ -858,6 +858,91 @@ write(*,*) k(i), sum_int(i)
     end subroutine intensity
 
 
+    subroutine move_atom_in_rotated_model(atom,rot_atom,mroti,i)
+        implicit none
+        integer, intent(in) :: atom
+        type(model), intent(in) :: rot_atom
+        type(model), intent(inout) :: mroti
+        integer, intent(in) :: i
+        integer :: j
+
+        ! ------- Update atoms in the rotated model. ------- !
+        if( mroti%rot_i(atom)%nat .eq. rot_atom%natoms ) then
+        ! The atom simply moved. It is still in the rotated model the
+        ! same number of times as before.
+            do j=1,rot_atom%natoms
+                ! Function ref: move_atom(m, atom, new_xx, new_yy, new_zz)
+!write(*,*) "Atom", mrot(i)%rot_i(atom)%ind(j), " !==!", atom, "simply moved positions. It's moving from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)),  mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+!write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
+                call move_atom(mroti, mroti%rot_i(atom)%ind(j), &
+                rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
+            enddo
+
+        else if( rot_atom%natoms .ge. mroti%rot_i(atom)%nat ) then
+        ! The number of times the atom appears went up (duplication).
+            ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
+            ! the number of atoms was changed.
+            old_index(i)%nat = -1
+            
+!write(*,*) "Atom", atom, "increased the number of times it occures in model", mrot(i)%id
+!write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
+
+            ! The atom positions in the rotated model (not atom) should
+            ! be updated *up to the number of times it appeared in the
+            ! model before*. This saves deleting rot_i(atom) and
+            ! re-implementing it, as well as all the atoms it points to.
+            do j=1,mroti%rot_i(atom)%nat
+!write(*,*) "Moving", mrot(i)%rot_i(atom)%ind(j), "from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)),  mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
+                call move_atom(mroti, mroti%rot_i(atom)%ind(j), &
+                rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
+            enddo
+
+            ! Now add the rest of the atom positions in rot_atom that we
+            ! haven't gotten to yet.
+            do j=mroti%rot_i(atom)%nat+1, rot_atom%natoms
+                call add_atom(mroti, atom, rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j), rot_atom%znum%ind(j), rot_atom%znum_r%ind(j) )
+            enddo
+
+        else if( mroti%rot_i(atom)%nat .gt. rot_atom%natoms ) then
+        ! The number of times the atom appears in the rotated model went down.
+            ! Set old_index(i)%nat to -1 so that fem_reject_move knows that
+            ! the number of atoms was changed.
+            old_index(i)%nat = -1
+        
+!write(*,*) "Atom", atom, "decreaed the number of times it occures in model", mrot(i)%id
+!write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
+
+            ! First I want to sort the indices in mrot(i)%rot_i(atom)
+            ! so that when we delete an atom from this array we will
+            ! always be deleting the atom with the highest index. That
+            ! way our array deletion is faster in the remove_atom
+            ! function.
+            call sort(mroti%rot_i(atom))
+
+            ! The atom positions in the rotated model (not atom) should
+            ! be updated up to the number of atoms in rot_atom. This
+            ! saves deleting rot_i(atom) and re-implementing it, as well
+            ! as all the atoms it points to.
+            do j=1,rot_atom%natoms
+                call move_atom(mroti, mroti%rot_i(atom)%ind(j), &
+                rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j) )
+            enddo
+
+            ! Now we delete the extras that were in the model before.
+            ! The thing you need to be careful of is that remove_atom
+            ! deletes from mrot(i)%rot_i(atom)%ind. This means that the
+            ! next call to remove_atom needs the same index, not the
+            ! next one. So instead of j, we use rot_atom%natoms+1,
+            ! which is the starting point of j.
+            ! But we still need to call remove_atom j times.
+            do j=rot_atom%natoms+1, mroti%rot_i(atom)%nat
+                call remove_atom(mroti, atom, mroti%rot_i(atom)%ind(rot_atom%natoms+1) )
+            enddo
+        endif
+
+    end subroutine move_atom_in_rotated_model
+
+
     subroutine fem_update(m_in, atom, res, k, vk, vk_as, v_background, scatfact_e, comm, istat, square_pixel, use_autoslice)
         use mpi
         type(model), intent(in) :: m_in
@@ -961,7 +1046,7 @@ write(*,*) k(i), sum_int(i)
             if( .not. ((rot_atom%natoms == 0) .and. (mrot(i)%rot_i(atom)%nat == 0)) ) then
             !write(*,*) "mod=", i, "mrot", mrot(i)%rot_i(atom)%nat, "r=", rot_atom%natoms, "mrot%nat=", mrot(i)%natoms ! Debug
 
-                ! Store the original index and position in old_index and old_pos
+                ! Store the original index(es) and position(s) in old_index and old_pos
                 do j=1,mrot(i)%rot_i(atom)%nat
                     call add_index(old_index(i), mrot(i)%rot_i(atom)%ind(j))
                     call add_pos(old_pos(i), mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)), &
@@ -991,6 +1076,10 @@ write(*,*) k(i), sum_int(i)
                 enddo
 
                 ! ------- Update atoms in the rotated model. ------- !
+                !call move_atom_in_rotated_model(atom,rot_atom,mrot(i),i)
+
+
+
                 if( mrot(i)%rot_i(atom)%nat .eq. rot_atom%natoms ) then
                 ! The atom simply moved. It is still in the rotated model the
                 ! same number of times as before.
@@ -1012,8 +1101,8 @@ write(*,*) k(i), sum_int(i)
 !write(*,*) "Its current (old) rot_i=", mrot(i)%rot_i(atom)%ind
 
                     ! The atom positions in the rotated model (not atom) should
-                    ! be updated up to the number of times it appeared in the
-                    ! model before. This saves deleting rot_i(atom) and
+                    ! be updated *up to the number of times it appeared in the
+                    ! model before*. This saves deleting rot_i(atom) and
                     ! re-implementing it, as well as all the atoms it points to.
                     do j=1,mrot(i)%rot_i(atom)%nat
     !write(*,*) "Moving", mrot(i)%rot_i(atom)%ind(j), "from", mrot(i)%xx%ind(mrot(i)%rot_i(atom)%ind(j)),  mrot(i)%yy%ind(mrot(i)%rot_i(atom)%ind(j)), mrot(i)%zz%ind(mrot(i)%rot_i(atom)%ind(j)), "to", rot_atom%xx%ind(j), rot_atom%yy%ind(j), rot_atom%zz%ind(j)
@@ -1056,7 +1145,8 @@ write(*,*) k(i), sum_int(i)
                     ! The thing you need to be careful of is that remove_atom
                     ! deletes from mrot(i)%rot_i(atom)%ind. This means that the
                     ! next call to remove_atom needs the same index, not the
-                    ! next one. So instead of j, we use rot_atom%natoms+1.
+                    ! next one. So instead of j, we use rot_atom%natoms+1,
+                    ! which is the starting point of j.
                     ! But we still need to call remove_atom j times.
                     do j=rot_atom%natoms+1, mrot(i)%rot_i(atom)%nat
                         call remove_atom(mrot(i), atom, mrot(i)%rot_i(atom)%ind(rot_atom%natoms+1) )
