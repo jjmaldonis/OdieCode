@@ -807,7 +807,7 @@ contains
         integer :: i, j, k  ! counting variables
         integer, dimension(:), allocatable, target :: temp_atoms
         real, dimension(3) :: hcenter
-        real :: dist
+        real :: dist2
         integer :: i_start, i_end, j_start, j_end, k_start, k_end
         real :: x_start, x_end, y_start, y_end, z_start, z_end
         !integer, dimension(11,11,11) :: used_hutches
@@ -874,8 +874,8 @@ contains
                     hcenter(2) = -m%ly/2.0 + m%ha%hutch_size/2.0 + (j-1)*m%ha%hutch_size
                     hcenter(3) = -m%lz/2.0 + m%ha%hutch_size/2.0 + (k-1)*m%ha%hutch_size
                     ! Calculate distance.
-                    !dist = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 + (pz-hcenter(3))**2 )
-                    !if( dist < radius + m%ha%hutch_size/sqrt(2.0) .or. dist > (m%lx-radius)*sqrt(3.0) ) then ! The 2nd part is for PBC. It only works if the world is a cube.
+                    dist2 = sqrt( (px-hcenter(1))**2 + (py-hcenter(2))**2 + (pz-hcenter(3))**2 )
+                    if( dist2 < radius + m%ha%hutch_size/sqrt(2.0) .or. dist2 > (m%lx-radius)*sqrt(3.0) ) then ! The 2nd part is for PBC. It only works if the world is a cube.
                         call hutch_position(m, hcenter(1), hcenter(2), hcenter(3), hx, hy, hz)
                         !used_hutches(hx,hy,hz) = 1
                         if(m%ha%h(hx, hy, hz)%nat /= 0) then
@@ -883,7 +883,7 @@ contains
                             nlist = nlist + m%ha%h(hx, hy, hz)%nat
                         endif
                         nh = nh + 1
-                    !endif
+                    endif
                     if(i .ne. hx .or. j .ne. hy .or. k .ne. hz) then
                         write(*,*) "Hutches:"
                         write(*,*) i,j,k
