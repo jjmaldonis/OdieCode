@@ -37,7 +37,7 @@
 
 # Write the date and time to outfile.
 echo "Submitted on:"
-date
+date '+%s'
 
 # The following is for reporting only. It is not really needed to run the job
 # It will show how many processors you get in your output file
@@ -52,3 +52,6 @@ MPI_HOME=/share/apps/openmpi_intel_20130712/bin
 
 $MPI_HOME/mpiexec -n $NSLOTS rmc $JOB_ID
 ##$MPI_HOME/mpiexec -n $NSLOTS amplxe-cl -r my_result -collect hotspots -- rmc $JOB_ID
+
+echo "Finished on:"
+date '+%s'

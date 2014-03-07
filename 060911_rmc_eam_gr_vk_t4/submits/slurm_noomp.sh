@@ -16,6 +16,8 @@
 
 ##SBATCH --export=ALL
 
+echo "Date:"
+date '+%s'
 echo "Using ACI / HCP / Slurm cluster."
 echo "JobID = $SLURM_JOB_ID"
 echo "Using $SLURM_NNODES nodes"
@@ -26,3 +28,6 @@ echo ""
 
 # Executable
 mpirun rmc $SLURM_JOB_ID
+
+echo "Finished on:"
+date '+%s'
