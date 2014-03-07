@@ -27,7 +27,7 @@
 
 program rmc
 
-    use LAMMPS
+    !use LAMMPS
     use omp_lib
     use rmc_global
     use readinputs
@@ -35,14 +35,14 @@ program rmc
     use gr_mod
     use fem_mod
     use rmc_functions
-    !use eam_mod
+    use eam_mod
     implicit none
     include 'mpif.h'
     ! LAMMPS objects
-    type (C_ptr) :: lmp
-    real (C_double), pointer :: te1 => NULL()
-    real (C_double), pointer :: te2 => NULL()
-    character (len=512) :: lmp_cmd_str
+    !type (C_ptr) :: lmp
+    !real (C_double), pointer :: te1 => NULL()
+    !real (C_double), pointer :: te2 => NULL()
+    !character (len=512) :: lmp_cmd_str
     ! RMC / Femsim objects
     type(model) :: m
     character (len=256) :: model_filename
@@ -78,7 +78,7 @@ program rmc
     integer :: total_steps
     integer :: iseed2
     real :: randnum
-    !real :: te1, te2
+    real :: te1, te2 ! For eam, not lammps version of energy
     logical :: square_pixel, accepted, use_rmc, use_multislice
     integer :: ipvd, nthr
     doubleprecision :: t0, t1, t2 !timers
@@ -92,10 +92,10 @@ program rmc
     call mpi_comm_rank(mpi_comm_world, myid, mpierr)
     call mpi_comm_size(mpi_comm_world, numprocs, mpierr)
 
-    if(myid.eq.0) then
-    call lammps_open ('lmp -log log.simple -screen none', mpi_comm_world, lmp)
-    call lammps_file (lmp, 'lmp_energy.in')
-    endif
+    !if(myid.eq.0) then
+    !call lammps_open ('lmp -log log.simple -screen none', mpi_comm_world, lmp)
+    !call lammps_file (lmp, 'lmp_energy.in')
+    !endif
 
     nthr = omp_get_max_threads()
     if(myid.eq.0)then
@@ -182,17 +182,17 @@ program rmc
     use_rmc = .TRUE.
     use_multislice = .FALSE.
 
-    !call read_eam(m)
-    !call eam_initial(m,te1)
-    if(myid.eq.0) then
-    call lammps_command (lmp, 'run 0')
-    call lammps_extract_compute (te1, lmp, 'pot', 0, 0)
-    call mpi_bcast(te1, 1, mpi_real, 0, mpi_comm_world, mpierr)
-    endif
+    call read_eam(m)
+    call eam_initial(m,te1)
+    !if(myid.eq.0) then
+    !call lammps_command (lmp, 'run 0')
+    !call lammps_extract_compute (te1, lmp, 'pot', 0, 0)
+    !call mpi_bcast(te1, 1, mpi_real, 0, mpi_comm_world, mpierr)
+    !endif
     if(myid.eq.0) write(*,*) "Energy = ", te1
 
     call scatt_power(m,used_data_sets,istat)
-    call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
+    !call gr_initialize(m,r_e,gr_e,r_n,gr_n,r_x,gr_x,used_data_sets,istat)
     call fem_initialize(m, res, k, nk, ntheta, nphi, npsi, scatfact_e, istat,  square_pixel)
     allocate(vk(size(vk_exp)), vk_as(size(vk_exp)))
     if(myid.eq.0) call print_sampled_map(m, res, square_pixel)
@@ -259,7 +259,7 @@ program rmc
         !        rmin_e, rmax_e, rmin_n, rmax_n, rmin_x, rmax_x, del_r_e, del_r_n, del_r_x, nk, chi2_gr, chi2_vk)
         !endif
         chi2_old = chi2_no_energy + te1
-        !e2 = e1
+        e2 = e1 ! eam
 
         t0 = omp_get_wtime()
         if(myid.eq.0)then
@@ -324,27 +324,27 @@ program rmc
 
             ! Update hutches, data for chi2, and chi2/del_chi
             call hutch_move_atom(m,w,xx_new, yy_new, zz_new)
-            write(lmp_cmd_str, "(A9, I4, A3, F, A3, F, A3, F)") "set atom ", w, " x ", xx_new, " y ", yy_new, " z ", zz_new
-            if(myid.eq.0) then
-            call lammps_command(lmp, trim(lmp_cmd_str))
-            endif
+            !write(lmp_cmd_str, "(A9, I4, A3, F, A3, F, A3, F)") "set atom ", w, " x ", xx_new, " y ", yy_new, " z ", zz_new
+            !if(myid.eq.0) then
+            !call lammps_command(lmp, trim(lmp_cmd_str))
+            !endif
     
 
-            !call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
-            if(myid.eq.0) then
-            call lammps_command (lmp, 'run 0')
-            call lammps_extract_compute (te2, lmp, 'pot', 0, 0)
-            write(*,*) "Energy = ", te2
-            endif
+            call eam_mc(m, w, xx_cur, yy_cur, zz_cur, xx_new, yy_new, zz_new, te2)
+            !if(myid.eq.0) then
+            !call lammps_command (lmp, 'run 0')
+            !call lammps_extract_compute (te2, lmp, 'pot', 0, 0)
+            !endif
             call mpi_bcast(te2, 1, mpi_real, 0, mpi_comm_world, mpierr)
+            write(*,*) "Energy = ", te2
             ! Use multislice every 10k steps if specified.
-!            if(use_multislice .and. mod(i,10000) .eq. 0) then
-!                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
-!                call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
-!            else
-!                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
-!                !write(*,*) "I am core", myid, "and I have exited from fem_update into the main rmc block."
-!            endif
+            if(use_multislice .and. mod(i,10000) .eq. 0) then
+                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .true.)
+                call update_scale_factor(scale_fac, scale_fac_initial, vk, vk_as)
+            else
+                call fem_update(m, w, res, k, vk, vk_as, v_background, scatfact_e, mpi_comm_world, istat, square_pixel, .false.)
+                !write(*,*) "I am core", myid, "and I have exited from fem_update into the main rmc block."
+            endif
             !if(myid .eq. 0) write(*,*) "Finished updating eam, gr, and fem data."
             
             chi2_no_energy = chi_square(used_data_sets,weights,gr_e, gr_e_err, &
@@ -364,7 +364,7 @@ program rmc
             if(del_chi <0.0)then
             !if(.true.)then !For timing purposes, always accept the move. TODO
                 ! Accept the move
-                !e1 = e2
+                e1 = e2 ! eam
                 call fem_accept_move(mpi_comm_world)
                 chi2_old = chi2_new
                 accepted = .true.
@@ -374,22 +374,22 @@ program rmc
                 ! whether to move or not (statistically).
                 if(log(1.-randnum)<-del_chi*beta)then
                     ! Accept move
-                    !e1 = e2
+                    e1 = e2 ! eam
                     call fem_accept_move(mpi_comm_world)
                     chi2_old = chi2_new
                     accepted = .true.
                     if(myid.eq.0) write(*,*) "MC move accepted due to probability. del_chi*beta = ", del_chi*beta
                 else
                     ! Reject move
-                    !e2 = e1
+                    e2 = e1 ! eam
                     call reject_position(m, w, xx_cur, yy_cur, zz_cur)
                     call hutch_move_atom(m,w,xx_cur, yy_cur, zz_cur)  !update hutches.
-                    call fem_reject_move(m, mpi_comm_world)
+                    call fem_reject_move(m, w, xx_cur, yy_cur, zz_cur, mpi_comm_world)
                     accepted = .false.
                     if(myid .eq. 0) write(*,*) "MC move rejected."
                 endif
             endif
-            
+
             if(accepted) then
                 acceptance_array(mod(i,100)+1) = 1
             else
@@ -513,9 +513,9 @@ program rmc
             close(57)
         endif
     endif ! Use RMC
-    if(myid.eq.0) then
-    call lammps_close (lmp)
-    endif
+    !if(myid.eq.0) then
+    !call lammps_close (lmp)
+    !endif
     call mpi_finalize(mpierr)
 
 end program rmc
