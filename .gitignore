@@ -1,6 +1,7 @@
 *.mod
 *.o
 *.tif
+*.dump
 spec/andy_test_code_20130618/test/Si110_im*
 060911_rmc_eam_gr_vk_t4/femsim
 060911_rmc_eam_gr_vk_t4/rmc

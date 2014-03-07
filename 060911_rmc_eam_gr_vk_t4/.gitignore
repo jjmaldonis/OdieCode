@@ -18,3 +18,4 @@ timings/
 log.lammps
 log.simple
 src/ran2__genmod.f90
+*.restart
